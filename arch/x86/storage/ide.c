@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 14 of 2018, at 23:40 BRT
-// Last edited on January 23 of 2019, at 13:24 BRT
+// Last edited on June 15 of 2019, at 10:04 BRT
 
 #include <chicago/arch/ide.h>
 #include <chicago/arch/idt.h>
@@ -449,10 +449,10 @@ static Void IDEInitInt(PPCIDevice pdev) {
 
 Void IDEInit(Void) {
 	UIntPtr i = 0;																								// Let's find and init all the IDE controllers
-	PPCIDevice dev = PCIFindDevice2(&i, PCI_CLASS_MASS, PCI_SUBCLASS_IDE);
+	PPCIDevice dev = PCIFindDevice2(&i, PCI_CLASS_MASS_STORAGE, PCI_SUBCLASS_IDE);
 	
 	while (dev != Null) {
 		IDEInitInt(dev);
-		dev = PCIFindDevice2(&i, PCI_CLASS_MASS, PCI_SUBCLASS_IDE);
+		dev = PCIFindDevice2(&i, PCI_CLASS_MASS_STORAGE, PCI_SUBCLASS_IDE);
 	}
 }

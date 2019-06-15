@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on January 17 of 2019, at 21:06 BRT
-// Last edited on January 23 of 2019, at 13:25 BRT
+// Last edited on June 15 of 2019, at 10:03 BRT
 
 #include <chicago/arch/ahci.h>
 #include <chicago/arch/ide.h>
@@ -47,23 +47,14 @@ static Void AHCIRebase(PHBAPort port, UIntPtr virt) {
 	PHBACmd cmd = (PHBACmd)virt;
 	
 	port->clb = phys;																									// Set the command list PHYSICAL location
-#ifndef ARCH_64
-	port->clbu = 0;
-#endif
 	StrSetMemory(cmd, 0, sizeof(HBACmd) * 32);																			// Clear the command list (using the VIRTUAL address)
 	
 	port->fb = phys + (sizeof(HBACmd) * 32);																			// Set the FIS PHYSICAL location
-#ifndef ARCH_64
-	port->fbu = 0;
-#endif
 	StrSetMemory((PUInt8)(virt + sizeof(HBACmd)), 0, 256);																// Clear the FIS (using the VIRTUAL address)
 	
 	for (UIntPtr i = 0; i < 32; i++) {
 		cmd[i].prdtl = 8;																								// 8 PRDT entries
 		cmd[i].ctba = phys + (sizeof(HBACmd) * 32) + 256 + (i * sizeof(HBACmdTbl));										// Set the command table PHYSICAL location
-#ifndef ARCH_64
-		cmd[i].ctbau = 0;
-#endif
 		StrSetMemory((PUInt8)(virt + (sizeof(HBACmd) * 32) + 256 + (i * sizeof(HBACmdTbl))), 0, sizeof(HBACmdTbl));		// Clear the command table (using the VIRTUAL address)
 	}
 	
@@ -566,10 +557,10 @@ nope:;	port >>= 1;																										// Go to the next port
 
 Void AHCIInit(Void) {
 	UIntPtr i = 0;																										// Let's find and init all the AHCI controllers
-	PPCIDevice dev = PCIFindDevice2(&i, PCI_CLASS_MASS, PCI_SUBCLASS_SATA);
+	PPCIDevice dev = PCIFindDevice2(&i, PCI_CLASS_MASS_STORAGE, PCI_SUBCLASS_SATA);
 	
 	while (dev != Null) {
 		AHCIInitInt(dev);
-		dev = PCIFindDevice2(&i, PCI_CLASS_MASS, PCI_SUBCLASS_SATA);
+		dev = PCIFindDevice2(&i, PCI_CLASS_MASS_STORAGE, PCI_SUBCLASS_SATA);
 	}
 }

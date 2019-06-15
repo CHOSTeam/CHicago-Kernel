@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:21 BRT
-// Last edited on March 05 of 2019, at 11:36 BRT
+// Last edited on June 15 of 2019, at 11:06 BRT
 
 #include <chicago/arch/ahci.h>
 #include <chicago/arch/bootmgr.h>
@@ -15,6 +15,7 @@
 #include <chicago/arch/port.h>
 #include <chicago/arch/process.h>
 #include <chicago/arch/serial.h>
+#include <chicago/arch/usb.h>
 #include <chicago/arch/vmm.h>
 
 #include <chicago/alloc.h>
@@ -50,7 +51,7 @@ Void ArchInitFPU(Void) {
 	if (!(d & (1 << 0))) {																						// FPU avaliable?
 		DbgWriteFormated("PANIC! FPU isn't avaliable\r\n");														// Nope
 		ArchHalt();																								// Halt
-	} else if (!(c & (1 << 20))) {																				// SSE(4.2) avaliable?
+	} else if (!(d & (1 << 25))) {																				// SSE(2) avaliable?
 		DbgWriteFormated("PANIC! SSE isn't avaliable\r\n");														// Nope
 		ArchHalt();																								// Halt
 	}
@@ -130,6 +131,7 @@ Void ArchInit(Void) {
 	E1000Init();
 	AHCIInit();
 	IDEInit();
+	USBInit();
 	
 	PWChar bootdev = (PWChar)MemAllocate((StrGetLengthC(BootmgrBootDev) + 1) * 4);								// Let's transform the C string into unicode!
 	

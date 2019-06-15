@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 21:03 BRT
-// Last edited on February 23 of 2019, at 15:43 BRT
+// Last edited on April 27 of 2019, at 16:23 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/arch.h>
@@ -53,7 +53,7 @@ static Boolean ExecLoadDependencies(PUInt8 buf) {
 			return False;																							// Failed...
 		}
 		
-		dep = (PCHExecDependency)(((UIntPtr)dep) + sizeof(CHExecDependency) + dep->name_len);
+		dep = (PCHExecDependency)(((UIntPtr)dep) + sizeof(CHExecDependency) + (dep->name_len * sizeof(WChar)));
 	}
 	
 	return True;
@@ -74,7 +74,7 @@ static UIntPtr ExecGetSymbolLoc(UIntPtr base, PUInt8 buf, PWChar name) {
 			return base + sym->virt;																				// Found!
 		}
 		
-		sym = (PCHExecSymbol)(((UIntPtr)sym) + sizeof(CHExecSymbol) + sym->name_len);
+		sym = (PCHExecSymbol)(((UIntPtr)sym) + sizeof(CHExecSymbol) + (sym->name_len * sizeof(WChar)));
 	}
 	
 	return 0;
@@ -121,7 +121,7 @@ static Boolean ExecRelocate(UIntPtr base, PUInt8 buf) {
 			*((PUInt32)(base + rel->virt)) += (UInt32)incr;
 		}
 		
-		rel = (PCHExecRelocation)(((UIntPtr)rel) + sizeof(CHExecRelocation) + rel->name_len);
+		rel = (PCHExecRelocation)(((UIntPtr)rel) + sizeof(CHExecRelocation) + (rel->name_len * sizeof(WChar)));
 	}
 	
 	return True;

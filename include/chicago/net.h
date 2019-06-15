@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 12 of 2018, at 12:25 BRT
-// Last edited on December 16 of 2018, at 12:48 BRT
+// Last edited on June 15 of 2019, at 11:04 BRT
 
 #ifndef __CHICAGO_NET_H__
 #define __CHICAGO_NET_H__
@@ -83,7 +83,6 @@ typedef struct {
 typedef struct {
 	UIntPtr id;
 	PVoid priv;
-	PWChar dev_name;
 	PQueue packet_queue;
 	UInt8 mac_address[6];
 	UInt8 ipv4_address[4];

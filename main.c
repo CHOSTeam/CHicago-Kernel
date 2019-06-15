@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:14 BRT
-// Last edited on April 27 of 2019, at 11:04 BRT
+// Last edited on June 15 of 2019, at 09:58 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/arch.h>
@@ -82,7 +82,6 @@ Void KernelMain(Void) {
 Void KernelMainLate(Void) {
 	DispIncrementProgessBar();
 	DbgWriteFormated("[Kernel] Tasking initialized\r\n");																	// Tasking initialized
-	PsSleep(500);																											// Wait 500ms, so the user can see our bootscreen (why not?)
 	
 	IpcInit();																												// Init the IPC interface
 	DispIncrementProgessBar();
@@ -107,25 +106,7 @@ Void KernelMainLate(Void) {
 	
 	if (conf != Null) {																										// Failed?
 		ListForeach(conf, i) {																								// No! Let's load all the drivers!
-			PConfField drv = (PConfField)i->data;
-			PChar name = (PChar)MemAllocate(StrGetLength(drv->name) + 1);													// Alloc space for converting the name to ASCII (for the Dbg* functions)
-			
-			if (name == Null) {
-				continue;
-			}
-			
-			PChar path = (PChar)MemAllocate(StrGetLength(drv->value) + 1);													// Alloc space for converting the path to ASCII (for the Dbg* functions)
-			
-			if (path == Null) {
-				MemFree((UIntPtr)name);
-				continue;
-			}
-			
-			StrCFromUnicode(name, drv->name, StrGetLength(drv->name));														// Convert the name
-			StrCFromUnicode(path, drv->value, StrGetLength(drv->value));													// And the path!
-			DbgWriteFormated("[Kernel] Loaded driver '%s' (%s)\r\n", name, path);											// Print some info about the driver (name and path)
-			MemFree((UIntPtr)name);																							// Free the name
-			MemFree((UIntPtr)path);																							// Free the path
+			PConfField drv = (PConfField)i->data; (Void)drv;																// Ok, for now we don't have anything to do lol
 		}
 		
 		ConfFree(conf);																										// Now free the loaded conf file
@@ -133,7 +114,12 @@ Void KernelMainLate(Void) {
 	
 	DispFillProgressBar();																									// Kernel initialized
 	DbgWriteFormated("[Kernel] Kernel initialized\r\n\r\n");
-	PsSleep(500);																											// Wait 500ms, so the user can see our bootscreen (why not?)
+	
+	if ((ArchBootOptions & BOOT_OPTIONS_VERBOSE) == BOOT_OPTIONS_VERBOSE) {													// Verbose boot?
+		DbgWriteFormated("Press any key to finish the boot process...");													// Yes, wait for any keypress
+		WChar discard[2];
+		ConsoleDeviceReadKeyboard(1, discard);
+	}
 	
 	DbgSetRedirect(False);																									// Disable the redirect feature of the Dbg* functions, as it may be enabled
 	ConSetSurface(DispBackBuffer, True, False, 0, 0);																		// Init the console

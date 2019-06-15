@@ -1,7 +1,7 @@
 # File author is Ítalo Lima Marconato Matias
 #
 # Created on May 11 of 2018, at 13:14 BRT
-# Last edited on April 23 of 2019, at 18:21 BRT
+# Last edited on June 15 of 2019, at 11:02 BRT
 
 ARCH ?= x86
 VERBOSE ?= false
@@ -12,15 +12,16 @@ SHELL := env PATH=$(PATH) /bin/bash
 
 ifeq ($(ARCH),x86)
 	TARGET ?= i686-elf
-	ARCH_CFLAGS := -DCHEXEC_ARCH=CHEXEC_HEADER_FLAGS_ARCH_X86 -msse4.2
+	ARCH_CFLAGS := -DCHEXEC_ARCH=CHEXEC_HEADER_FLAGS_ARCH_X86 -msse2
 	
 	ARCH_OBJECTS := start.s.o
 	ARCH_OBJECTS += arch.c.o
-	ARCH_OBJECTS += io/ahci.c.o io/debug.c.o io/ide.c.o io/keyboard.c.o
-	ARCH_OBJECTS += io/mouse.c.o
+	ARCH_OBJECTS += io/debug.c.o io/keyboard.c.o io/mouse.c.o
 	ARCH_OBJECTS += net/e1000.c.o
+	ARCH_OBJECTS += storage/ahci.c.o storage/ide.c.o
 	ARCH_OBJECTS += sys/gdt.c.o sys/idt.c.o sys/panic.c.o sys/pci.c.o
 	ARCH_OBJECTS += sys/pit.c.o sys/process.c.o sys/sc.c.o
+	ARCH_OBJECTS += usb/uhci.c.o usb/usb.c.o
 	ARCH_OBJECTS += mm/pmm.c.o mm/vmm.c.o
 	
 	OBJCOPY_ARCH := i386

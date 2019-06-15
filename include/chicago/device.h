@@ -1,12 +1,16 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 14 of 2018, at 22:38 BRT
-// Last edited on January 18 of 2019, at 18:24 BRT
+// Last edited on June 15 of 2019, at 11:08 BRT
 
 #ifndef __CHICAGO_DEVICE_H__
 #define __CHICAGO_DEVICE_H__
 
+#ifdef __CHICAGO_NETWORK__
+#include <chicago/net.h>
+#else
 #include <chicago/types.h>
+#endif
 
 typedef struct DeviceStruct {
 	PWChar name;
@@ -41,6 +45,10 @@ Boolean FsControlDevice(PDevice dev, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf);
 Boolean FsAddDevice(PWChar name, PVoid priv, Boolean (*read)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*write)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*control)(PDevice, UIntPtr, PUInt8, PUInt8));
 Boolean FsAddHardDisk(PVoid priv, Boolean (*read)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*write)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*control)(PDevice, UIntPtr, PUInt8, PUInt8));
 Boolean FsAddCdRom(PVoid priv, Boolean (*read)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*write)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*control)(PDevice, UIntPtr, PUInt8, PUInt8));
+#ifdef __CHICAGO_NETWORK__
+Boolean FsAddNetworkDevice(PNetworkDevice dev, Boolean (*write)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*control)(PDevice, UIntPtr, PUInt8, PUInt8));
+Boolean FsRemoveNetworkDevice(PNetworkDevice dev);
+#endif
 Boolean FsRemoveDevice(PWChar name);
 PDevice FsGetDevice(PWChar name);
 PDevice FsGetDeviceByID(UIntPtr id);

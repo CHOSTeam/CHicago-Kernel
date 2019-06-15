@@ -1,7 +1,9 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 14 of 2018, at 22:35 BRT
-// Last edited on January 18 of 2019, at 18:23 BRT
+// Last edited on June 15 of 2019, at 11:09 BRT
+
+#define __CHICAGO_NETWORK__
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -106,6 +108,45 @@ Boolean FsAddCdRom(PVoid priv, Boolean (*read)(PDevice, UIntPtr, UIntPtr, PUInt8
 	}
 	
 	return True;
+}
+
+Boolean FsAddNetworkDevice(PNetworkDevice dev, Boolean (*write)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*control)(PDevice, UIntPtr, PUInt8, PUInt8)) {
+	if (FsDeviceList == Null) {													// Device list was initialized?
+		return False;															// No...
+	}
+	
+	UIntPtr nlen = StrFormat(Null, L"Network%d", dev->id);						// Get the length of the name
+	PWChar name = (PWChar)MemAllocate(nlen);									// Alloc space for the name
+	
+	if (name == Null) {
+		return False;															// Failed
+	}
+	
+	StrFormat(name, L"Network%d", dev->id);										// Format the name string!
+	
+	if (!FsAddDevice(name, dev, Null, write, control)) {						// Try to add it!
+		MemFree((UIntPtr)name);													// Failed, free the name and return
+		return False;
+	}
+	
+	return True;
+}
+
+Boolean FsRemoveNetworkDevice(PNetworkDevice dev) {
+	UIntPtr nlen = StrFormat(Null, L"Network%d", dev->id);						// Get the length of the name
+	PWChar name = (PWChar)MemAllocate(nlen);									// Alloc space for the name
+	
+	if (name == Null) {
+		return False;															// Failed
+	}
+	
+	StrFormat(name, L"Network%d", dev->id);										// Format the name string!
+	
+	Boolean ret = FsRemoveDevice(name);											// Try to remove it!
+	
+	MemFree((UIntPtr)name);														// Free the name in the end
+	
+	return ret;
 }
 
 Boolean FsRemoveDevice(PWChar name) {

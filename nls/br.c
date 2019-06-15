@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 09 of 2018, at 19:27 BRT
-// Last edited on March 01 of 2019, at 17:59 BRT
+// Last edited on June 14 of 2019, at 19:08 BRT
 
 #include <chicago/types.h>
 
@@ -35,6 +35,7 @@ PWChar NlsMessagesBr[] = {
 	L"help   - Mostra os comandos disponíveis\r\n"
 	L"lang   - Altera o idioma do sistema\r\n"
 	L"ls     - Lista o conteudo de um diretório\r\n"
+	L"lsdev  - Lista os dispositivos conectados\r\n"
 	L"panic  - Força um error fatal\r\n"
 	L"ping   - Envia uma solicitação ARP para outro dispositivo\r\n"
 	L"ps     - Mostra todos os processos\r\n"

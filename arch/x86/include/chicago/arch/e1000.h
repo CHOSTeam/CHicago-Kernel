@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 11 of 2018, at 19:41 BRT
-// Last edited on January 23 of 2019, at 13:29 BRT
+// Last edited on June 15 of 2019, at 11:08 BRT
 
 #ifndef __CHICAGO_ARCH_E1000_H__
 #define __CHICAGO_ARCH_E1000_H__

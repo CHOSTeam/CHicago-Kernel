@@ -1,7 +1,9 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 12 of 2018, at 12:36 BRT
-// Last edited on December 17 of 2018, at 14:58 BRT
+// Last edited on June 15 of 2019, at 11:09 BRT
+
+#define __CHICAGO_NETWORK__
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -13,7 +15,6 @@
 #include <chicago/string.h>
 
 PNetworkDevice NetDefaultDevice = Null;
-PWChar NetDeviceString = L"NetworkX";
 PList NetARPIPv4Sockets = Null;
 PList NetUDPSockets = Null;
 PList NetDevices = Null;
@@ -87,18 +88,7 @@ PNetworkDevice NetAddDevice(PVoid priv, UInt8 mac[6], Void (*send)(PVoid, UIntPt
 		MemFree((UIntPtr)dev);																																			// Free the device
 		NetLastID--;																																					// And "free" the id
 		return Null;
-	}
-	
-	dev->dev_name = StrDuplicate(NetDeviceString);																														// Duplicate the NetworkX string
-	
-	if (dev->dev_name == Null) {
-		NetRemoveDevice(dev);																																			// Failed...
-		return Null;
-	}
-	
-	dev->dev_name[7] = (WChar)('0' + dev->id);																															// Set the num
-	
-	if (!FsAddDevice(dev->dev_name, dev, Null, NetDeviceWrite, NetDeviceControl)) {																						// And try to add us to the device list!
+	} else if (!FsAddNetworkDevice(dev, NetDeviceWrite, NetDeviceControl)) {																							// And try to add us to the device list!
 		NetRemoveDevice(dev);																																			// Failed...
 		return Null;
 	}
@@ -146,7 +136,7 @@ Void NetRemoveDevice(PNetworkDevice dev) {
 	}
 	
 	ListRemove(NetDevices, idx);																																		// Remove it from the net devices list
-	FsRemoveDevice(dev->dev_name);																																		// Remove it from the device list
+	FsRemoveNetworkDevice(dev);																																			// Remove it from the device list
 	QueueFree(dev->packet_queue);																																		// Free the packet queue
 	MemFree((UIntPtr)dev);																																				// And free the device
 }

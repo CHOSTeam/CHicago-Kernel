@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 08 of 2018, at 10:28 BRT
-// Last edited on March 03 of 2019, at 10:09 BRT
+// Last edited on June 14 of 2019, at 19:52 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/arch.h>
@@ -17,6 +17,8 @@
 #include <chicago/rand.h>
 #include <chicago/string.h>
 #include <chicago/version.h>
+
+extern PList FsDeviceList;
 
 #define TEST(name) static Int Test ## name(Void)																										// Macros for making and executing the tests
 #define CALL_TEST(name) if (Test ## name()) { pass++; } else { fail++; } tests++;
@@ -384,6 +386,15 @@ static Void ShellMain(Void) {
 			DispRefresh();																																// Refresh the screen
 			ConSetRefresh(True);																														// Enable screen refresh
 			FsCloseFile(dir);																															// Close the cwd node
+		} else if (StrGetLength(argv[0]) == 5 && StrCompare(argv[0], L"lsdev")) {																		// List the devices
+			UIntPtr j = 0;
+			
+			ListForeach(FsDeviceList, i) {
+				ConWriteFormated(L"%d - 0x%x - 0x%x - ", j++, i, i->data);
+				ConWriteFormated(L"%s\r\n", ((PDevice)i->data)->name);
+			}
+			
+			ConWriteFormated(L"\r\n");
 		} else if (StrGetLength(argv[0]) == 5 && StrCompare(argv[0], L"panic")) {																		// Crash the system
 			PsCurrentProcess->id = PsCurrentThread->id = 0;																								// *HACK*
 			DbgWriteFormated("PANIC! User requested panic :)\r\n");
