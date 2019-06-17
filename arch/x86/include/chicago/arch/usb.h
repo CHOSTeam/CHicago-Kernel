@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 15 of 2019, at 09:47 BRT
-// Last edited on June 16 of 2019, at 19:31 BRT
+// Last edited on June 17 of 2019, at 15:17 BRT
 
 #ifndef __CHICAGO_ARCH_USB_H__
 #define __CHICAGO_ARCH_USB_H__
@@ -37,13 +37,12 @@ typedef struct {
 	UInt32 unused[4];
 } Packed UHCITD, *PUHCITD;
 
-typedef struct {
+typedef struct UHCIQHStruct {
 	UInt32 qhlp;
 	UInt32 qelp;
 	UInt8 used;
-	UInt8 unused;
-	UInt16 unused2;
-	UInt32 unused3;
+	UInt8 unused[3];
+	struct UHCIQHStruct *self;
 } Packed UHCIQH, *PUHCIQH;
 
 typedef struct {
@@ -54,6 +53,7 @@ typedef struct {
 typedef struct {
 	PPCIDevice pdev;
 	PUInt32 frames;
+	PUHCIQH qbase;
 	PUHCIQH qlast;
 	PList qheads;
 	UInt32 base;

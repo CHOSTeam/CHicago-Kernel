@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 15 of 2019, at 10:11 BRT
-// Last edited on June 16 of 2019, at 19:35 BRT
+// Last edited on June 17 of 2019, at 15:19 BRT
 
 #include <chicago/arch/pci.h>
 #include <chicago/arch/port.h>
@@ -58,6 +58,7 @@ static PUHCIQH UHCIAllocQueueHead(PUHCIDevice dev, UInt32 qhlp, UInt32 qelp) {
 				if (!entry->heads[j].used) {																							// Found?
 					entry->heads[j].qhlp = qhlp;																						// Yes, set everything and return
 					entry->heads[j].qelp = qelp;
+					entry->heads[j].self = &entry->heads[j];
 					entry->heads[j].used = True;
 					
 					return &entry->heads[j];
@@ -81,14 +82,15 @@ static PUHCIQH UHCIAllocQueueHead(PUHCIDevice dev, UInt32 qhlp, UInt32 qelp) {
 	
 	entry->heads[0].qhlp = qhlp;																										// Set all the fields from the qh that we need and return
 	entry->heads[0].qelp = qelp;
+	entry->heads[0].self = &entry->heads[0];
 	entry->heads[0].used = True;
 	
 	return &entry->heads[0];
 }
 
 static Void UHCIInsertQueueHead(PUHCIDevice dev, PUHCIQH qh) {
-	dev->last->head = MmGetPhys((UIntPtr)qh) | 0x02;																					// Set the head
-	dev->last = qh;																														// And set the new last entry
+	dev->qlast->qhlp = MmGetPhys((UIntPtr)qh) | 0x02;																					// Set the queue head link pointer
+	dev->qlast = qh;																													// And set the new last entry
 }
 
 static Boolean UHCIDetect(PUHCIDevice dev) {
@@ -173,7 +175,7 @@ static Boolean UHCIInitFrameList(PUHCIDevice dev) {
 		return False;
 	}
 	
-	dev->qlast = UHCIAllocQueueHead(dev, 1, 1);																							// Alloc the first and base queue head
+	dev->qbase = dev->qlast = UHCIAllocQueueHead(dev, 1, 1);																			// Alloc the first and base queue head
 	
 	if (dev->qlast == Null) {
 		ListFree(dev->qheads);																											// Failed :(
