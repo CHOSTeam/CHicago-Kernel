@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 15 of 2019, at 09:47 BRT
-// Last edited on June 15 of 2019, at 17:53 BRT
+// Last edited on June 16 of 2019, at 19:31 BRT
 
 #ifndef __CHICAGO_ARCH_USB_H__
 #define __CHICAGO_ARCH_USB_H__
@@ -10,7 +10,6 @@
 
 #include <chicago/list.h>
 
-#define UHCI_LEGACY_SUPPORT 0xC0
 #define UHCI_USBCMD 0x00
 #define UHCI_USBSTS 0x02
 #define UHCI_USBINTR 0x04
@@ -19,6 +18,7 @@
 #define UHCI_SOFMOD 0x0C
 #define UHCI_RESERVED 0x0D
 #define UHCI_PORTSC 0x10
+#define UHCI_LEGSUP 0xC0
 #define UHCI_PORTSC_CCS (1 << 0)
 #define UHCI_PORTSC_CSC (1 << 1)
 #define UHCI_PORTSC_PE (1 << 2)
@@ -35,7 +35,7 @@ typedef struct {
 	UInt32 token;
 	UInt32 buf;
 	UInt32 unused[4];
-} Packed UHCITransferDescriptor, *PUHCITransferDescriptor;
+} Packed UHCITD, *PUHCITD;
 
 typedef struct {
 	UInt32 qhlp;
@@ -44,16 +44,17 @@ typedef struct {
 	UInt8 unused;
 	UInt16 unused2;
 	UInt32 unused3;
-} Packed UHCIQueueHead, *PUHCIQueueHead;
+} Packed UHCIQH, *PUHCIQH;
 
 typedef struct {
 	UInt16 fcount;
-	UHCIQueueHead heads[8];
-} UHCIQueueEntry, *PUHCIQueueEntry;
+	UHCIQH heads[8];
+} UHCIQE, *PUHCIQE;
 
 typedef struct {
 	PPCIDevice pdev;
 	PUInt32 frames;
+	PUHCIQH qlast;
 	PList qheads;
 	UInt32 base;
 	UInt8 ports;

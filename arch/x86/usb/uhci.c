@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 15 of 2019, at 10:11 BRT
-// Last edited on June 15 of 2019, at 17:55 BRT
+// Last edited on June 16 of 2019, at 19:35 BRT
 
 #include <chicago/arch/pci.h>
 #include <chicago/arch/port.h>
@@ -17,7 +17,7 @@ static UInt32 UHCIReadRegister(PUHCIDevice dev, UInt8 reg) {
 	if (reg == UHCI_SOFMOD) {																											// Read a single byte?
 		return PortInByte(dev->base + reg);																								// Yes
 	} else if (reg == UHCI_FRBASEADD) {																									// Read four bytes?
-		return PortInLong(dev->base + reg) & ~0xFFF;																					// Yes, let's also strip the first bits
+		return PortInLong(dev->base + reg);																								// Yes
 	}
 	
 	return PortInWord(dev->base + reg);																									// Nope, read two bytes
@@ -27,7 +27,7 @@ static Void UHCIWriteRegister(PUHCIDevice dev, UInt8 reg, UInt32 val) {
 	if (reg == UHCI_SOFMOD) {																											// Write a single byte?
 		PortOutByte(dev->base + reg, (UInt8)val);																						// Yes
 	} else if (reg == UHCI_FRBASEADD) {																									// Write four bytes?
-		PortOutLong(dev->base + reg, MmGetPhys(val & ~0xFFF));																			// Yes, let's get the physical address and also strip the first bits from it
+		PortOutLong(dev->base + reg, val);																								// Yes
 	} else {
 		PortOutWord(dev->base + reg, (UInt16)val);																						// Nope, write two bytes
 	}
@@ -49,9 +49,9 @@ static Void UHCIClearPortScBit(PUHCIDevice dev, UInt8 port, UInt32 bit) {
 	UHCIWriteRegister(dev, UHCI_PORTSC + (port * 2), val);																				// And write back
 }
 
-static PUHCIQueueHead UHCIAllocQueueHead(PUHCIDevice dev, UInt32 qhlp, UInt32 qelp) {
+static PUHCIQH UHCIAllocQueueHead(PUHCIDevice dev, UInt32 qhlp, UInt32 qelp) {
 	ListForeach(dev->qheads, i) {																										// First, let's see if we can find any free one
-		PUHCIQueueEntry entry = (PUHCIQueueEntry)i->data;
+		PUHCIQE entry = (PUHCIQE)i->data;
 		
 		if (entry->fcount > 0) {																										// Any free one here?
 			for (UInt32 j = 0; j < 8; j++) {																							// Yes, let's search for it!
@@ -66,7 +66,7 @@ static PUHCIQueueHead UHCIAllocQueueHead(PUHCIDevice dev, UInt32 qhlp, UInt32 qe
 		}
 	}
 	
-	PUHCIQueueEntry entry = (PUHCIQueueEntry)MemAAllocate(sizeof(UHCIQueueEntry), 16);													// Not found, let's alloc a new one!
+	PUHCIQE entry = (PUHCIQE)MemAAllocate(sizeof(UHCIQE), 16);																			// Not found, let's alloc a new one!
 	
 	if (entry == Null) {
 		return Null;																													// Failed :(
@@ -75,7 +75,7 @@ static PUHCIQueueHead UHCIAllocQueueHead(PUHCIDevice dev, UInt32 qhlp, UInt32 qe
 		return Null;
 	}
 	
-	StrSetMemory(entry, 0, sizeof(UHCIQueueEntry));																						// Clear everything
+	StrSetMemory(entry, 0, sizeof(UHCIQE));																								// Clear everything
 	
 	entry->fcount = 7;																													// Set how many free entries we have (7, as we are going to use 1)
 	
@@ -84,6 +84,11 @@ static PUHCIQueueHead UHCIAllocQueueHead(PUHCIDevice dev, UInt32 qhlp, UInt32 qe
 	entry->heads[0].used = True;
 	
 	return &entry->heads[0];
+}
+
+static Void UHCIInsertQueueHead(PUHCIDevice dev, PUHCIQH qh) {
+	dev->last->head = MmGetPhys((UIntPtr)qh) | 0x02;																					// Set the head
+	dev->last = qh;																														// And set the new last entry
 }
 
 static Boolean UHCIDetect(PUHCIDevice dev) {
@@ -168,16 +173,16 @@ static Boolean UHCIInitFrameList(PUHCIDevice dev) {
 		return False;
 	}
 	
-	PUHCIQueueHead qh = UHCIAllocQueueHead(dev, 1, 1);																					// Alloc a single queue head
+	dev->qlast = UHCIAllocQueueHead(dev, 1, 1);																							// Alloc the first and base queue head
 	
-	if (qh == Null) {
+	if (dev->qlast == Null) {
 		ListFree(dev->qheads);																											// Failed :(
 		MemAFree((UIntPtr)dev->frames);
 		return False;
 	}
 	
 	for (UInt32 i = 0; i < 1024; i++) {																									// Now, init the frame list
-		dev->frames[i] = (UInt32)qh | 0x02;
+		dev->frames[i] = MmGetPhys((UIntPtr)dev->qlast) | 0x02;
 	}
 	
 	return True;
@@ -217,7 +222,7 @@ Void UHCIInit(PPCIDevice pdev) {
 	PCIWriteDWord(pdev, 0x38, 0);
 	DbgWriteFormated("      Wrote 0 to dwords 0x34 and 0x38 of this device's PCI configuration space\r\n");
 	
-	PCIWriteDWord(pdev, UHCI_LEGACY_SUPPORT, 0x8F00);																					// Disable legacy support
+	PCIWriteDWord(pdev, UHCI_LEGSUP, 0x8F00);																							// Disable legacy support
 	DbgWriteFormated("      Disabled legacy support\r\n");
 	
 	if (!UHCIDetect(dev)) {																												// Let's reset it and check if we really have a working USB host controller here
@@ -244,8 +249,8 @@ Void UHCIInit(PPCIDevice pdev) {
 	UHCIWriteRegister(dev, UHCI_FRNUM, 0x00);																							// Clear the FRNUM register
 	DbgWriteFormated("      Cleared the FRNUM register\r\n");
 	
-	UHCIWriteRegister(dev, UHCI_FRBASEADD, (UInt32)dev->frames);																		// Set the FRBASEADD to our frame list
-	DbgWriteFormated("      Set the FRBASEADD register to 0x%x\r\n", (UInt32)dev->frames);
+	UHCIWriteRegister(dev, UHCI_FRBASEADD, MmGetPhys((UIntPtr)dev->frames));															// Set the FRBASEADD to the physical address of our frame list
+	DbgWriteFormated("      Set the FRBASEADD register to 0x%x\r\n", MmGetPhys((UIntPtr)dev->frames));
 	
 	UHCIWriteRegister(dev, UHCI_SOFMOD, 0x40);																							// Set the SOFMOD register to 0x40, it should already be, but let's make sure that it is
 	DbgWriteFormated("      Set the SOFMOD register to 0x40\r\n");
@@ -253,14 +258,14 @@ Void UHCIInit(PPCIDevice pdev) {
 	UHCIWriteRegister(dev, UHCI_USBSTS, 0xFFFF);																						// Clear the USBSTS register
 	DbgWriteFormated("      Cleared the USBSTS register\r\n");
 	
-	UHCIWriteRegister(dev, UHCI_USBCMD, 0x41);																							// Set the RS and the CF bits in the USBCMD register, this will finally start the controller
+	UHCIWriteRegister(dev, UHCI_USBCMD, 0x01);																							// Set the RS bit in the USBCMD register, this will finally start the controller
 	DbgWriteFormated("      Initialized the UHCI controller\r\n");
 	
 	dev->ports = 0;																														// Let's get the port count
 	
 	while (UHCICheckPort(dev, dev->ports)) {																							// Check if this port is valid
-		dev->ports++;																													// If it is increase the amount of valid ports
+		dev->ports++;																													// And increase the amount of valid ports
 	}
 	
-	DbgWriteFormated("      There are %d ports\r\n", dev->ports);
+	DbgWriteFormated("      Total port count is %d\r\n", dev->ports);
 }
