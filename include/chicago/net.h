@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 12 of 2018, at 12:25 BRT
-// Last edited on June 15 of 2019, at 11:04 BRT
+// Last edited on August 25 of 2019, at 18:18 BRT
 
 #ifndef __CHICAGO_NET_H__
 #define __CHICAGO_NET_H__
@@ -117,6 +117,10 @@ Void NetSetDefaultDevice(PNetworkDevice dev);
 PNetworkDevice NetGetDefaultDevice(Void);
 Void NetDevicePushPacket(PNetworkDevice dev, PUInt8 packet);
 PUInt8 NetDevicePopPacket(PNetworkDevice dev);
+Void NetHandleEthPacket(PNetworkDevice dev, UInt8 src[6], UInt16 type, PUInt8 buf);
+Void NetHandleARPPacket(PNetworkDevice dev, PARPHeader hdr);
+Void NetHandleIPv4Packet(PNetworkDevice dev, PIPHeader hdr);
+Void NetHandleUDPPacket(PNetworkDevice dev, PIPHeader hdr, PUDPHeader uhdr);
 Void NetSendRawPacket(PNetworkDevice dev, UIntPtr len, PUInt8 buf);
 Void NetSendEthPacket(PNetworkDevice dev, UInt8 dest[6], UInt16 type, UIntPtr len, PUInt8 buf);
 Void NetSendARPIPv4Packet(PNetworkDevice dev, UInt8 destm[6], UInt8 desti[4], UInt16 opcode);
