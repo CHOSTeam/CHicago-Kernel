@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on August 25 of 2019, at 18:03 BRT
-// Last edited on August 25 of 2019, at 18:17 BRT
+// Last edited on August 26 of 2019, at 17:44 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/net.h>
@@ -17,7 +17,7 @@ Void NetHandleEthPacket(PNetworkDevice dev, UInt8 src[6], UInt16 type, PUInt8 bu
 	if (type == ETH_TYPE_ARP) {																																			// ARP?
 		NetHandleARPPacket(dev, (PARPHeader)buf);																														// Yes, handle it!
 	} else if (type == ETH_TYPE_IP) {																																	// IP?
-		NetHandleIPv4Packet(dev, (PIPHeader)buf);																														// Yes, handle it!
+		NetHandleIPv4Packet(dev, (PIPv4Header)buf);																														// Yes, handle it!
 	}
 }
 

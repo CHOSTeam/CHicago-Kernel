@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 12 of 2018, at 12:36 BRT
-// Last edited on August 25 of 2019, at 18:48 BRT
+// Last edited on August 26 of 2019, at 19:19 BRT
 
 #define __CHICAGO_NETWORK__
 
@@ -163,6 +163,36 @@ PUInt8 NetDevicePopPacket(PNetworkDevice dev) {
 	PsUnlock(&dev->packet_queue_rlock);																																	// Unlock
 	
 	return data;
+}
+
+UInt16 NetGetChecksum(PUInt8 data, UIntPtr len) {
+	if (data == Null || len == 0) {																																		// First, sanity check
+		return 0;
+	}
+	
+	UInt32 acc = 0xFFFF;																																				// Now, let's calculate the checksum!
+	Boolean zero = True;
+	
+	for (UIntPtr i = 0; (i + 1) < len; i += 2) {
+		UInt16 word;
+		
+		StrCopyMemory(((PUInt8)&word), data + i, 2);
+		acc += FromNetByteOrder16(word);
+		
+		if (word != 0 && zero) {
+			zero = False;
+		}
+		
+		if (acc > 0xFFFF) {
+			acc -= 0xFFFF;
+		}
+	}
+	
+	if (zero) {
+		return ToNetByteOrder16(0xFFFF);
+	}
+	
+	return ToNetByteOrder16((UInt16)(~acc));
 }
 
 Void NetSendRawPacket(PNetworkDevice dev, UIntPtr len, PUInt8 buf) {

@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 12 of 2018, at 12:25 BRT
-// Last edited on August 25 of 2019, at 18:18 BRT
+// Last edited on August 26 of 2019, at 19:40 BRT
 
 #ifndef __CHICAGO_NET_H__
 #define __CHICAGO_NET_H__
@@ -25,9 +25,13 @@
 #define ETH_TYPE_ARP 0x806
 
 #define ARP_OPC_REQUEST 0x01
-#define ARP_OPC_REPLY 0x02
+#define ARP_OPC_REPLY 0x02 
 
+#define IP_PROTOCOL_ICMP 0x01
 #define IP_PROTOCOL_UDP 0x11
+
+#define ICMP_REPLY 0x00
+#define ICMP_REQUEST 0x08
 
 typedef struct {
 	UInt8 dst[6];
@@ -61,11 +65,16 @@ typedef struct {
 	UInt8 ttl;
 	UInt8 protocol;
 	UInt16 checksum;
-	struct {
-		UInt8 src[4];
-		UInt8 dst[4];
-	} ipv4;
-} Packed IPHeader, *PIPHeader;
+	UInt8 src[4];
+	UInt8 dst[4];
+} Packed IPv4Header, *PIPv4Header;
+
+typedef struct {
+	UInt8 type;
+	UInt8 code;
+	UInt16 checksum;
+	UInt32 data;
+} Packed ICMPHeader, *PICMPHeader;
 
 typedef struct {
 	UInt16 sport;
@@ -102,6 +111,14 @@ typedef struct {
 } ARPIPv4Socket, *PARPIPv4Socket;
 
 typedef struct {
+	Boolean user;
+	PNetworkDevice dev;
+	PQueue packet_queue;
+	UInt8 ipv4_address[4];
+	PProcess owner_process;
+} ICMPv4Socket, *PICMPv4Socket;
+
+typedef struct {
 	UInt16 port;
 	Boolean user;
 	PNetworkDevice dev;
@@ -117,23 +134,30 @@ Void NetSetDefaultDevice(PNetworkDevice dev);
 PNetworkDevice NetGetDefaultDevice(Void);
 Void NetDevicePushPacket(PNetworkDevice dev, PUInt8 packet);
 PUInt8 NetDevicePopPacket(PNetworkDevice dev);
+UInt16 NetGetChecksum(PUInt8 data, UIntPtr len);
 Void NetHandleEthPacket(PNetworkDevice dev, UInt8 src[6], UInt16 type, PUInt8 buf);
 Void NetHandleARPPacket(PNetworkDevice dev, PARPHeader hdr);
-Void NetHandleIPv4Packet(PNetworkDevice dev, PIPHeader hdr);
-Void NetHandleUDPPacket(PNetworkDevice dev, PIPHeader hdr, PUDPHeader uhdr);
+Void NetHandleIPv4Packet(PNetworkDevice dev, PIPv4Header hdr);
+Void NetHandleICMPv4(PNetworkDevice dev, PIPv4Header hdr, PICMPHeader ihdr);
+Void NetHandleUDPPacket(PNetworkDevice dev, PIPv4Header hdr, PUDPHeader uhdr);
 Void NetSendRawPacket(PNetworkDevice dev, UIntPtr len, PUInt8 buf);
 Void NetSendEthPacket(PNetworkDevice dev, UInt8 dest[6], UInt16 type, UIntPtr len, PUInt8 buf);
 Void NetSendARPIPv4Packet(PNetworkDevice dev, UInt8 destm[6], UInt8 desti[4], UInt16 opcode);
 Void NetSendIPv4Packet(PNetworkDevice dev, UInt8 dest[4], UInt8 protocol, UIntPtr len, PUInt8 buf);
-Void NetSendUDPPacket(PNetworkDevice dev, UInt8 dest[4], UInt16 port, UIntPtr len, PUInt8 buf);
+Void NetSendICMPv4Request(PNetworkDevice dev, UInt8 dest[4]);
+Void NetSendUDPPacket(PNetworkDevice dev, UInt8 dest[4], UInt16 sport, UInt16 dport, UIntPtr len, PUInt8 buf);
 PARPIPv4Socket NetAddARPIPv4Socket(PNetworkDevice dev, UInt8 mac[6], UInt8 ipv4[4], Boolean user);
 Void NetRemoveARPIPv4Socket(PARPIPv4Socket sock);
 Void NetSendARPIPv4Socket(PARPIPv4Socket sock, UInt16 opcode);
 PARPHeader NetReceiveARPIPv4Socket(PARPIPv4Socket sock);
+PICMPv4Socket NetAddICMPv4Socket(PNetworkDevice dev, UInt8 ipv4[4], Boolean user);
+Void NetRemoveICMPv4Socket(PICMPv4Socket sock);
+Void NetSendICMPv4Socket(PICMPv4Socket sock);
+PICMPHeader NetReceiveICMPv4Socket(PICMPv4Socket sock);
 PUDPSocket NetAddUDPSocket(PNetworkDevice dev, UInt8 ipv4[4], UInt16 port, Boolean user);
 Void NetRemoveUDPSocket(PUDPSocket sock);
 Void NetSendUDPSocket(PUDPSocket sock, UIntPtr len, PUInt8 buf);
-PIPHeader NetReceiveUDPSocket(PUDPSocket sock);
+PIPv4Header NetReceiveUDPSocket(PUDPSocket sock);
 Void NetFinish(Void);
 
 #endif		// __CHICAGO_NET_H__

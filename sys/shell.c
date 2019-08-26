@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 08 of 2018, at 10:28 BRT
-// Last edited on June 14 of 2019, at 19:52 BRT
+// Last edited on August 26 of 2019, at 19:46 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/arch.h>
@@ -411,7 +411,6 @@ static Void ShellMain(Void) {
 					continue;
 				}
 				
-				UInt8 mac[6] =  { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 				UInt8 ipv4[4] = { 0 };																													// Let's convert the user input!
 				
 				if (!ToIPv4(argv[1], ipv4)) {
@@ -419,17 +418,17 @@ static Void ShellMain(Void) {
 					continue;
 				}
 				
-				PARPIPv4Socket sock = NetAddARPIPv4Socket(dev, mac, ipv4, False);																		// Create the socket
+				PICMPv4Socket sock = NetAddICMPv4Socket(dev, ipv4, False);																				// Create the socket
 				
 				if (sock == Null) {
 					ConWriteFormated(NlsGetMessage(NLS_SHELL_SETIP_ERR1));																				// Failed...
 					continue;
 				}
 
-				NetSendARPIPv4Socket(sock, ARP_OPC_REQUEST);																							// Send the REQUEST command
-				PARPHeader res = NetReceiveARPIPv4Socket(sock);																							// Wait for the REPLY
+				NetSendICMPv4Socket(sock);																												// Send the REQUEST
+				PICMPHeader res = NetReceiveICMPv4Socket(sock);																							// Wait for the REPLY
 				
-				NetRemoveARPIPv4Socket(sock);																											// Remove the socket
+				NetRemoveICMPv4Socket(sock);																											// Remove the socket
 				
 				if (res == Null) {																														// Good reply?
 					ConWriteFormated(NlsGetMessage(NLS_SHELL_PING_REPLY2), argv[1]);																	// Nope :(
@@ -466,7 +465,6 @@ static Void ShellMain(Void) {
 				continue;
 			}
 			
-			UInt8 mac[6] =  { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 			UInt8 ipv4[4] = { 0 };																														// Let's convert the user input!
 			
 			if (!ToIPv4(argv[2], ipv4)) {
@@ -474,17 +472,17 @@ static Void ShellMain(Void) {
 				continue;
 			}
 			
-			PARPIPv4Socket sock = NetAddARPIPv4Socket(dev, mac, ipv4, False);																			// Create the socket
+			PICMPv4Socket sock = NetAddICMPv4Socket(dev, ipv4, False);																					// Create the socket
 			
 			if (sock == Null) {
 				ConWriteFormated(NlsGetMessage(NLS_SHELL_SETIP_ERR1));																					// Failed...
 				continue;
 			}
 			
-			NetSendARPIPv4Socket(sock, ARP_OPC_REQUEST);																								// Send the REQUEST command
-			PARPHeader res = NetReceiveARPIPv4Socket(sock);																								// Wait for the REPLY
+			NetSendICMPv4Socket(sock);																													// Send the REQUEST
+			PICMPHeader res = NetReceiveICMPv4Socket(sock);																								// Wait for the REPLY
 			
-			NetRemoveARPIPv4Socket(sock);																												// Remove the socket
+			NetRemoveICMPv4Socket(sock);																												// Remove the socket
 			
 			if (res == Null) {																															// Good reply?
 				ConWriteFormated(NlsGetMessage(NLS_SHELL_PING_REPLY2), argv[2]);																		// Nope :(

@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on August 25 of 2019, at 18:05 BRT
-// Last edited on August 25 of 2019, at 18:48 BRT
+// Last edited on August 26 of 2019, at 19:32 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/mm.h>
@@ -12,8 +12,8 @@ extern PNetworkDevice NetDefaultDevice;
 
 PList NetUDPSockets = Null;
 
-Void NetHandleUDPPacket(PNetworkDevice dev, PIPHeader hdr, PUDPHeader uhdr) {
-	if (NetUDPSockets == Null) {																																		// Is our UDP socket list initialized/not-null?
+Void NetHandleUDPPacket(PNetworkDevice dev, PIPv4Header hdr, PUDPHeader uhdr) {
+	if (NetUDPSockets != Null) {																																		// Is our UDP socket list initialized/not-null?
 		ListForeach(NetUDPSockets, i) {																																	// Yes, let's see if any process want it!
 			PUDPSocket sock = (PUDPSocket)i->data;
 			
@@ -23,7 +23,7 @@ Void NetHandleUDPPacket(PNetworkDevice dev, PIPHeader hdr, PUDPHeader uhdr) {
 			
 			Boolean server = StrCompareMemory(sock->ipv4_address, dev->ipv4_address, 4);																				// Let's check if this is a server socket
 			
-			if ((server && StrCompareMemory(dev->ipv4_address, hdr->ipv4.dst, 4)) || (!server && StrCompareMemory(sock->ipv4_address, hdr->ipv4.src, 4))) {
+			if ((server && StrCompareMemory(dev->ipv4_address, hdr->dst, 4)) || (!server && StrCompareMemory(sock->ipv4_address, hdr->src, 4))) {
 				PsLockTaskSwitch(old);																																	// Ok, lock task switch
 				UIntPtr oldpd = MmGetCurrentDirectory();
 				UIntPtr size = FromNetByteOrder16(hdr->length);
@@ -32,7 +32,7 @@ Void NetHandleUDPPacket(PNetworkDevice dev, PIPHeader hdr, PUDPHeader uhdr) {
 					MmSwitchDirectory(sock->owner_process->dir);																										// Yes
 				}
 				
-				PIPHeader new = (PIPHeader)(sock->user ? MmAllocUserMemory(size) : MemAllocate(size));																	// Alloc some space for copying the ip+udp data
+				PIPv4Header new = (PIPv4Header)(sock->user ? MmAllocUserMemory(size) : MemAllocate(size));																// Alloc some space for copying the ip+udp data
 				
 				if (new != Null) {
 					StrCopyMemory(new, hdr, size);																														// Ok, copy it and add it to the queue
@@ -49,7 +49,7 @@ Void NetHandleUDPPacket(PNetworkDevice dev, PIPHeader hdr, PUDPHeader uhdr) {
 	}
 }
 
-Void NetSendUDPPacket(PNetworkDevice dev, UInt8 dest[4], UInt16 port, UIntPtr len, PUInt8 buf) {
+Void NetSendUDPPacket(PNetworkDevice dev, UInt8 dest[4], UInt16 sport, UInt16 dport, UIntPtr len, PUInt8 buf) {
 	if (dev == Null) {																																					// dev = default?
 		dev = NetDefaultDevice;																																			// Yes
 	}
@@ -64,7 +64,8 @@ Void NetSendUDPPacket(PNetworkDevice dev, UInt8 dest[4], UInt16 port, UIntPtr le
 		return;																																							// Failed :(
 	}
 	
-	hdr->sport = hdr->dport = ToNetByteOrder16(port);																													// Set the port
+	hdr->sport = ToNetByteOrder16(sport);																																// Set the port
+	hdr->dport = ToNetByteOrder16(dport);
 	hdr->length = ToNetByteOrder16(((UInt16)(sizeof(UDPHeader) + len)));																								// Set the length
 	hdr->checksum = 0;																																					// I still need to implement the UDP checksum calculation...
 	
@@ -127,7 +128,7 @@ Void NetRemoveUDPSocket(PUDPSocket sock) {
 	UIntPtr idx = 0;
 	Boolean found = False;
 	
-	ListForeach(NetUDPSockets, i) {																																		// Try to find it on the ARP IPv4 socket list
+	ListForeach(NetUDPSockets, i) {																																		// Try to find it on the UDP socket list
 		if (i->data == sock) {
 			found = True;																																				// Found!
 			break;
@@ -163,10 +164,10 @@ Void NetSendUDPSocket(PUDPSocket sock, UIntPtr len, PUInt8 buf) {
 		return;
 	}
 	
-	NetSendUDPPacket(sock->dev, sock->ipv4_address, sock->port, len, buf);																								// Send!
+	NetSendUDPPacket(sock->dev, sock->ipv4_address, sock->port, sock->port, len, buf);																					// Send!
 }
 
-PIPHeader NetReceiveUDPSocket(PUDPSocket sock) {
+PIPv4Header NetReceiveUDPSocket(PUDPSocket sock) {
 	if (sock == Null) {																																					// Sanity check
 		return Null;
 	}
@@ -181,5 +182,5 @@ PIPHeader NetReceiveUDPSocket(PUDPSocket sock) {
 		PsSleep(10);																																					// Sleep 10ms
 	}
 	
-	return (PIPHeader)QueueRemove(sock->packet_queue);																													// Now, return it!
+	return (PIPv4Header)QueueRemove(sock->packet_queue);																												// Now, return it!
 }

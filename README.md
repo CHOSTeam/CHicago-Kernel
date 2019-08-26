@@ -4,7 +4,7 @@
 
 For building it from scratch, you need:
 
-	A Unix-like environment
+	An Unix-like environment
 	CHicago Toolchain in ../toolchain (instructions below)
 	Make
 

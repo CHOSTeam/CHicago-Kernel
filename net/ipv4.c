@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on August 25 of 2019, at 18:10 BRT
-// Last edited on August 25 of 2019, at 18:18 BRT
+// Last edited on August 26 of 2019, at 19:50 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/mm.h>
@@ -10,16 +10,18 @@
 
 extern PNetworkDevice NetDefaultDevice;
 
-Void NetHandleIPv4Packet(PNetworkDevice dev, PIPHeader hdr) {
+Void NetHandleIPv4Packet(PNetworkDevice dev, PIPv4Header hdr) {
 	if (hdr->version != 4) {
 		return;
 	} else if (hdr->ttl == 0) {
 		return;
 	}
 	
-	if (StrCompareMemory(dev->ipv4_address, hdr->ipv4.dst, 4)) {																										// For us?
-		if (hdr->protocol == IP_PROTOCOL_UDP) {																															// Yes, it's UDP?
-			NetHandleUDPPacket(dev, hdr, (PUDPHeader)(((UIntPtr)hdr) + 20));																							// Yes, handle it!
+	if (StrCompareMemory(dev->ipv4_address, hdr->dst, 4)) {																												// For us?
+		if (hdr->protocol == IP_PROTOCOL_ICMP) {																														// Yes, it's ICMP?
+			NetHandleICMPv4(dev, hdr, (PICMPHeader)(((UIntPtr)hdr) + sizeof(IPv4Header)));																				// Yes, handle it!
+		} else if (hdr->protocol == IP_PROTOCOL_UDP) {																													// It's UDP?
+			NetHandleUDPPacket(dev, hdr, (PUDPHeader)(((UIntPtr)hdr) + sizeof(IPv4Header)));																			// Yes, handle it!
 		}
 	}
 }
@@ -32,7 +34,7 @@ static Boolean NetResolveIPv4Address(PNetworkDevice dev, UInt8 ip[4], PUInt8 des
 	if ((ip[0] != 10) && ((ip[0] != 172) || ((ip[1] < 16) || (ip[1] > 31))) && ((ip[0] != 192) || (ip[1] != 168))) {													// First, let's check if we really need to use arp to get the mac address
 		StrCopyMemory(dest, broadcast, 6);																																// Nope, it's outside of the local network, the network card should do everything
 		return True;
-	} else if ((ip[0] == 127) && (ip[1] == 0) && (ip[2] == 0) && (ip[3] == 1)) {																						// Loopback/localhost?
+	} else if (((ip[0] == 127) && (ip[1] == 0) && (ip[2] == 0) && (ip[3] == 1)) || StrCompareMemory(ip, dev->ipv4_address, 6)) {										// Loopback/localhost/ourselves?
 		StrCopyMemory(dest, dev->mac_address, 6);																														// Yes
 		return True;
 	}
@@ -88,7 +90,7 @@ Void NetSendIPv4Packet(PNetworkDevice dev, UInt8 dest[4], UInt8 protocol, UIntPt
 		return;																																							// Failed :(
 	}
 	
-	PIPHeader hdr = (PIPHeader)MemAllocate(20 + len);																													// Let's build our IPv4 header
+	PIPv4Header hdr = (PIPv4Header)MemZAllocate(sizeof(IPv4Header) + len);																								// Let's build our IPv4 header
 	
 	if (hdr == Null) {
 		return;																																							// Failed :(
@@ -96,36 +98,16 @@ Void NetSendIPv4Packet(PNetworkDevice dev, UInt8 dest[4], UInt8 protocol, UIntPt
 	
 	hdr->ihl = 5;																																						// "Default" value
 	hdr->version = 4;																																					// IPv4
-	hdr->ecn = 0;																																						// Don't care about this
-	hdr->dscp = 0;																																						// And don't care about this for now
-	hdr->length = ToNetByteOrder16((20 + len));																															// Header length + data length
-	hdr->id = 0;																																						// We're not going to support fragmentation for now
-	hdr->flags = 0;
-	hdr->frag_off = 0;
+	hdr->length = ToNetByteOrder16((len + sizeof(IPv4Header)));																											// Header length + data length
 	hdr->ttl = 64;																																						// Time To Live = 64
 	hdr->protocol = protocol;																																			// Set the protocol
-	hdr->checksum = 0;																																					// Let's set it later
 	
-	StrCopyMemory(hdr->ipv4.src, dev->ipv4_address, 4);																													// Set the src ipv4 addresss (our address)
-	StrCopyMemory(hdr->ipv4.dst, dest, 4);																																// And the dest ipv4 address
+	StrCopyMemory(hdr->src, dev->ipv4_address, 4);																														// Set the src ipv4 addresss (our address)
+	StrCopyMemory(hdr->dst, dest, 4);																																	// And the dest ipv4 address
 	
-	PUInt8 data = (PUInt8)hdr;																																			// Calculate the checksum!
-	UInt32 acc = 0xFFFF;
+	hdr->checksum = NetGetChecksum((PUInt8)hdr, sizeof(IPv4Header));																									// And get the checkum
 	
-	for (UIntPtr i = 0; (i + 1) < 20; i += 2) {
-		UInt16 word;
-		
-		StrCopyMemory(((PUInt8)&word), data + i, 2);
-		acc += FromNetByteOrder16(word);
-		
-		if (acc > 0xFFFF) {
-			acc -= 0xFFFF;
-		}
-	}
-	
-	hdr->checksum = ToNetByteOrder16(((UInt16)acc));																													// And set it
-	
-	StrCopyMemory(data + 20, buf, len);																																	// Copy the data
-	NetSendEthPacket(dev, destm, ETH_TYPE_IP, 20 + len, data);																											// Send the packet!
+	StrCopyMemory((PUInt8)(((UIntPtr)hdr) + sizeof(IPv4Header)), buf, len);																								// Copy the data
+	NetSendEthPacket(dev, destm, ETH_TYPE_IP, len + sizeof(IPv4Header), (PUInt8)hdr);																					// Send the packet!
 	MemFree((UIntPtr)hdr);																																				// And free everything
 }
