@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 12 of 2018, at 12:36 BRT
-// Last edited on August 26 of 2019, at 19:19 BRT
+// Last edited on August 27 of 2019, at 17:33 BRT
 
 #define __CHICAGO_NETWORK__
 
@@ -220,6 +220,7 @@ static Void NetThread(Void) {
 Void NetFinish(Void) {
 	if (NetDevices != Null) {																																			// Create the network threads?
 		ListForeach(NetDevices, i) {																																	// Yes, let's do it!
+			PNetworkDevice dev = (PNetworkDevice)i->data;
 			PThread th = (PThread)PsCreateThread((UIntPtr)NetThread, 0, False);																							// Create the handler thread
 			
 			if (th == Null) {
@@ -230,6 +231,12 @@ Void NetFinish(Void) {
 			th->retv = (UIntPtr)i->data;																																// *HACK WARNING* As we don't have anyway to pass arguments to the thread, use the retv to indicate the network device that this thread should handle
 			
 			PsAddThread(th);																																			// Add it!
+			
+			if (NetDefaultDevice == Null) {																																// Set this as the default network device?
+				NetDefaultDevice = dev;																																	// Yes :)
+			}
+			
+			NetSendDHCPv4Discover(dev);																																	// Try to configure it using DHCP
 		}
 	}
 }

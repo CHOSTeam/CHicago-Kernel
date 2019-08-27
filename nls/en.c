@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 09 of 2018, at 19:27 BRT
-// Last edited on June 14 of 2019, at 19:06 BRT
+// Last edited on August 27 of 2019, at 17:51 BRT
 
 #include <chicago/types.h>
 
@@ -36,6 +36,7 @@ PWChar NlsMessagesEn[] = {
 	L"lang   - Change the system language\r\n"
 	L"ls     - List the contents of a directory\r\n"
 	L"lsdev  - List the connected devices\r\n"
+	L"lsnet  - List the connected network devices\r\n"
 	L"panic  - Crash the system\r\n"
 	L"ping   - Sends an ARP request to another device\r\n"
 	L"ps     - List all the processes\r\n"
@@ -69,6 +70,10 @@ PWChar NlsMessagesEn[] = {
 	L"Usage: %s [device]\r\n\r\n",
 	
 	L"Default network device isn't set\r\n\r\n",
+	
+	L"Device: Network%d | MAC Address: %s | IPv4 Address: %s\r\n%s",
+	
+	L"Device: Network%d | MAC Address: %s | IPv4 Address: %s | Default Device\r\n%s",
 	
 	L"Number of tests: %d\r\nOK: %d\r\nFail: %d\r\n\r\n",
 	

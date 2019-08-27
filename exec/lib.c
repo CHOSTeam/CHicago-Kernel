@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 10 of 2018, at 21:18 BRT
-// Last edited on February 23 of 2019, at 11:38 BRT
+// Last edited on August 27 of 2019, at 14:48 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/chexec.h>
@@ -169,7 +169,7 @@ static Boolean ExecFillDependencyTable(PList list, PUInt8 buf) {
 			return False;
 		}
 		
-		dep = (PCHExecDependency)(((UIntPtr)dep) + sizeof(CHExecDependency) + dep->name_len);
+		dep = (PCHExecDependency)(((UIntPtr)dep) + sizeof(CHExecDependency) + (dep->name_len * sizeof(WChar)));
 	}
 	
 	return True;
@@ -195,7 +195,7 @@ Boolean ExecFillSymbolTable(PList list, UIntPtr base, PExecHandle handle, PUInt8
 			return False;
 		}
 		
-		sm->name = (PWChar)MmAllocUserMemory(sym->name_len);																	// Alloc space for the name
+		sm->name = (PWChar)MmAllocUserMemory(sym->name_len * sizeof(WChar));													// Alloc space for the name
 		
 		if (sm->name == Null) {
 			MmFreeUserMemory((UIntPtr)sm);																						// Failed...
@@ -232,7 +232,7 @@ Boolean ExecFillSymbolTable(PList list, UIntPtr base, PExecHandle handle, PUInt8
 			return False;
 		}
 		
-		sym = (PCHExecSymbol)(((UIntPtr)sym) + sizeof(CHExecSymbol) + sym->name_len);
+		sym = (PCHExecSymbol)(((UIntPtr)sym) + sizeof(CHExecSymbol) + (sym->name_len * sizeof(WChar)));
 	}
 	
 	return True;
@@ -279,7 +279,7 @@ Boolean ExecRelocate(UIntPtr base, PExecHandle handle, PUInt8 buf) {
 			*((PUInt32)(base + rel->virt)) += (UInt32)incr;
 		}
 		
-		rel = (PCHExecRelocation)(((UIntPtr)rel) + sizeof(CHExecRelocation) + rel->name_len);
+		rel = (PCHExecRelocation)(((UIntPtr)rel) + sizeof(CHExecRelocation) + (rel->name_len * sizeof(WChar)));
 	}
 	
 	return True;

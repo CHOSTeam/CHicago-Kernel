@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on August 25 of 2019, at 18:05 BRT
-// Last edited on August 26 of 2019, at 19:32 BRT
+// Last edited on August 27 of 2019, at 16:49 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/mm.h>
@@ -13,7 +13,9 @@ extern PNetworkDevice NetDefaultDevice;
 PList NetUDPSockets = Null;
 
 Void NetHandleUDPPacket(PNetworkDevice dev, PIPv4Header hdr, PUDPHeader uhdr) {
-	if (NetUDPSockets != Null) {																																		// Is our UDP socket list initialized/not-null?
+	if (FromNetByteOrder16(uhdr->sport) == 67 && FromNetByteOrder16(uhdr->dport) == 68) {																				// DHCP?
+		NetHandleDHCPv4Packet(dev, (PDHCPv4Header)(((UIntPtr)uhdr) + sizeof(UDPHeader)));																				// Yes, handle it!
+	} else if (NetUDPSockets != Null) {																																	// Is our UDP socket list initialized/not-null?
 		ListForeach(NetUDPSockets, i) {																																	// Yes, let's see if any process want it!
 			PUDPSocket sock = (PUDPSocket)i->data;
 			
@@ -58,16 +60,15 @@ Void NetSendUDPPacket(PNetworkDevice dev, UInt8 dest[4], UInt16 sport, UInt16 dp
 		return;
 	}
 	
-	PUDPHeader hdr = (PUDPHeader)MemAllocate(sizeof(UDPHeader) + len);																									// Let's build our UDP header
+	PUDPHeader hdr = (PUDPHeader)MemZAllocate(sizeof(UDPHeader) + len);																									// Let's build our UDP packet!
 	
 	if (hdr == Null) {
-		return;																																							// Failed :(
+		return;																																							// Failed to alloc :(
 	}
 	
-	hdr->sport = ToNetByteOrder16(sport);																																// Set the port
-	hdr->dport = ToNetByteOrder16(dport);
+	hdr->sport = ToNetByteOrder16(sport);																																// Set the source port
+	hdr->dport = ToNetByteOrder16(dport);																																// Set the destination port
 	hdr->length = ToNetByteOrder16(((UInt16)(sizeof(UDPHeader) + len)));																								// Set the length
-	hdr->checksum = 0;																																					// I still need to implement the UDP checksum calculation...
 	
 	StrCopyMemory(((PUInt8)hdr) + sizeof(UDPHeader), buf, len);																											// Copy the data
 	NetSendIPv4Packet(dev, dest, IP_PROTOCOL_UDP, sizeof(UDPHeader) + len, (PUInt8)hdr);																				// Send!

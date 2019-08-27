@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 15 of 2018, at 19:05 BRT
-// Last edited on June 15 of 2019, at 09:50 BRT
+// Last edited on August 27 of 2019, at 18:35 BRT
 
 #include <chicago/alloc.h>
 
@@ -240,7 +240,7 @@ static UIntPtr StrFormatWriteInteger(PWChar str, UIntPtr n, UIntPtr data, UInt8 
 		return 30 - i;																// Nope, just return the length
 	}
 	
-	for (len = i, i = n + 30 - i - 1; data && i >= 0; i--, data /= base) {			// Yes we have it, so let's write!
+	for (len = 30 - i, i = n + 30 - i - 1; data && i >= 0; i--, data /= base) {		// Yes we have it, so let's write!
 		str[i] = L"0123456789ABCDEF"[data % base];
 	}
 	

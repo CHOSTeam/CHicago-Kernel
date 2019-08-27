@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on August 26 of 2019, at 17:42 BRT
-// Last edited on August 26 of 2019, at 19:43 BRT
+// Last edited on August 27 of 2019, at 16:35 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/mm.h>
@@ -12,7 +12,7 @@ extern PNetworkDevice NetDefaultDevice;
 
 PList NetICMPv4Sockets = Null;
 
-Void NetHandleICMPv4(PNetworkDevice dev, PIPv4Header hdr, PICMPHeader ihdr) {
+Void NetHandleICMPv4Packet(PNetworkDevice dev, PIPv4Header hdr, PICMPHeader ihdr) {
 	if (ihdr->type == ICMP_REPLY && NetICMPv4Sockets != Null) {																				// Reply? Do we need to process it?
 		ListForeach(NetICMPv4Sockets, i) {																									// Yes, let's see if any process want it!
 			PICMPv4Socket sock = (PICMPv4Socket)i->data;

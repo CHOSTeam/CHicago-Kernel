@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 10 of 2018, at 21:11 BRT
-// Last edited on February 23 of 2019, at 15:44 BRT
+// Last edited on August 27 of 2019, at 14:46 BRT
 
 #include <chicago/chexec.h>
 #include <chicago/mm.h>
@@ -40,7 +40,7 @@ UIntPtr CHExecLoadSections(PUInt8 buf) {
 			size = sh->virt + sh->size;	
 		}
 		
-		sh = (PCHExecSection)(((UIntPtr)sh) + sizeof(CHExecSection) + sh->name_len);
+		sh = (PCHExecSection)(((UIntPtr)sh) + sizeof(CHExecSection) + (sh->name_len * sizeof(WChar)));
 	}
 	
 	UIntPtr base = MmAllocUserMemory(size);																		// Now, let's alloc it
@@ -61,7 +61,7 @@ UIntPtr CHExecLoadSections(PUInt8 buf) {
 			StrCopyMemory((PUInt8)(base + sh->virt), (PUInt8)(((UIntPtr)buf) + sh->offset), sh->size);			// No, copy it!
 		}
 		
-		sh = (PCHExecSection)(((UIntPtr)sh) + sizeof(CHExecSection) + sh->name_len);
+		sh = (PCHExecSection)(((UIntPtr)sh) + sizeof(CHExecSection) + (sh->name_len * sizeof(WChar)));
 	}
 	
 	return base;

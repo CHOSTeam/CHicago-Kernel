@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 09 of 2018, at 19:27 BRT
-// Last edited on June 14 of 2019, at 19:08 BRT
+// Last edited on August 27 of 2019, at 17:51 BRT
 
 #include <chicago/types.h>
 
@@ -36,6 +36,7 @@ PWChar NlsMessagesBr[] = {
 	L"lang   - Altera o idioma do sistema\r\n"
 	L"ls     - Lista o conteudo de um diretório\r\n"
 	L"lsdev  - Lista os dispositivos conectados\r\n"
+	L"lsnet  - Lista os dispositivos de rede conectados\r\n"
 	L"panic  - Força um error fatal\r\n"
 	L"ping   - Envia uma solicitação ARP para outro dispositivo\r\n"
 	L"ps     - Mostra todos os processos\r\n"
@@ -69,6 +70,10 @@ PWChar NlsMessagesBr[] = {
 	L"Uso: %s [dispositivo]\r\n\r\n",
 	
 	L"Dispositivo de rede padrão não foi definido\r\n\r\n",
+	
+	L"Dispositivo: Network%d | Endereço MAC: %s | Endereço IPv4: %s\r\n%s",
+	
+	L"Dispositivo: Network%d | Endereço MAC: %s | Endereço IPv4: %s | Dispositivo Padrão\r\n%s",
 	
 	L"Quantidade de testes: %d\r\nOK: %d\r\nFalhou: %d\r\n\r\n",
 	

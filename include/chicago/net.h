@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 12 of 2018, at 12:25 BRT
-// Last edited on August 26 of 2019, at 19:40 BRT
+// Last edited on August 27 of 2019, at 17:01 BRT
 
 #ifndef __CHICAGO_NET_H__
 #define __CHICAGO_NET_H__
@@ -70,6 +70,14 @@ typedef struct {
 } Packed IPv4Header, *PIPv4Header;
 
 typedef struct {
+	UInt8 src[4];
+	UInt8 dst[4];
+	UInt8 res;
+	UInt8 protocol;
+	UInt16 length;
+} Packed UDPTCPPseudoHeader, *PUDPTCPPseudoHeader;
+
+typedef struct {
 	UInt8 type;
 	UInt8 code;
 	UInt16 checksum;
@@ -82,6 +90,23 @@ typedef struct {
 	UInt16 length;
 	UInt16 checksum;
 } Packed UDPHeader, *PUDPHeader;
+
+typedef struct {
+	UInt8 op;
+	UInt8 htype;
+	UInt8 hlen;
+	UInt8 hops;
+	UInt32 xid;
+	UInt16 secs;
+	UInt16 flags;
+	UInt8 ciaddr[4];
+	UInt8 yiaddr[4];
+	UInt8 siaddr[4];
+	UInt8 giaddr[4];
+	UInt8 chaddr[208];
+	UInt32 magic;
+	UInt8 options[0];
+} Packed DHCPv4Header, *PDHCPv4Header;
 
 typedef struct {
 	Boolean free;
@@ -138,14 +163,16 @@ UInt16 NetGetChecksum(PUInt8 data, UIntPtr len);
 Void NetHandleEthPacket(PNetworkDevice dev, UInt8 src[6], UInt16 type, PUInt8 buf);
 Void NetHandleARPPacket(PNetworkDevice dev, PARPHeader hdr);
 Void NetHandleIPv4Packet(PNetworkDevice dev, PIPv4Header hdr);
-Void NetHandleICMPv4(PNetworkDevice dev, PIPv4Header hdr, PICMPHeader ihdr);
+Void NetHandleICMPv4Packet(PNetworkDevice dev, PIPv4Header hdr, PICMPHeader ihdr);
 Void NetHandleUDPPacket(PNetworkDevice dev, PIPv4Header hdr, PUDPHeader uhdr);
+Void NetHandleDHCPv4Packet(PNetworkDevice dev, PDHCPv4Header hdr);
 Void NetSendRawPacket(PNetworkDevice dev, UIntPtr len, PUInt8 buf);
 Void NetSendEthPacket(PNetworkDevice dev, UInt8 dest[6], UInt16 type, UIntPtr len, PUInt8 buf);
 Void NetSendARPIPv4Packet(PNetworkDevice dev, UInt8 destm[6], UInt8 desti[4], UInt16 opcode);
 Void NetSendIPv4Packet(PNetworkDevice dev, UInt8 dest[4], UInt8 protocol, UIntPtr len, PUInt8 buf);
 Void NetSendICMPv4Request(PNetworkDevice dev, UInt8 dest[4]);
 Void NetSendUDPPacket(PNetworkDevice dev, UInt8 dest[4], UInt16 sport, UInt16 dport, UIntPtr len, PUInt8 buf);
+Void NetSendDHCPv4Discover(PNetworkDevice dev);
 PARPIPv4Socket NetAddARPIPv4Socket(PNetworkDevice dev, UInt8 mac[6], UInt8 ipv4[4], Boolean user);
 Void NetRemoveARPIPv4Socket(PARPIPv4Socket sock);
 Void NetSendARPIPv4Socket(PARPIPv4Socket sock, UInt16 opcode);

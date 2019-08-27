@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 08 of 2018, at 10:28 BRT
-// Last edited on August 26 of 2019, at 19:46 BRT
+// Last edited on August 27 of 2019, at 18:30 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/arch.h>
@@ -19,6 +19,7 @@
 #include <chicago/version.h>
 
 extern PList FsDeviceList;
+extern PList NetDevices;
 
 #define TEST(name) static Int Test ## name(Void)																										// Macros for making and executing the tests
 #define CALL_TEST(name) if (Test ## name()) { pass++; } else { fail++; } tests++;
@@ -209,6 +210,32 @@ static Boolean ToIPv4(PWChar in, PUInt8 out) {
 	return True;
 }
 
+static PWChar GetMAC(UInt8 mac[6]) {
+	UIntPtr len = StrFormat(Null, L"%x:%x:%x:%x:%x:%x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6]);										// Get the length
+	PWChar ret = (PWChar)MemAllocate(len);																												// Alloc
+	
+	if (ret == Null) {
+		return L"Out Of Memory";																														// Failed
+	}
+	
+	StrFormat(ret, L"%x:%x:%x:%x:%x:%x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6]);														// Format
+	
+	return ret;
+}
+
+static PWChar GetIPv4(UInt8 ipv4[4]) {
+	UIntPtr len = StrFormat(Null, L"%d.%d.%d.%d", ipv4[0], ipv4[1], ipv4[2], ipv4[3]);																	// Get the length
+	PWChar ret = (PWChar)MemAllocate(len);																												// Alloc
+	
+	if (ret == Null) {
+		return L"Out Of Memory";																														// Failed
+	}
+	
+	StrFormat(ret, L"%d.%d.%d.%d", ipv4[0], ipv4[1], ipv4[2], ipv4[3]);																					// Format
+	
+	return ret;
+}
+
 static Void ShellMain(Void) {
 	RandSetSeed(RandGenerateSeed());																													// Init our "random" number generator
 	
@@ -389,12 +416,33 @@ static Void ShellMain(Void) {
 		} else if (StrGetLength(argv[0]) == 5 && StrCompare(argv[0], L"lsdev")) {																		// List the devices
 			UIntPtr j = 0;
 			
+			ConSetRefresh(False);																														// Disable screen refresh
+			
 			ListForeach(FsDeviceList, i) {
-				ConWriteFormated(L"%d - 0x%x - 0x%x - ", j++, i, i->data);
-				ConWriteFormated(L"%s\r\n", ((PDevice)i->data)->name);
+				ConWriteFormated(L"%d - 0x%x - 0x%x - %s\r\n", j++, i, i->data, ((PDevice)i->data)->name);
 			}
 			
 			ConWriteFormated(L"\r\n");
+			DispRefresh();																																// Refresh the screen
+			ConSetRefresh(True);																														// Enable screen refresh
+		} else if (StrGetLength(argv[0]) == 5 && StrCompare(argv[0], L"lsnet")) {																		// List the network devices
+			PNetworkDevice def = NetGetDefaultDevice();																									// Get the default network device
+			
+			ListForeach(NetDevices, i) {																												// Let's foreach the list and print everything
+				PNetworkDevice dev = (PNetworkDevice)i->data;
+				PWChar mac = GetMAC(dev->mac_address);
+				PWChar ipv4 = GetIPv4(dev->ipv4_address);
+				PWChar end = i->next == Null ? L"\r\n" : L"";
+				
+				if (dev == def) {
+					ConWriteFormated(NlsGetMessage(NLS_SHELL_LSNET_CUR), dev->id, mac, ipv4, end);
+				} else {
+					ConWriteFormated(NlsGetMessage(NLS_SHELL_LSNET_NOTCUR), dev->id, mac, ipv4, end);
+				}
+				
+				MemFree((UIntPtr)mac);
+				MemFree((UIntPtr)ipv4);
+			}
 		} else if (StrGetLength(argv[0]) == 5 && StrCompare(argv[0], L"panic")) {																		// Crash the system
 			PsCurrentProcess->id = PsCurrentThread->id = 0;																								// *HACK*
 			DbgWriteFormated("PANIC! User requested panic :)\r\n");

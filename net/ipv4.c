@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on August 25 of 2019, at 18:10 BRT
-// Last edited on August 26 of 2019, at 19:50 BRT
+// Last edited on August 27 of 2019, at 16:47 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/mm.h>
@@ -11,18 +11,26 @@
 extern PNetworkDevice NetDefaultDevice;
 
 Void NetHandleIPv4Packet(PNetworkDevice dev, PIPv4Header hdr) {
-	if (hdr->version != 4) {
-		return;
-	} else if (hdr->ttl == 0) {
-		return;
+	static UInt8 broadcast[4] = { 255, 255, 255, 255 };
+	
+	if (hdr->version != 4) {																																			// IPv4?
+		return;																																							// We only have IPv4 for now...
+	} else if (hdr->ttl == 0) {																																			// Time To Live > 0?
+		return;																																							// Nope :(
+	} else if (!StrCompareMemory(dev->ipv4_address, hdr->dst, 4) && !StrCompareMemory(broadcast, hdr->dst, 4)) {														// For us?
+		return;																																							// Nope :)
 	}
 	
-	if (StrCompareMemory(dev->ipv4_address, hdr->dst, 4)) {																												// For us?
-		if (hdr->protocol == IP_PROTOCOL_ICMP) {																														// Yes, it's ICMP?
-			NetHandleICMPv4(dev, hdr, (PICMPHeader)(((UIntPtr)hdr) + sizeof(IPv4Header)));																				// Yes, handle it!
-		} else if (hdr->protocol == IP_PROTOCOL_UDP) {																													// It's UDP?
-			NetHandleUDPPacket(dev, hdr, (PUDPHeader)(((UIntPtr)hdr) + sizeof(IPv4Header)));																			// Yes, handle it!
-		}
+	UInt16 checksum = hdr->checksum;
+	
+	hdr->checksum = 0;
+	
+	if (NetGetChecksum((PUInt8)hdr, sizeof(IPv4Header)) != checksum) {																									// The checksum is valid?
+		return;																																							// No
+	} else if (hdr->protocol == IP_PROTOCOL_ICMP) {																														// It's ICMP?
+		NetHandleICMPv4Packet(dev, hdr, (PICMPHeader)(((UIntPtr)hdr) + sizeof(IPv4Header)));																			// Yes, handle it!
+	} else if (hdr->protocol == IP_PROTOCOL_UDP) {																														// It's UDP?
+		NetHandleUDPPacket(dev, hdr, (PUDPHeader)(((UIntPtr)hdr) + sizeof(IPv4Header)));																				// Yes, handle it!
 	}
 }
 
