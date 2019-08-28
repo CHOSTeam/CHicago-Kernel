@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on August 25 of 2019, at 18:10 BRT
-// Last edited on August 27 of 2019, at 16:47 BRT
+// Last edited on August 28 of 2019, at 13:44 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/mm.h>
@@ -11,13 +11,14 @@
 extern PNetworkDevice NetDefaultDevice;
 
 Void NetHandleIPv4Packet(PNetworkDevice dev, PIPv4Header hdr) {
+	static UInt8 localhost[4] = { 127, 0, 0, 1 };
 	static UInt8 broadcast[4] = { 255, 255, 255, 255 };
 	
 	if (hdr->version != 4) {																																			// IPv4?
 		return;																																							// We only have IPv4 for now...
 	} else if (hdr->ttl == 0) {																																			// Time To Live > 0?
 		return;																																							// Nope :(
-	} else if (!StrCompareMemory(dev->ipv4_address, hdr->dst, 4) && !StrCompareMemory(broadcast, hdr->dst, 4)) {														// For us?
+	} else if (!StrCompareMemory(localhost, hdr->dst, 4) && !StrCompareMemory(dev->ipv4_address, hdr->dst, 4) && !StrCompareMemory(broadcast, hdr->dst, 4)) {			// For us?
 		return;																																							// Nope :)
 	}
 	
@@ -39,11 +40,11 @@ static Boolean NetResolveIPv4Address(PNetworkDevice dev, UInt8 ip[4], PUInt8 des
 	UIntPtr last = 0;
 	UIntPtr count = 0;
 	
-	if ((ip[0] != 10) && ((ip[0] != 172) || ((ip[1] < 16) || (ip[1] > 31))) && ((ip[0] != 192) || (ip[1] != 168))) {													// First, let's check if we really need to use arp to get the mac address
-		StrCopyMemory(dest, broadcast, 6);																																// Nope, it's outside of the local network, the network card should do everything
-		return True;
-	} else if (((ip[0] == 127) && (ip[1] == 0) && (ip[2] == 0) && (ip[3] == 1)) || StrCompareMemory(ip, dev->ipv4_address, 6)) {										// Loopback/localhost/ourselves?
+	if (((ip[0] == 127) && (ip[1] == 0) && (ip[2] == 0) && (ip[3] == 1)) || StrCompareMemory(ip, dev->ipv4_address, 4)) {												// Loopback/localhost/ourselves?
 		StrCopyMemory(dest, dev->mac_address, 6);																														// Yes
+		return True;
+	} else if ((ip[0] != 10) && ((ip[0] != 172) || ((ip[1] < 16) || (ip[1] > 31))) && ((ip[0] != 192) || (ip[1] != 168))) {												// We really need to use arp to get the mac address
+		StrCopyMemory(dest, broadcast, 6);																																// Nope, it's outside of the local network, the network card should do everything
 		return True;
 	}
 	

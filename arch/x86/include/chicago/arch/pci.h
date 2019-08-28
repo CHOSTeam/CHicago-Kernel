@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 11 of 2018, at 18:17 BRT
-// Last edited on June 15 of 2019, at 13:25 BRT
+// Last edited on August 27 of 2019, at 20:20 BRT
 
 #ifndef __CHICAGO_ARCH_PCI_H__
 #define __CHICAGO_ARCH_PCI_H__
@@ -33,6 +33,8 @@
 #define PCI_VENDOR_INTEL 0x8086
 
 #define PCI_DEVICE_E1000 0x100E
+#define PCI_DEVICE_I217 0x153A
+#define PCI_DEVICE_82577LM 0x10EA
 
 #define PCI_CLASS_MASS_STORAGE 0x01
 #define PCI_SUBCLASS_IDE 0x01

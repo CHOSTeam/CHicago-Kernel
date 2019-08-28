@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 11 of 2018, at 19:40 BRT
-// Last edited on January 23 of 2019, at 13:28 BRT
+// Last edited on August 27 of 2019, at 20:23 BRT
 
 #include <chicago/arch/e1000.h>
 #include <chicago/arch/pci.h>
@@ -282,12 +282,18 @@ static Void E1000InitInt(PPCIDevice pdev) {
 	E1000WriteCommand(dev, 0x400, 0x10400FA);
 }
 
-Void E1000Init(Void) {
-	UIntPtr i = 0;																	// Let's find and init all the E1000 cards
-	PPCIDevice dev = PCIFindDevice1(&i, PCI_VENDOR_INTEL, PCI_DEVICE_E1000);
+Void E1000InitDevices(UInt16 vendor, UInt16 device) {
+	UIntPtr i = 0;																	// Let's find and init all the E1000 cards with the specified vendor ID and device ID
+	PPCIDevice dev = PCIFindDevice1(&i, vendor, device);
 	
 	while (dev != Null) {
 		E1000InitInt(dev);
-		dev = PCIFindDevice1(&i, PCI_VENDOR_INTEL, PCI_DEVICE_E1000);
+		dev = PCIFindDevice1(&i, vendor, device);
 	}
+}
+
+Void E1000Init(Void) {
+	E1000InitDevices(PCI_VENDOR_INTEL, PCI_DEVICE_E1000);							// Let's find and init all the E1000 cards
+	E1000InitDevices(PCI_VENDOR_INTEL, PCI_DEVICE_I217);
+	E1000InitDevices(PCI_VENDOR_INTEL, PCI_DEVICE_82577LM);
 }
