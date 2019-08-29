@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 08 of 2018, at 10:28 BRT
-// Last edited on August 27 of 2019, at 18:30 BRT
+// Last edited on August 29 of 2019, at 14:52 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/arch.h>
@@ -426,22 +426,26 @@ static Void ShellMain(Void) {
 			DispRefresh();																																// Refresh the screen
 			ConSetRefresh(True);																														// Enable screen refresh
 		} else if (StrGetLength(argv[0]) == 5 && StrCompare(argv[0], L"lsnet")) {																		// List the network devices
-			PNetworkDevice def = NetGetDefaultDevice();																									// Get the default network device
-			
-			ListForeach(NetDevices, i) {																												// Let's foreach the list and print everything
-				PNetworkDevice dev = (PNetworkDevice)i->data;
-				PWChar mac = GetMAC(dev->mac_address);
-				PWChar ipv4 = GetIPv4(dev->ipv4_address);
-				PWChar end = i->next == Null ? L"\r\n" : L"";
-				
-				if (dev == def) {
-					ConWriteFormated(NlsGetMessage(NLS_SHELL_LSNET_CUR), dev->id, mac, ipv4, end);
-				} else {
-					ConWriteFormated(NlsGetMessage(NLS_SHELL_LSNET_NOTCUR), dev->id, mac, ipv4, end);
+			if (NetDevices != Null) {																													// Any device?
+				PNetworkDevice def = NetGetDefaultDevice();																								// Yes, get the default network device
+
+				ListForeach(NetDevices, i) {																											// Let's foreach the list and print everything
+					PNetworkDevice dev = (PNetworkDevice)i->data;
+					PWChar mac = GetMAC(dev->mac_address);
+					PWChar ipv4 = GetIPv4(dev->ipv4_address);
+					PWChar end = i->next == Null ? L"\r\n" : L"";
+
+					if (dev == def) {
+						ConWriteFormated(NlsGetMessage(NLS_SHELL_LSNET_CUR), dev->id, mac, ipv4, end);
+					} else {
+						ConWriteFormated(NlsGetMessage(NLS_SHELL_LSNET_NOTCUR), dev->id, mac, ipv4, end);
+					}
+
+					MemFree((UIntPtr)mac);
+					MemFree((UIntPtr)ipv4);
 				}
-				
-				MemFree((UIntPtr)mac);
-				MemFree((UIntPtr)ipv4);
+			} else {
+				ConWriteFormated(L"\r\n");																												// Nope
 			}
 		} else if (StrGetLength(argv[0]) == 5 && StrCompare(argv[0], L"panic")) {																		// Crash the system
 			PsCurrentProcess->id = PsCurrentThread->id = 0;																								// *HACK*

@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 11 of 2018, at 18:17 BRT
-// Last edited on August 27 of 2019, at 20:20 BRT
+// Last edited on August 29 of 2019, at 14:51 BRT
 
 #ifndef __CHICAGO_ARCH_PCI_H__
 #define __CHICAGO_ARCH_PCI_H__
@@ -32,9 +32,10 @@
 
 #define PCI_VENDOR_INTEL 0x8086
 
-#define PCI_DEVICE_E1000 0x100E
-#define PCI_DEVICE_I217 0x153A
+#define PCI_DEVICE_82543GC 0x1004
+#define PCI_DEVICE_82540EM 0x100E
 #define PCI_DEVICE_82577LM 0x10EA
+#define PCI_DEVICE_I217 0x153A
 
 #define PCI_CLASS_MASS_STORAGE 0x01
 #define PCI_SUBCLASS_IDE 0x01
@@ -72,6 +73,8 @@ typedef struct {
 UInt8 PCIReadByte(PPCIDevice dev, UInt8 off);
 UInt16 PCIReadWord(PPCIDevice dev, UInt8 off);
 UInt32 PCIReadDWord(PPCIDevice dev, UInt8 off);
+Void PCIWriteByte(PPCIDevice dev, UInt8 off, UInt8 val);
+Void PCIWriteWord(PPCIDevice dev, UInt8 off, UInt16 val);
 Void PCIWriteDWord(PPCIDevice dev, UInt8 off, UInt32 val);
 Void PCIRegisterIRQHandler(PPCIDevice dev, PPCIInterruptHandlerFunc handler, PVoid priv);
 PPCIDevice PCIFindDevice1(PUIntPtr last, UInt16 vendor, UInt16 device);

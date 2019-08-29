@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 26 of 2018, at 22:00 BRT
-// Last edited on March 01 of 2019, at 20:10 BRT
+// Last edited on August 29 of 2019, at 14:16 BRT
 
 #include <chicago/arch/idt-int.h>
 #include <chicago/arch/port.h>
@@ -115,29 +115,25 @@ Void IDTSetGate(UInt8 num, UInt32 base, UInt16 selector, UInt8 type) {
 	IDTEntries[num][5] = type | 0x60;																// Encode type
 }
 
-Void IDTRegisterInterruptHandler(UInt8 num, PInterruptHandler handler)
-{
+Void IDTRegisterInterruptHandler(UInt8 num, PInterruptHandler handler) {
 	if (InterruptHandlers[num])
 		return;
 	InterruptHandlers[num] = handler;
 }
 
-Void IDTRegisterIRQHandler(UInt8 num, PInterruptHandler handler)
-{
+Void IDTRegisterIRQHandler(UInt8 num, PInterruptHandler handler) {
 	if (InterruptHandlers[num + 32])
 		return;
 	InterruptHandlers[num + 32] = handler;
 }
 
-Void IDTUnregisterInterruptHandler(UInt8 num)
-{
+Void IDTUnregisterInterruptHandler(UInt8 num) {
 	if (!InterruptHandlers[num])
 		return;
 	InterruptHandlers[num] = Null;
 }
 
-Void IDTUnregisterIRQHandler(UInt8 num)
-{
+Void IDTUnregisterIRQHandler(UInt8 num) {
 	if (!InterruptHandlers[num + 32])
 		return;
 	InterruptHandlers[num + 32] = Null;

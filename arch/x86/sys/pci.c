@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 11 of 2018, at 18:02 BRT
-// Last edited on June 15 of 2019, at 13:38 BRT
+// Last edited on August 29 of 2019, at 14:24 BRT
 
 #include <chicago/arch/idt.h>
 #include <chicago/arch/pci.h>
@@ -28,6 +28,16 @@ static UInt16 PCIReadWordInt(UInt16 bus, UInt8 slot, UInt8 func, UInt8 off) {
 static UInt32 PCIReadDWordInt(UInt16 bus, UInt8 slot, UInt8 func, UInt8 off) {
 	PortOutLong(0xCF8, (bus << 16) | (slot << 11) | (func << 8) | (off & 0xFC) | 0x80000000);																					// Write out the address
 	return PortInLong(0xCFC);																																					// And read the data
+}
+
+static Void PCIWriteByteInt(UInt16 bus, UInt8 slot, UInt8 func, UInt8 off, UInt8 val) {
+	PortOutLong(0xCF8, (bus << 16) | (slot << 11) | (func << 8) | (off & 0xFC) | 0x80000000);																					// Write out the address
+	PortOutByte(0xCFC, val);																																					// And the data
+}
+
+static Void PCIWriteWordInt(UInt16 bus, UInt8 slot, UInt8 func, UInt8 off, UInt16 val) {
+	PortOutLong(0xCF8, (bus << 16) | (slot << 11) | (func << 8) | (off & 0xFC) | 0x80000000);																					// Write out the address
+	PortOutWord(0xCFC, val);																																					// And the data
 }
 
 static Void PCIWriteDWordInt(UInt16 bus, UInt8 slot, UInt8 func, UInt8 off, UInt32 val) {
@@ -65,15 +75,42 @@ UInt32 PCIReadDWord(PPCIDevice dev, UInt8 off) {
 	return 0;
 }
 
+Void PCIWriteByte(PPCIDevice dev, UInt8 off, UInt8 val) {
+	if (dev != Null) {																																							// Sanity check
+		PCIWriteByteInt(dev->bus, dev->slot, dev->func, off, val);																												// And redirect
+	}
+}
+
+Void PCIWriteWord(PPCIDevice dev, UInt8 off, UInt16 val) {
+	if (dev != Null) {																																							// Sanity check
+		PCIWriteWordInt(dev->bus, dev->slot, dev->func, off, val);																												// And redirect
+	}
+}
+
 Void PCIWriteDWord(PPCIDevice dev, UInt8 off, UInt32 val) {
 	if (dev != Null) {																																							// Sanity check
 		PCIWriteDWordInt(dev->bus, dev->slot, dev->func, off, val);																												// And redirect
 	}
 }
 
+static UInt8 PCIFindFreeIRQ(Void) {
+	if (PCIInterruptHandlers[9].func == Null) {																																	// Check if any of the "Free for peripherals" IRQ is free for use
+		return 9;
+	} else if (PCIInterruptHandlers[10].func == Null) {
+		return 10;
+	} else if (PCIInterruptHandlers[11].func == Null) {
+		return 11;	
+	}
+	
+	return 0xFF;
+}
+
 Void PCIRegisterIRQHandler(PPCIDevice dev, PPCIInterruptHandlerFunc handler, PVoid priv) {
 	if (dev == Null) {																																							// Check if the device isn't Null
 		return;
+	} else if (dev->iline >= 16 || PCIInterruptHandlers[dev->iline].func != Null) {																								// Do we need to remap it?
+		dev->iline = PCIFindFreeIRQ();																																			// Yes
+		PCIWriteByte(dev, PCI_INTERRUPT_LINE, dev->iline);
 	}
 	
 	PCIInterruptHandlers[dev->iline].priv = priv;																																// Set the handler for this IRQ
@@ -127,7 +164,7 @@ Void PCIEnableBusMaster(PPCIDevice dev) {
 	
 	if ((cmd & 0x04) != 0x04) {
 		cmd |= 0x04;																																							// Yes, we need, set the bus mastering bit
-		PCIWriteDWord(dev, PCI_COMMAND, cmd);																																	// And write back
+		PCIWriteWord(dev, PCI_COMMAND, cmd);																																	// And write back
 	}
 }
 

@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 11 of 2018, at 19:40 BRT
-// Last edited on August 27 of 2019, at 20:23 BRT
+// Last edited on August 29 of 2019, at 14:41 BRT
 
 #include <chicago/arch/e1000.h>
 #include <chicago/arch/pci.h>
@@ -293,7 +293,8 @@ Void E1000InitDevices(UInt16 vendor, UInt16 device) {
 }
 
 Void E1000Init(Void) {
-	E1000InitDevices(PCI_VENDOR_INTEL, PCI_DEVICE_E1000);							// Let's find and init all the E1000 cards
-	E1000InitDevices(PCI_VENDOR_INTEL, PCI_DEVICE_I217);
+	E1000InitDevices(PCI_VENDOR_INTEL, PCI_DEVICE_82543GC);							// Let's find and init all the E1000 cards
+	E1000InitDevices(PCI_VENDOR_INTEL, PCI_DEVICE_82540EM);
 	E1000InitDevices(PCI_VENDOR_INTEL, PCI_DEVICE_82577LM);
+	E1000InitDevices(PCI_VENDOR_INTEL, PCI_DEVICE_I217);
 }
