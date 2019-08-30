@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 17 of 2018, at 16:10 BRT
-// Last edited on December 22 of 2018, at 16:34 BRT
+// Last edited on August 30 of 2019, at 14:02 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/file.h>
@@ -121,9 +121,9 @@ PWChar Iso9660ReadDirectoryEntry(PFsNode dir, UIntPtr entry) {
 				PWChar ret = Null;																					// YES!
 				
 				if (dent->name[dent->name_length - 2] == ';' && dent->name[dent->name_length - 1] == '1') {			// Let's alloc space for the name (and for fixing it)
-					ret = (PWChar)MemAllocate((dent->name_length - 2) * 4);
+					ret = (PWChar)MemAllocate((dent->name_length - 2) * sizeof(WChar));
 				} else {
-					ret = (PWChar)MemAllocate((dent->name_length + 1) * 4);
+					ret = (PWChar)MemAllocate((dent->name_length + 1) * sizeof(WChar));
 				}
 				
 				if (ret == Null) {																					// Failed? (When MemAllocate fails, we get a very big Null)
@@ -208,9 +208,9 @@ PFsNode Iso9660FindInDirectory(PFsNode dir, PWChar name) {
 			PWChar dename = Null;																					// It's an normal, visible, file/directory! Let's discover if it's the one that we want
 			
 			if (dent->name[dent->name_length - 2] == ';' && dent->name[dent->name_length - 1] == '1') {				// Let's do the same fix that we did in the ReadDirectoryEntry function
-				dename = (PWChar)MemAllocate((dent->name_length - 2) * 4);
+				dename = (PWChar)MemAllocate((dent->name_length - 2) * sizeof(WChar));
 			} else {
-				dename = (PWChar)MemAllocate((dent->name_length + 1) * 4);
+				dename = (PWChar)MemAllocate((dent->name_length + 1) * sizeof(WChar));
 			}
 			
 			if (dename == Null) {

@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:21 BRT
-// Last edited on June 15 of 2019, at 11:06 BRT
+// Last edited on August 30 of 2019, at 14:00 BRT
 
 #include <chicago/arch/ahci.h>
 #include <chicago/arch/bootmgr.h>
@@ -133,7 +133,7 @@ Void ArchInit(Void) {
 	IDEInit();
 	USBInit();
 	
-	PWChar bootdev = (PWChar)MemAllocate((StrGetLengthC(BootmgrBootDev) + 1) * 4);								// Let's transform the C string into unicode!
+	PWChar bootdev = (PWChar)MemAllocate((StrGetLengthC(BootmgrBootDev) + 1) * sizeof(WChar));					// Let's transform the C string into unicode!
 	
 	if (bootdev == Null) {
 		DbgWriteFormated("PANIC! Couldn't set the boot device\r\n");

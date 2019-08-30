@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:14 BRT
-// Last edited on February 23 of 2019, at 11:59 BRT
+// Last edited on August 30 of 2019, at 14:03 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/mm.h>
@@ -273,7 +273,7 @@ Boolean ScFsReadDirectoryEntry(IntPtr dir, UIntPtr entry, PWChar out) {
 		return False;																																		// Failed (probably this entry doesn't exists)
 	}
 	
-	StrCopyMemory(out, name, (StrGetLength(name) + 1) * 4);																									// Copy the out pointer to the userspace
+	StrCopy(out, name);																																		// Copy the out pointer to the userspace
 	MemFree((UIntPtr)name);																																	// Free the out pointer
 	
 	return True;

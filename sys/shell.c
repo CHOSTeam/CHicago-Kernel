@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 08 of 2018, at 10:28 BRT
-// Last edited on August 29 of 2019, at 14:52 BRT
+// Last edited on August 29 of 2019, at 15:45 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/arch.h>
@@ -211,14 +211,14 @@ static Boolean ToIPv4(PWChar in, PUInt8 out) {
 }
 
 static PWChar GetMAC(UInt8 mac[6]) {
-	UIntPtr len = StrFormat(Null, L"%x:%x:%x:%x:%x:%x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6]);										// Get the length
+	UIntPtr len = StrFormat(Null, L"%x:%x:%x:%x:%x:%x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);										// Get the length
 	PWChar ret = (PWChar)MemAllocate(len);																												// Alloc
 	
 	if (ret == Null) {
 		return L"Out Of Memory";																														// Failed
 	}
 	
-	StrFormat(ret, L"%x:%x:%x:%x:%x:%x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], mac[6]);														// Format
+	StrFormat(ret, L"%x:%x:%x:%x:%x:%x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);														// Format
 	
 	return ret;
 }

@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 10 of 2018, at 21:18 BRT
-// Last edited on August 27 of 2019, at 14:48 BRT
+// Last edited on August 30 of 2019, at 14:00 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/chexec.h>
@@ -60,7 +60,7 @@ static PWChar ExecGetName(PWChar path, Boolean user) {
 	}
 	
 	if (user) {																													// Copy to userspace?
-		PWChar ret = (PWChar)MmAllocUserMemory((StrGetLength(last) + 1) * 4);													// Yes! Alloc the required space
+		PWChar ret = (PWChar)MmAllocUserMemory((StrGetLength(last) + 1) * sizeof(WChar));											// Yes! Alloc the required space
 		
 		if (ret == Null) {
 			MemFree((UIntPtr)last);																								// Failed...

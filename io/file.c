@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 16 of 2018, at 18:28 BRT
-// Last edited on February 24 of 2019, at 16:43 BRT
+// Last edited on August 30 of 2019, at 14:11 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -80,7 +80,7 @@ PWChar FsCanonicalizePath(PWChar path) {
 		final = StrDuplicate(L"\\");																									// Yes
 	} else {
 		ListForeach(list, i) {																											// No, so let's get the final size
-			fsize += (StrGetLength((PWChar)(i->data)) + 2) * 4;
+			fsize += (StrGetLength((PWChar)(i->data)) + 2) * sizeof(WChar);
 		}
 		
 		final = foff = (PWChar)MemAllocate(fsize);																						// Alloc space
@@ -113,12 +113,12 @@ PWChar FsJoinPath(PWChar src, PWChar incr) {
 		return Null;																													// No
 	}
 	
-	UIntPtr psize = (StrGetLength(src) + StrGetLength(incr) + 2) * 4;																	// Let's calculate the final string size
+	UIntPtr psize = (StrGetLength(src) + StrGetLength(incr) + 2) * sizeof(WChar);														// Let's calculate the final string size
 	PWChar path = Null;
 	PWChar poff = Null;
 	
 	if ((incr[0] != '\\') && (src[StrGetLength(src) - 2] != '\\')) {
-		psize += 4;
+		psize += sizeof(WChar);
 	}
 	
 	path = poff = (PWChar)MemAllocate(psize);																							// Allocate some space

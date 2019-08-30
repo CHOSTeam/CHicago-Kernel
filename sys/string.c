@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 15 of 2018, at 19:05 BRT
-// Last edited on August 27 of 2019, at 18:35 BRT
+// Last edited on August 30 of 2019, at 14:13 BRT
 
 #include <chicago/alloc.h>
 
@@ -144,7 +144,7 @@ UIntPtr StrGetLengthC(PChar str) {
 }
 
 Boolean StrCompare(PWChar dest, PWChar src) {
-	return StrCompareMemory(dest, src, StrGetLength(dest) * 4);						// Just redirect to the StrCompareMemory function
+	return StrCompareMemory(dest, src, StrGetLength(dest) * sizeof(WChar));			// Just redirect to the StrCompareMemory function
 }
 
 Boolean StrCompareC(PChar dest, PChar src) {
@@ -152,7 +152,7 @@ Boolean StrCompareC(PChar dest, PChar src) {
 }
 
 PWChar StrCopy(PWChar dest, PWChar src) {
-	return StrCopyMemory32(dest, src, StrGetLength(src) + 1);						// Just redirect to StrCopyMemory function
+	return StrCopyMemory(dest, src, (StrGetLength(src) + 1) * sizeof(WChar));		// Just redirect to StrCopyMemory function
 }
 
 PChar StrCopyC(PChar dest, PChar src) {
@@ -166,7 +166,7 @@ Void StrConcatenate(PWChar dest, PWChar src) {
 	
 	PWChar end = dest + StrGetLength(dest);											// Let's do it!
 	
-	StrCopyMemory32(end, src, StrGetLength(src));									// Let's append the src to dest
+	StrCopyMemory(end, src, StrGetLength(src) * sizeof(WChar));						// Let's append the src to dest
 	
 	end += StrGetLength(src);														// And put an 0 (NUL) at the end
 	*end = '\0';
@@ -186,7 +186,7 @@ Void StrConcatenateC(PChar dest, PChar src) {
 }
 
 PWChar StrDuplicate(PWChar str) {
-	PWChar ret = (PWChar)MemAllocate((StrGetLength(str) + 1) * 4);
+	PWChar ret = (PWChar)MemAllocate((StrGetLength(str) + 1) * sizeof(WChar));
 	
 	if (ret == Null) {
 		return Null;
@@ -215,7 +215,7 @@ static UIntPtr StrFormatWriteString(PWChar str, UIntPtr n, PWChar data) {
 	UIntPtr len = StrGetLength(data);												// Get the length of the data
 	
 	if (str != Null) {																// We have our string?
-		StrCopyMemory32(&str[n], data, len);										// Yes, write the string to it!
+		StrCopyMemory(&str[n], data, len * sizeof(WChar));							// Yes, write the string to it!
 	}
 	
 	return len;																		// Return the length of the string
