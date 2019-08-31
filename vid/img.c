@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on April 18 of 2019, at 12:04 BRT
-// Last edited on April 19 of 2019, at 11:30 BRT
+// Last edited on August 31 of 2019, at 18:23 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/display.h>
@@ -67,6 +67,29 @@ PImage ImgLoadBMPBuf(PUInt8 buf) {
 	for (UIntPtr i = hdr->height - 1, j = 0; j < hdr->height; i--, j++) {
 		StrCopyMemory((PUInt8)(img->buf + i * hdr->width * img->bpp), (PUInt8)bmp, hdr->width * img->bpp);						// Copy the scanline
 		bmp += hdr->width * img->bpp + pad;																						// And go to the next scanline
+	}
+	
+	return img;
+}
+
+PImage ImgRescale(PImage src, UIntPtr width, UIntPtr height) {
+	if (src == Null || (width == 0 && height == 0)) {																			// First, sanity check
+		return Null;
+	}
+	
+	PImage img = ImgCreate(width, height, src->bpp);																			// Create the new image
+	
+	if (img == Null) {
+		return Null;																											// ...
+	}
+	
+	Float sw = (Float)width / (Float)src->width;																				// Get all the scaled values
+	Float sh = (Float)height / (Float)src->height;
+	
+	for (UIntPtr y = 0; y < height; y++) {																						// And let's do it!
+		for (UIntPtr x = 0; x < width; x++) {
+			ImgPutPixel(img, x, y, ImgGetPixel(src, (UIntPtr)(x / sw), (UIntPtr)(y / sh)));
+		}
 	}
 	
 	return img;
@@ -203,14 +226,14 @@ Void ImgPutPixel(PImage img, UIntPtr x, UIntPtr y, UIntPtr c) {
 	
 	if (img->bpp == 3) {																										// Write the pixel!
 		*((PUInt16)(img->buf + (y * (img->width * 3)) + (x * 3))) = (UInt16)c;
-		*((PUInt8)(img->buf + (y * (img->width * 3)) + (x * 3) + 2)) = (UInt8)(c << 16);
+		*((PUInt8)(img->buf + (y * (img->width * 3)) + (x * 3) + 2)) = *((PUInt8)(((UIntPtr)&c) + 2));
 	} else if (img->bpp == 4) {
 		*((PUInt32)(img->buf + (y * (img->width * 4)) + (x * 4))) = (UInt32)c;
 	}
 }
 
 Void ImgDrawLine(PImage img, UIntPtr x0, UIntPtr y0, UIntPtr x1, UIntPtr y1, UIntPtr c) {
-	if (img == Null) {																											// Sanity cehck
+	if (img == Null) {																											// Sanity check
 		return;
 	} else if (x0 >= img->width) {																								// Fix the x and the y if they are bigger than the image dimensions
 		x0 = img->width - 1;																									//     Sorry, this function will not have a lot of documentation (not that my other ones are commented in a good way...)
@@ -519,6 +542,28 @@ Void ImgBitBlit(PImage img, PImage src, UIntPtr srcx, UIntPtr srcy, UIntPtr x, U
 	}
 }
 
+Void ImgWriteCharacterPixel(PImage img, PUIntPtr x, PUIntPtr y, UIntPtr bg, UIntPtr fg, WChar data) {
+	if ((img == Null) || (x == Null) || (y == Null)) {																			// Sanity check
+		return;
+	}
+	
+	PPCScreenFont font = (PPCScreenFont)FontStart;																				// Draw the character
+	PUInt8 glyph = (PUInt8)(FontStart + font->hdr_size + (data * font->bytes_per_glyph));
+	
+	for (UIntPtr i = 0; i < 16; i++) {
+		UIntPtr mask = 1 << 7;
+		
+		for (UIntPtr j = 0; j < 8; j++) {
+			ImgPutPixel(img, *x + j, *y + i, (*glyph & mask) ? fg : bg);
+			mask >>= 1;
+		}
+		
+		glyph++;
+	}
+	
+	(*x) += 8;
+}
+
 Void ImgWriteCharacter(PImage img, Boolean cursor, PUIntPtr x, PUIntPtr y, UIntPtr bg, UIntPtr fg, WChar data) {
 	if ((img == Null) || (x == Null) || (y == Null)) {																			// Sanity check
 		return;
@@ -589,6 +634,16 @@ Void ImgWriteCharacter(PImage img, Boolean cursor, PUIntPtr x, PUIntPtr y, UIntP
 	}
 }
 
+Void ImgWriteStringPixel(PImage img, PUIntPtr x, PUIntPtr y, UIntPtr bg, UIntPtr fg, PWChar data) {
+	if ((img == Null) || (data == Null) || (x == Null) || (y == Null)) {														// Sanity check
+		return;
+	}
+	
+	for (UIntPtr i = 0; i < StrGetLength(data); i++) {																			// Write all the characters from the string
+		ImgWriteCharacterPixel(img, x, y, bg, fg, data[i]);
+	}
+}
+
 Void ImgWriteString(PImage img, Boolean cursor, PUIntPtr x, PUIntPtr y, UIntPtr bg, UIntPtr fg, PWChar data) {
 	if ((img == Null) || (data == Null) || (x == Null) || (y == Null)) {														// Sanity check
 		return;
@@ -604,6 +659,25 @@ Void ImgWriteString(PImage img, Boolean cursor, PUIntPtr x, PUIntPtr y, UIntPtr 
 	
 	if (cursor) {																												// Draw the new cursor?
 		ImgFillRectangle(img, *x * 8, *y * 16, 8, 16, fg);																		// Yes
+	}
+}
+
+Void ImgWriteIntegerPixel(PImage img, PUIntPtr x, PUIntPtr y, UIntPtr bg, UIntPtr fg, UIntPtr data, UInt8 base) {
+	if ((img == Null) || (x == Null) || (y == Null)) {																			// Sanity check
+		return;
+	}
+	
+	if (data == 0) {																											// Data == 0?
+		ImgWriteCharacterPixel(img, x, y, bg, fg, L'0');																		// Yes, just write the 0
+	} else {
+		static WChar buf[32] = { 0 };																							// Parse the integer
+		Int i = 30;
+
+		for (; data && i; i--, data /= base) {
+			buf[i] = L"0123456789ABCDEF"[data % base];
+		}
+
+		ImgWriteStringPixel(img, x, y, bg, fg, &buf[i + 1]);																	// And write it
 	}
 }
 
@@ -632,6 +706,62 @@ Void ImgWriteInteger(PImage img, Boolean cursor, PUIntPtr x, PUIntPtr y, UIntPtr
 	if (cursor) {																												// Draw the new cursor?
 		ImgFillRectangle(img, *x * 8, *y * 16, 8, 16, fg);																		// Yes
 	}
+}
+
+Void ImgWriteFormatedPixel(PImage img, PUIntPtr x, PUIntPtr y, UIntPtr bg, UIntPtr fg, PWChar data, ...) {
+	if ((img == Null) || (data == Null) || (x == Null) || (y == Null)) {														// Sanity check
+		return;
+	}
+	
+	VariadicList va;
+	VariadicStart(va, data);																									// Let's start our va list with the arguments provided by the user (if any)
+	
+	UIntPtr oldbg = bg;																											// Save the bg and the fg
+	UIntPtr oldfg = fg;
+	
+	for (UIntPtr i = 0; i < StrGetLength(data); i++) {
+		if (data[i] != '%') {																									// It's an % (integer, string, character or other)?
+			ImgWriteCharacterPixel(img, x, y, bg, fg, data[i]);																	// No
+		} else {
+			switch (data[++i]) {																								// Yes, let's parse it!
+			case 's': {																											// String
+				ImgWriteStringPixel(img, x, y, bg, fg, (PWChar)VariadicArg(va, PWChar));
+				break;
+			}
+			case 'c': {																											// Character
+				ImgWriteCharacterPixel(img, x, y, bg, fg, (Char)VariadicArg(va, Int));
+				break;
+			}
+			case 'd': {																											// Decimal Number
+				ImgWriteIntegerPixel(img, x, y, bg, fg, (UIntPtr)VariadicArg(va, UIntPtr), 10);
+				break;
+			}
+			case 'x': {																											// Hexadecimal Number
+				ImgWriteIntegerPixel(img, x, y, bg, fg, (UIntPtr)VariadicArg(va, UIntPtr), 16);
+				break;
+			}
+			case 'b': {																											// Change the background color
+				bg = (UIntPtr)VariadicArg(va, UIntPtr);
+				break;
+			}
+			case 'f': {																											// Change the foreground color
+				fg = (UIntPtr)VariadicArg(va, UIntPtr);
+				break;
+			}
+			case 'r': {																											// Reset the bg and the fg
+				bg = oldbg;
+				fg = oldfg;
+				break;
+			}
+			default: {																											// Probably it's another % (probably)
+				ImgWriteCharacterPixel(img, x, y, bg, fg, data[i]);
+				break;
+			}
+			}
+		}
+	}
+	
+	VariadicEnd(va);
 }
 
 Void ImgWriteFormated(PImage img, Boolean cursor, PUIntPtr x, PUIntPtr y, UIntPtr bg, UIntPtr fg, PWChar data, ...) {

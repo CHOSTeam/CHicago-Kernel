@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on April 17 of 2019, at 21:57 BRT
-// Last edited on April 19 of 2019, at 11:28 BRT
+// Last edited on August 31 of 2019, at 18:23 BRT
 
 #ifndef __CHICAGO_IMG_H__
 #define __CHICAGO_IMG_H__
@@ -59,6 +59,7 @@ extern Char _binary_font_psf_end;
 PImage ImgCreate(UIntPtr width, UIntPtr height, UInt8 bpp);
 PImage ImgCreateBuf(UIntPtr width, UIntPtr height, UInt8 bpp, UIntPtr buf);
 PImage ImgLoadBMPBuf(PUInt8 buf);
+PImage ImgRescale(PImage src, UIntPtr width, UIntPtr height);
 Void ImgExtractRGB(UIntPtr c, PUInt8 r, PUInt8 g, PUInt8 b);
 Void ImgExtractARGB(UIntPtr c, PUInt8 a, PUInt8 r, PUInt8 g, PUInt8 b);
 UIntPtr ImgCreateRGB(UInt8 r, UInt8 g, UInt8 b);
@@ -75,9 +76,13 @@ Void ImgDrawRoundedRectangle(PImage img, UIntPtr x, UIntPtr y, UIntPtr w, UIntPt
 Void ImgFillRoundedRectangle(PImage img, UIntPtr x, UIntPtr y, UIntPtr w, UIntPtr h, UIntPtr r, UIntPtr c);
 UIntPtr ImgBlendColors(UIntPtr a, UIntPtr b);
 Void ImgBitBlit(PImage img, PImage src, UIntPtr srcx, UIntPtr srcy, UIntPtr x, UIntPtr y, UIntPtr w, UIntPtr h, UInt8 mode);
+Void ImgWriteCharacterPixel(PImage img, PUIntPtr x, PUIntPtr y, UIntPtr bg, UIntPtr fg, WChar data);
 Void ImgWriteCharacter(PImage img, Boolean cursor, PUIntPtr x, PUIntPtr y, UIntPtr bg, UIntPtr fg, WChar data);
+Void ImgWriteStringPixel(PImage img, PUIntPtr x, PUIntPtr y, UIntPtr bg, UIntPtr fg, PWChar data);
 Void ImgWriteString(PImage img, Boolean cursor, PUIntPtr x, PUIntPtr y, UIntPtr bg, UIntPtr fg, PWChar data);
+Void ImgWriteIntegerPixel(PImage img, PUIntPtr x, PUIntPtr y, UIntPtr bg, UIntPtr fg, UIntPtr data, UInt8 base);
 Void ImgWriteInteger(PImage img, Boolean cursor, PUIntPtr x, PUIntPtr y, UIntPtr bg, UIntPtr fg, UIntPtr data, UInt8 base);
+Void ImgWriteFormatedPixel(PImage img, PUIntPtr x, PUIntPtr y, UIntPtr bg, UIntPtr fg, PWChar data, ...);
 Void ImgWriteFormated(PImage img, Boolean cursor, PUIntPtr x, PUIntPtr y, UIntPtr bg, UIntPtr fg, PWChar data, ...);
 
 #endif		// __CHICAGO_IMG_H__
