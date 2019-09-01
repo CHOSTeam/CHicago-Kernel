@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 27 of 2018, at 14:42 BRT
-// Last edited on June 16 of 2019, at 14:28 BRT
+// Last edited on September 01 of 2019, at 15:07 BRT
 
 #ifndef __CHICAGO_PROCESS_H__
 #define __CHICAGO_PROCESS_H__
@@ -24,6 +24,15 @@ typedef struct {
 	struct ThreadStruct *owner;
 } Lock, *PLock;
 
+typedef struct ProcessPtyStruct {
+	Boolean krnl;
+	Void (*kbdclear)(struct ProcessPtyStruct*);
+	Boolean (*kbdback)(struct ProcessPtyStruct*);
+	Boolean (*kbdwrite)(struct ProcessPtyStruct*, WChar);
+	Boolean (*read)(struct ProcessPtyStruct*, UIntPtr, PWChar);
+	Boolean (*write)(struct ProcessPtyStruct*, UIntPtr, PWChar);
+} ProcessPty, *PProcessPty;
+
 typedef struct {
 	UIntPtr id;
 	PWChar name;
@@ -37,6 +46,7 @@ typedef struct {
 	PList files;
 	IntPtr last_fid;
 	PWChar exec_path;
+	PProcessPty pty;
 } Process, *PProcess;
 
 typedef struct ThreadStruct {
@@ -82,6 +92,9 @@ UIntPtr PsWaitThread(UIntPtr id);
 UIntPtr PsWaitProcess(UIntPtr id);
 Void PsLock(PLock lock);
 Void PsUnlock(PLock lock);
+PProcessPty PsGetPty(Void);
+Void PsAllocPty(Void (*kbdclear)(PProcessPty), Boolean (*kbdback)(PProcessPty), Boolean (*kbdwrite)(PProcessPty, WChar), Boolean (*read)(PProcessPty, UIntPtr, PWChar), Boolean (*write)(PProcessPty, UIntPtr, PWChar));
+Void PsFreePty(Void);
 Void PsWakeup(PList list, PThread th);
 Void PsWakeup2(PList list, PThread th);
 PContext PsCreateContext(UIntPtr entry, UIntPtr userstack, Boolean user);

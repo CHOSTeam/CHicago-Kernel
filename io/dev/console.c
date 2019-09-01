@@ -1,118 +1,48 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 07 of 2018, at 10:41 BRT
-// Last edited on December 16 of 2018, at 14:01 BRT
+// Last edited on September 01 of 2019, at 15:04 BRT
 
-#include <chicago/console.h>
 #include <chicago/debug.h>
 #include <chicago/device.h>
 #include <chicago/panic.h>
 #include <chicago/process.h>
 
-Queue ConsoleDeviceKeyboardQueue;
-UIntPtr ConsoleDeviceKeyboardNewLineLoc = 0;
-Boolean ConsoleDeviceKeyboardNewLine = False;
-Lock ConsoleDeviceKeyboardQueueReadLock = { False, Null };
-Lock ConsoleDeviceKeyboardQueueWriteLock = { False, Null };
-
-Void ConsoleDeviceReadKeyboard(UIntPtr len, PWChar buf) {
-	if (len == 0) {
-		return;
+Void ConsoleDeviceClearKeyboard(Void) {
+	PProcessPty pty = PsGetPty();																					// Get this process pty
+	
+	if (pty != Null && pty->kbdclear != Null) {																		// And redirect to the->kbdclear function
+		pty->kbdclear(pty);
 	}
-	
-	while ((ConsoleDeviceKeyboardQueue.length < len) && !ConsoleDeviceKeyboardNewLine) {							// Let's fill the queue with the chars that we need
-		PsSwitchTask(Null);
-	}
-	
-	PsLock(&ConsoleDeviceKeyboardQueueReadLock);																	// Lock
-	
-	UIntPtr alen = ConsoleDeviceKeyboardQueue.length;																// Save the avaliable length
-	UIntPtr nlen = ConsoleDeviceKeyboardNewLineLoc + 1;
-	UIntPtr flen = ConsoleDeviceKeyboardNewLine ? nlen : alen;
-	
-	for (UIntPtr i = 0; i < flen; i++) {																			// Fill the buffer!
-		buf[i] = (UInt8)QueueRemove(&ConsoleDeviceKeyboardQueue);
-	}
-	
-	if (ConsoleDeviceKeyboardNewLine) {																				// Put a string terminator (NUL) in the end!
-		buf[nlen - 1] = 0;
-	} else {
-		buf[flen] = 0;
-	}
-	
-	ConsoleDeviceKeyboardNewLine = False;																			// Unset the ConsoleDeviceKeyboardNewLine
-	
-	PsUnlock(&ConsoleDeviceKeyboardQueueReadLock);																	// Unlock!
-}
-
-Void ConsoleDeviceWriteKeyboard(Char data) {
-	PsLock(&ConsoleDeviceKeyboardQueueWriteLock);																	// Lock
-	
-	if (data == '\n') {																								// New line?
-		ConsoleDeviceKeyboardNewLine = True;																		// Yes, set the position!
-		ConsoleDeviceKeyboardNewLineLoc = ConsoleDeviceKeyboardQueue.length;
-	}
-	
-	QueueAdd(&ConsoleDeviceKeyboardQueue, (PVoid)data);																// Add to the queue
-	PsUnlock(&ConsoleDeviceKeyboardQueueWriteLock);																	// Unlock!
 }
 
 Boolean ConsoleDeviceBackKeyboard(Void) {
-	Boolean ret = False;
-	
-	PsLock(&ConsoleDeviceKeyboardQueueReadLock);																	// Lock
-	PsLock(&ConsoleDeviceKeyboardQueueWriteLock);
-	
-	if (ConsoleDeviceKeyboardQueue.length != 0) {																	// We can do it?
-		ListRemove(&ConsoleDeviceKeyboardQueue, 0);																	// Yes, remove the first entry!
-		ret = True;
-	}
-	
-	PsUnlock(&ConsoleDeviceKeyboardQueueWriteLock);
-	PsUnlock(&ConsoleDeviceKeyboardQueueReadLock);																	// Unlock!
-	
-	return ret;
+	PProcessPty pty = PsGetPty();																					// Get this process pty
+	return (pty != Null && pty->kbdback != Null) ? pty->kbdback(pty) : False;										// And redirect to the ->kbdback function
 }
 
-Void ConsoleDeviceClearKeyboard(Void) {
-	PsLock(&ConsoleDeviceKeyboardQueueReadLock);																	// Lock
-	PsLock(&ConsoleDeviceKeyboardQueueWriteLock);
-	
-	while (ConsoleDeviceKeyboardQueue.length != 0) {																// Clean!
-		QueueRemove(&ConsoleDeviceKeyboardQueue);
-	}
-	
-	PsUnlock(&ConsoleDeviceKeyboardQueueWriteLock);
-	PsUnlock(&ConsoleDeviceKeyboardQueueReadLock);																	// Unlock!
+Boolean ConsoleDeviceReadKeyboard(UIntPtr len, PWChar buf) {
+	PProcessPty pty = PsGetPty();																					// Get this process pty
+	return (pty != Null && pty->read != Null) ? pty->read(pty, len, buf) : False;									// And redirect to the ->read function
+}
+
+Boolean ConsoleDeviceWriteKeyboard(WChar data) {
+	PProcessPty pty = PsGetPty();																					// Get this process pty
+	return (pty != Null && pty->kbdwrite != Null) ? pty->kbdwrite(pty, data) : False;								// And redirect to the ->kbdwrite function
 }
 
 Boolean ConsoleDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) {
 	(Void)dev; (Void)off;																							// Avoid compiler's unused parameter warning
-	ConsoleDeviceReadKeyboard(len, (PWChar)buf);																	// Redirect to RawKeyboardDeviceRead
-	return True;
+	return ConsoleDeviceReadKeyboard(len, (PWChar)buf);																// Redirect to ConsoleDeviceReadKeyboard
 }
 
 Boolean ConsoleDeviceWrite(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) {
 	(Void)dev; (Void)off;																							// Avoid compiler's unused parameter warning
-	
-	if (buf == Null || len == 0) {																					// First, sanity check!
-		return False;
-	} else if (len == 1) {																							// We have only one character?
-		ConWriteCharacter(buf[0]);																					// Yes!
-	} else {
-		ConWriteString((PWChar)buf);																				// No, so it's a string...
-	}
-	
-	return True;
+	PProcessPty pty = PsGetPty();																					// Get this process pty
+	return (pty != Null && pty->write != Null) ? pty->write(pty, len, (PWChar)buf) : False;							// And redirect to the ->write function
 }
 
 Void ConsoleDeviceInit(Void) {
-	ConsoleDeviceKeyboardQueue.head = Null;																			// Init the keyboard queue
-	ConsoleDeviceKeyboardQueue.tail = Null;
-	ConsoleDeviceKeyboardQueue.length = 0;
-	ConsoleDeviceKeyboardQueue.free = False;
-	ConsoleDeviceKeyboardQueue.user = False;
-	
 	if (!FsAddDevice(L"Console", Null, ConsoleDeviceRead, ConsoleDeviceWrite, Null)) {								// Try to add the console device
 		DbgWriteFormated("PANIC! Failed to add the Console device\r\n");											// Failed...
 		Panic(PANIC_KERNEL_INIT_FAILED);

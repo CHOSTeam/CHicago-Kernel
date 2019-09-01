@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 14 of 2018, at 22:38 BRT
-// Last edited on June 15 of 2019, at 11:08 BRT
+// Last edited on September 01 of 2019, at 15:07 BRT
 
 #ifndef __CHICAGO_DEVICE_H__
 #define __CHICAGO_DEVICE_H__
@@ -34,8 +34,8 @@ Void RawKeyboardDeviceRead(UIntPtr len, PUInt8 buf);
 Void RawKeyboardDeviceWrite(UInt8 data);
 Void RawKeyboardDeviceClear(Void);
 
-Void ConsoleDeviceReadKeyboard(UIntPtr len, PWChar buf);
-Void ConsoleDeviceWriteKeyboard(Char data);
+Boolean ConsoleDeviceReadKeyboard(UIntPtr len, PWChar buf);
+Boolean ConsoleDeviceWriteKeyboard(WChar data);
 Boolean ConsoleDeviceBackKeyboard(Void);
 Void ConsoleDeviceClearKeyboard(Void);
 

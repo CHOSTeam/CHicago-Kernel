@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 14 of 2018, at 22:35 BRT
-// Last edited on June 15 of 2019, at 11:09 BRT
+// Last edited on September 01 of 2019, at 15:09 BRT
 
 #define __CHICAGO_NETWORK__
 
@@ -10,6 +10,7 @@
 #include <chicago/device.h>
 #include <chicago/list.h>
 #include <chicago/panic.h>
+#include <chicago/process.h>
 #include <chicago/string.h>
 
 PList FsDeviceList = Null;

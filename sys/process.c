@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 27 of 2018, at 14:59 BRT
-// Last edited on April 19 of 2019, at 19:55 BRT
+// Last edited on September 01 of 2019, at 15:10 BRT
 
 #define __CHICAGO_PROCESS__
 
@@ -21,6 +21,7 @@
 #include <chicago/virt.h>
 
 extern Void KernelMainLate(Void);
+extern PProcessPty KernelInitPty(Void);
 
 Boolean PsTaskSwitchEnabled = False;
 PThread PsCurrentThread = Null;
@@ -94,6 +95,7 @@ PProcess PsCreateProcessInt(PWChar name, UIntPtr entry, UIntPtr dir) {
 	proc->files = ListNew(False, False);																										// Init our process file list
 	proc->last_fid = 0;
 	proc->exec_path = Null;
+	proc->pty = KernelInitPty();																												// TEMP
 	
 	if (proc->files == Null) {
 		ListFree(proc->threads);																												// Failed...
@@ -332,6 +334,47 @@ Void PsUnlock(PLock lock) {
 	PsUnlockTaskSwitch(old);																													// Unlock (the task switching)
 }
 
+PProcessPty PsGetPty(Void) {
+	return ((PsCurrentThread == Null) || (PsCurrentProcess == Null) || (PsCurrentProcess->pty == Null)) ? Null : PsCurrentProcess->pty;			// Just return the pty from this process
+}
+
+Void PsAllocPty(Void (*kbdclear)(PProcessPty), Boolean (*kbdback)(PProcessPty), Boolean (*kbdwrite)(PProcessPty, WChar), Boolean (*read)(PProcessPty, UIntPtr, PWChar), Boolean (*write)(PProcessPty, UIntPtr, PWChar)) {
+	if ((PsCurrentThread == Null) || (PsCurrentProcess == Null)) {																				// Sanity checks
+		return;
+	}
+	
+	PsFreePty();																																// First, free the current pty (if we have any)
+	
+	PsCurrentProcess->pty = (PProcessPty)MmAllocUserMemory(sizeof(ProcessPty));																	// Now, alloc the pty struct
+	
+	if (PsCurrentProcess->pty == Null) {
+		return;																																	// Failed :(
+	}
+	
+	PsCurrentProcess->pty->krnl = False;																										// Setup everything
+	PsCurrentProcess->pty->kbdclear = kbdclear;																													
+	PsCurrentProcess->pty->kbdback = kbdback;
+	PsCurrentProcess->pty->kbdwrite = kbdwrite;
+	PsCurrentProcess->pty->read = read;
+	PsCurrentProcess->pty->write = write;
+}
+
+Void PsFreePty(Void) {
+	PProcessPty pty = PsGetPty();																												// Get the current pty
+	
+	if (pty == Null) {
+		return;																																	// We don't have any, so we don't need to do anything :)
+	}
+	
+	if (pty->krnl) {																															// And free the pty
+		MemFree((UIntPtr)pty);
+	} else {
+		MmFreeUserMemory((UIntPtr)pty);
+	}
+	
+	PsCurrentProcess->pty = Null;																												// Finally, set that we don't have any pty anymore
+}
+
 Void PsExitThread(UIntPtr ret) {
 	if ((PsCurrentThread == Null) || (PsCurrentProcess == Null) || (PsProcessList == Null)) {													// Sanity checks
 		return;
@@ -532,6 +575,7 @@ Void PsExitProcess(UIntPtr ret) {
 		ListRemove(PsProcessList, idx);																											// Yes, remove it!
 	}
 	
+	PsFreePty();																																// Free the pty (if we have it)
 	ListFree(PsCurrentProcess->files);																											// Free the file list
 	MmFreeDirectory(PsCurrentProcess->dir);																										// Free the directory
 	MemFree((UIntPtr)PsCurrentProcess->name);																									// Free the name
