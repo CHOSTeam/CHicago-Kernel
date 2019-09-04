@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:04 BRT
-// Last edited on December 14 of 2018, at 23:45 BRT
+// Last edited on September 01 of 2019, at 17:14 BRT
 
 #ifndef __CHICAGO_SC_H__
 #define __CHICAGO_SC_H__
@@ -36,6 +36,9 @@ UIntPtr ScPsWaitThread(UIntPtr id);
 UIntPtr ScPsWaitProcess(UIntPtr id);
 Void ScPsLock(PLock lock);
 Void ScPsUnlock(PLock lock);
+PProcessPty ScPsGetPty(Void);
+Void ScPsAllocPty(Void (*kbdclear)(PProcessPty), Boolean (*kbdback)(PProcessPty), Boolean (*kbdwrite)(PProcessPty, WChar), Boolean (*read)(PProcessPty, UIntPtr, PWChar), Boolean (*write)(PProcessPty, UIntPtr, PWChar));
+Void ScPsFreePty(Void);
 Void ScPsExitThread(UIntPtr ret);
 Void ScPsExitProcess(UIntPtr ret);
 Void ScPsForceSwitch(Void);

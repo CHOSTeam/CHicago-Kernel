@@ -1,7 +1,7 @@
 # File author is Ítalo Lima Marconato Matias
 #
 # Created on May 11 of 2018, at 13:14 BRT
-# Last edited on September 01 of 2019, at 15:08 BRT
+# Last edited on September 04 of 2019, at 18:29 BRT
 
 ARCH ?= x86
 VERBOSE ?= false
@@ -35,6 +35,7 @@ endif
 OBJECTS := main.c.o
 OBJECTS += ds/list.c.o ds/queue.c.o ds/stack.c.o
 OBJECTS += exec/chexec.c.o exec/exec.c.o exec/lib.c.o
+OBJECTS += gui/render.c.o gui/window.c.o
 OBJECTS += io/console.c.o io/device.c.o io/debug.c.o io/file.c.o
 OBJECTS += io/kpty.c.o
 OBJECTS += io/dev/console.c.o io/dev/framebuffer.c.o io/dev/rawkeyboard.c.o io/dev/rawmouse.c.o
@@ -49,7 +50,7 @@ OBJECTS += sys/config.c.o sys/ipc.c.o sys/panic.c.o sys/process.c.o
 OBJECTS += sys/rand.c.o sys/sc.c.o sys/shell.c.o sys/string.c.o
 OBJECTS += vid/display.c.o vid/img.c.o
 
-OTHER_OBJECTS := font.psf splash.bmp
+OTHER_OBJECTS := font.psf splash.bmp theme.bmp
 
 ARCH_OBJECTS := $(addprefix build/$(ARCH)_$(SUBARCH)/arch/$(ARCH)/,$(ARCH_OBJECTS))
 OBJECTS := $(addprefix build/$(ARCH)_$(SUBARCH)/,$(OBJECTS))

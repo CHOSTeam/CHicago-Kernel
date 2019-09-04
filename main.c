@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:14 BRT
-// Last edited on June 15 of 2019, at 09:58 BRT
+// Last edited on September 04 of 2019, at 19:08 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/arch.h>
@@ -11,6 +11,7 @@
 #include <chicago/display.h>
 #include <chicago/exec.h>
 #include <chicago/file.h>
+#include <chicago/gui.h>
 #include <chicago/ipc.h>
 #include <chicago/net.h>
 #include <chicago/nls.h>
@@ -122,23 +123,26 @@ Void KernelMainLate(Void) {
 	}
 	
 	DbgSetRedirect(False);																									// Disable the redirect feature of the Dbg* functions, as it may be enabled
-	ConSetSurface(DispBackBuffer, True, False, 0, 0);																		// Init the console
+	/*ConSetSurface(DispBackBuffer, True, False, 0, 0);																		// Init the console
 	ConClearScreen();																										// Clear the screen
 	ConWriteFormated(NlsGetMessage(NLS_OS_NAME), CHICAGO_ARCH);																// Print some system informations
 	ConWriteFormated(NlsGetMessage(NLS_OS_CODENAME), CHICAGO_CODENAME);
-	ConWriteFormated(NlsGetMessage(NLS_OS_VSTR), CHICAGO_MAJOR, CHICAGO_MINOR, CHICAGO_BUILD);
+	ConWriteFormated(NlsGetMessage(NLS_OS_VSTR), CHICAGO_MAJOR, CHICAGO_MINOR, CHICAGO_BUILD);*/
 	
-	PProcess proc = ExecCreateProcess(L"\\System\\Programs\\sesmgr.che");													// Let's try to create the session manager process
+	GuiInit();																												// Init the gui
+	
+	/*PProcess proc = ExecCreateProcess(L"\\System\\Programs\\sesmgr.che");													// Let's try to create the session manager process
 	
 	if (proc == Null) {
-		ShellRun();																											// ... So let's fallback to the kernel shell
-	} else {
-		UIntPtr pid = proc->id;																								// Save the pid of the session manager process
-		PsAddProcess(proc);																									// RUN!
-		PsWaitProcess(pid);																									// Session manager is not supposed to exit, so this function should never return
-		DbgWriteFormated("PANIC! The \\System\\Programs\\sesmgr.che program closed\r\n");									// ...
-		Panic(PANIC_KERNEL_UNEXPECTED_ERROR);																				// Panic
+		DbgWriteFormated("PANIC! Couldn't open \\System\\Programs\\sesmgr.che\r\n");										// Failed...
+		Panic(PANIC_KERNEL_INIT_FAILED);
 	}
+	
+	UIntPtr pid = proc->id;																									// Save the pid of the session manager process
+	PsAddProcess(proc);																										// RUN!
+	PsWaitProcess(pid);																										// Session manager is not supposed to exit, so this function should never return
+	DbgWriteFormated("PANIC! The \\System\\Programs\\sesmgr.che program closed\r\n");										// ...
+	Panic(PANIC_KERNEL_UNEXPECTED_ERROR);*/																					// Panic
 	
 	while (True) { PsSwitchTask(PsDontRequeue); }																			// Don't requeue us
 }
