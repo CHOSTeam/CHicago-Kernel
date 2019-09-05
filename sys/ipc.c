@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 15 of 2018, at 22:20 BRT
-// Last edited on December 15 of 2018, at 09:07 BRT
+// Last edited on September 05 of 2019, at 14:43 BRT
 
 #define __CHICAGO_IPC__
 
@@ -117,12 +117,17 @@ Void IpcSendMessage(PWChar name, UInt32 msg, UIntPtr size, PUInt8 buf) {
 	}
 	
 	PsLockTaskSwitch(old);																// Lock
+	
+	PAllocBlock oldab = PsCurrentProcess->alloc_base;									// Save the old alloc_base (we need to switch it)
+	
 	MmSwitchDirectory(port->proc->dir);													// Switch to the dir of the owner of this port
+	PsCurrentProcess->alloc_base = port->proc->alloc_base;								// Switch the alloc_base
 	
 	PUInt8 new = (PUInt8)MmAllocUserMemory(size);										// Alloc the new buffer in the target process userspace
 	
 	if (new == Null) {
 		MmSwitchDirectory(PsCurrentProcess->dir);										// Failed
+		PsCurrentProcess->alloc_base = oldab;
 		PsUnlockTaskSwitch(old);
 		return;
 	}
@@ -134,6 +139,7 @@ Void IpcSendMessage(PWChar name, UInt32 msg, UIntPtr size, PUInt8 buf) {
 	if (mes == Null) {
 		MmFreeUserMemory((UIntPtr)new);													// Failed
 		MmSwitchDirectory(PsCurrentProcess->dir);
+		PsCurrentProcess->alloc_base = oldab;
 		PsUnlockTaskSwitch(old);
 		return;
 	}
@@ -145,6 +151,7 @@ Void IpcSendMessage(PWChar name, UInt32 msg, UIntPtr size, PUInt8 buf) {
 	
 	QueueAdd(&port->queue, mes);														// Add to the msg queue
 	MmSwitchDirectory(PsCurrentProcess->dir);											// Switch back to the old dir
+	PsCurrentProcess->alloc_base = oldab;												// Switch back to the old alloc_base
 	PsUnlockTaskSwitch(old);															// Unlock
 }
 
