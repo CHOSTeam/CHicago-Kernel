@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on September 04 of 2019, at 18:29 BRT
-// Last edited on September 05 of 2019, at 14:45 BRT
+// Last edited on September 05 of 2019, at 17:51 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -12,6 +12,8 @@
 #include <chicago/panic.h>
 #include <chicago/string.h>
 
+IntPtr GuiMouseX = 0;
+IntPtr GuiMouseY = 0;
 UIntPtr GuiDirectory = 0;
 PImage GuiDefaultTheme = Null;
 Boolean GuiInitialized = False;
@@ -21,6 +23,18 @@ List GuiWindowList = { Null, Null, 0, False, True };
 
 static Void GuiBitBlit(UIntPtr sx, UIntPtr sy, UIntPtr dx, UIntPtr dy, UIntPtr w, UIntPtr h) {
 	DispBitBlit(GuiDefaultTheme, sx, sy, dx, dy, w, h, BITBLIT_MODE_COPY);																// Just redirect to DispBitBlit
+}
+
+static Void GuiBitBlitTransparent(UIntPtr sx, UIntPtr sy, UIntPtr dx, UIntPtr dy, UIntPtr w, UIntPtr h) {
+	for (UIntPtr y = 0; y < h; y++) {																									// Yeah, we need to do it manually :(
+		for (UIntPtr x = 0; x < w; x++) {
+			UIntPtr pixel = ImgGetPixel(GuiDefaultTheme, sx + x, sy + y);																// Get the pixel
+			
+			if (pixel != 0xFF010101) {																									// Transparent pixel?
+				DispPutPixel(dx + x, dy + y, pixel);																					// Nope :)
+			}
+		}
+	}
 }
 
 static Void GuiBitBlitRescale(UIntPtr sx, UIntPtr sy, UIntPtr sw, UIntPtr sh, UIntPtr dx, UIntPtr dy, UIntPtr dw, UIntPtr dh) {
@@ -56,31 +70,75 @@ static Void GuiRenderThread(Void) {
 			PGuiWindowInt wint = (PGuiWindowInt)i->data;																				// Get the internal window struct
 			UIntPtr oldd = MmGetCurrentDirectory();																						// The current directory
 			PGuiWindow window = wint->window;																							// The window
+			Boolean top = i->next == Null;																								// Save if this window is in the top
 			UIntPtr newd = wint->dir;																									// And the directory that we are going to switch into
 			
 			if (oldd != newd) {																											// Switch the directory
 				MmSwitchDirectory(newd);
 			}
 			
-			DispFillRectangle(window->x, window->y, window->w, window->h, 0xFFEBEBE4);													// Draw the background
-			GuiBitBlit(0, 0, window->x, window->y, 4, 23);																				// Draw the top left corner of the frame
-			GuiBitBlit(8, 0, window->x + window->w - 4, window->y, 4, 23);																// Draw the top right corner of the frame
-			GuiBitBlit(0, 29, window->x, window->y + window->h - 4, 4, 4);																// Draw the bottom left corner of the frame
-			GuiBitBlit(8, 29, window->x + window->w - 4, window->y + window->h - 4, 4, 4);												// Draw the bottom right corner of the frame
-			GuiBitBlitRescale(4, 0, 4, 23, window->x + 4, window->y, window->w - 8, 23);												// Draw the top part of the frame
-			GuiBitBlitRescale(4, 29, 4, 4, window->x + 4, window->y + window->h - 4, window->w - 8, 4);									// Draw the bottom part of the frame
-			GuiBitBlitRescale(0, 23, 4, 6, window->x, window->y + 23, 4, window->h - 27);												// Draw the left part of the frame
-			GuiBitBlitRescale(8, 23, 4, 6, window->x + window->w - 4, window->y + 23, 4, window->h - 27);								// Draw the right part of the frame
+			DispFillRectangle(window->x, window->y, window->w, window->h, 0xFFEBEBE4);													// Yes, draw the background
+			
+			if (top) {																													// Now, let's draw the frame, this one is in the top?
+				GuiBitBlit(0, 0, window->x, window->y, 4, 23);																			// Yes!
+				GuiBitBlit(8, 0, window->x + window->w - 4, window->y, 4, 23);
+				GuiBitBlit(0, 29, window->x, window->y + window->h - 4, 4, 4);
+				GuiBitBlit(8, 29, window->x + window->w - 4, window->y + window->h - 4, 4, 4);
+				GuiBitBlitRescale(4, 0, 4, 23, window->x + 4, window->y, window->w - 8, 23);
+				GuiBitBlitRescale(4, 29, 4, 4, window->x + 4, window->y + window->h - 4, window->w - 8, 4);
+				GuiBitBlitRescale(0, 23, 4, 6, window->x, window->y + 23, 4, window->h - 27);
+				GuiBitBlitRescale(8, 23, 4, 6, window->x + window->w - 4, window->y + 23, 4, window->h - 27);
+			} else {
+				GuiBitBlit(12, 0, window->x, window->y, 4, 23);																			// Nope :(
+				GuiBitBlit(20, 0, window->x + window->w - 4, window->y, 4, 23);
+				GuiBitBlit(12, 29, window->x, window->y + window->h - 4, 4, 4);
+				GuiBitBlit(20, 29, window->x + window->w - 4, window->y + window->h - 4, 4, 4);
+				GuiBitBlitRescale(16, 0, 4, 23, window->x + 4, window->y, window->w - 8, 23);
+				GuiBitBlitRescale(16, 29, 4, 4, window->x + 4, window->y + window->h - 4, window->w - 8, 4);
+				GuiBitBlitRescale(12, 23, 4, 6, window->x, window->y + 23, 4, window->h - 27);
+				GuiBitBlitRescale(20, 23, 4, 6, window->x + window->w - 4, window->y + 23, 4, window->h - 27);
+			}
 			
 			if (oldd != newd) {																											// Switch back to our directory
 				MmSwitchDirectory(oldd);
 			}
 		}
 		
+		GuiBitBlitTransparent(24, 0, GuiMouseX, GuiMouseY, 12, 20);																		// Draw the mouse cursor
+		
 		GuiShouldRefresh = False;																										// Done!
 		
 		DispRefresh();																													// Refresh
 		PsUnlock(&GuiRefreshLock);																										// Unlock
+	}
+}
+
+static Void GuiMouseThread(Void) {
+	MousePacket packet;																													// This is where the mouse info will go
+	
+	while (True) {																														// Let's start!
+		RawMouseDeviceRead(&packet);																									// Wait until mouse input
+		
+		GuiMouseX += packet.offx;																										// Update the mouse position
+		GuiMouseY += packet.offy;
+		
+		if (GuiMouseX < 0) {																											// Fix the position
+			GuiMouseX = 0;
+		}
+		
+		if (GuiMouseY < 0) {
+			GuiMouseY = 0;
+		}
+		
+		if ((UIntPtr)GuiMouseX >= DispGetWidth()) {
+			GuiMouseX = DispGetWidth() - 1;
+		}
+		
+		if ((UIntPtr)GuiMouseY >= DispGetHeight()) {
+			GuiMouseY = DispGetHeight() - 1;
+		}
+		
+		GuiRefresh();																													// And refresh
 	}
 }
 
@@ -151,6 +209,16 @@ static Void GuiInitThread(Void) {
 	
 	if (th == Null) {
 		PsCurrentProcess->id = 0;																										// Failed, set this process id to 0 and panic (a bit hacky lol)
+		DbgWriteFormated("PANIC! Couldn't init the GUI\r\n");
+		Panic(PANIC_KERNEL_INIT_FAILED);
+	}
+	
+	PsAddThread(th);																													// Add the thread
+	
+	th = PsCreateThread((UIntPtr)GuiMouseThread, 0, False);																				// Create the mouse handle thread
+	
+	if (th == Null) {
+		PsCurrentProcess->id = 0;
 		DbgWriteFormated("PANIC! Couldn't init the GUI\r\n");
 		Panic(PANIC_KERNEL_INIT_FAILED);
 	}
@@ -296,5 +364,8 @@ Void GuiInit(Void) {
 	}
 	
 	PsAddProcess(proc);																													// Add it
-	GuiAddWindow(GuiCreateWindow(Null, 100, 100, 400, 400));																			// Create a test window
+	
+	GuiAddWindow(GuiCreateWindow(Null, 200, 300, 300, 200));																			// Create some test windows
+	GuiAddWindow(GuiCreateWindow(Null, 400, 400, 400, 400));
+	GuiAddWindow(GuiCreateWindow(Null, 600, 20, 600, 600));
 }

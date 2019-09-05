@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 19 of 2018, at 14:17 BRT
-// Last edited on October 19 of 2018, at 18:23 BRT
+// Last edited on September 05 of 2019, at 18:18 BRT
 
 #include <chicago/arch/idt.h>
 #include <chicago/arch/port.h>
@@ -9,7 +9,7 @@
 #include <chicago/device.h>
 
 static UInt8 MouseCycle = 0;
-static Int8 MouseByte[3];
+static Int16 MouseByte[3];
 
 static Void MouseHandler(PRegisters regs) {
 	(Void)regs;
@@ -46,7 +46,10 @@ static Void MouseHandler(PRegisters regs) {
 				buttons |= 0x04;
 			}
 			
-			RawMouseDeviceWrite(MouseByte[1], -MouseByte[2], buttons);									// Let's use this packet!
+			UInt16 sx = ((MouseByte[0] << 4) & 0x100);													// Get the sign of the x pos
+			UInt16 sy = ((MouseByte[0] << 3) & 0x100);													// Get the sign of the y pos
+			
+			RawMouseDeviceWrite(MouseByte[1] - sx, -(MouseByte[2] - sy), buttons);						// Let's use this packet!
 			
 			MouseCycle = 0;
 			

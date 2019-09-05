@@ -193,11 +193,12 @@ UIntPtr ImgGetPixel(PImage img, UIntPtr x, UIntPtr y) {
 		y = img->height - 1;
 	}
 	
-	UIntPtr c = 0;
+	UIntPtr c = 0xFF000000;
 	
 	if (img->bpp == 3) {																										// Get the pixel!
-		c = *((PUInt16)(img->buf + (y * (img->width * 3)) + (x * 3)));
-		*((PUInt8)(((UIntPtr)&c) + 2)) = *((PUInt8)(img->buf + (y * (img->width * 3)) + (x * 3) + 2));
+		UInt16 lp = *((PUInt16)(img->buf + (y * (img->width * 3)) + (x * 3)));
+		UInt8 hp = *((PUInt8)(img->buf + (y * (img->width * 3)) + (x * 3) + 2));
+		c |= lp | (hp << 16);
 	} else if (img->bpp == 4) {
 		c = *((PUInt32)(img->buf + (y * (img->width * 4)) + (x * 4)));
 	}
@@ -226,7 +227,7 @@ Void ImgPutPixel(PImage img, UIntPtr x, UIntPtr y, UIntPtr c) {
 	
 	if (img->bpp == 3) {																										// Write the pixel!
 		*((PUInt16)(img->buf + (y * (img->width * 3)) + (x * 3))) = (UInt16)c;
-		*((PUInt8)(img->buf + (y * (img->width * 3)) + (x * 3) + 2)) = *((PUInt8)(((UIntPtr)&c) + 2));
+		*((PUInt8)(img->buf + (y * (img->width * 3)) + (x * 3) + 2)) = (UInt8)(c >> 16);
 	} else if (img->bpp == 4) {
 		*((PUInt32)(img->buf + (y * (img->width * 4)) + (x * 4))) = (UInt32)c;
 	}
