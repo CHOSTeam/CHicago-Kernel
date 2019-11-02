@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 18:48 BRT
-// Last edited on January 22 of 2019, at 19:35 BRT
+// Last edited on November 01 of 2019, at 16:21 BRT
 
 #ifndef __CHICAGO_MM_H__
 #define __CHICAGO_MM_H__
@@ -29,6 +29,7 @@
 #define MM_MAP_READ 0x04
 #define MM_MAP_WRITE 0x08
 #define MM_MAP_EXEC 0x10
+#define MM_MAP_AOR 0x20
 #define MM_MAP_KDEF (MM_MAP_KERNEL | MM_MAP_READ | MM_MAP_WRITE)
 #define MM_MAP_UDEF (MM_MAP_USER | MM_MAP_READ | MM_MAP_WRITE)
 
@@ -60,7 +61,10 @@ UIntPtr MmGetCurrentDirectory(Void);
 Void MmSwitchDirectory(UIntPtr dir);
 
 UIntPtr MmAllocUserMemory(UIntPtr size);
+UIntPtr MmAllocAlignedUserMemory(UIntPtr size, UIntPtr align);
 Void MmFreeUserMemory(UIntPtr block);
+Void MmFreeAlignedUserMemory(UIntPtr block);
 UIntPtr MmReallocUserMemory(UIntPtr block, UIntPtr size);
+UIntPtr MmGetUserAllocSize(UIntPtr block);
 
 #endif		// __CHICAGO_MM_H__

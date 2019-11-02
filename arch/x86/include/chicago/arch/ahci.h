@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on January 17 of 2019, at 21:07 BRT
-// Last edited on June 15 of 2019, at 09:55 BRT
+// Last edited on October 29 of 2019, at 17:06 BRT
 
 #ifndef __CHICAGO_ARCH_AHCI_H__
 #define __CHICAGO_ARCH_AHCI_H__
@@ -11,10 +11,18 @@
 #define FIS_TYPE_REG_H2D 0x27
 
 typedef volatile struct {
+#ifdef ARCH_64
+	UInt64 clb;
+#else
 	UInt32 clb;
 	UInt32 clbu;
+#endif
+#ifdef ARCH_64
+	UInt64 fb;
+#else
 	UInt32 fb;
 	UInt32 fbu;
+#endif
 	UInt32 is;
 	UInt32 ie;
 	UInt32 cmd;
@@ -61,14 +69,22 @@ typedef struct {
 	UInt8 pmp : 4;
 	UInt16 prdtl;
 	Volatile UInt32 prdbc;
+#ifdef ARCH_64
+	UInt64 ctba;
+#else
 	UInt32 ctba;
 	UInt32 ctbau;
+#endif
 	UInt32 res1[4];
 } HBACmd, *PHBACmd;
 
 typedef struct {
+#ifdef ARCH_64
+	UInt64 dba;
+#else
 	UInt32 dba;
 	UInt32 dbau;
+#endif
 	UInt32 res0;
 	UInt32 dbc : 22;
 	UInt32 res1 : 9;

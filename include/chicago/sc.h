@@ -1,13 +1,11 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:04 BRT
-// Last edited on September 01 of 2019, at 17:14 BRT
+// Last edited on October 29 of 2019, at 17:17 BRT
 
 #ifndef __CHICAGO_SC_H__
 #define __CHICAGO_SC_H__
 
-#include <chicago/file.h>
-#include <chicago/ipc.h>
 #include <chicago/process.h>
 
 typedef struct {
@@ -36,9 +34,6 @@ UIntPtr ScPsWaitThread(UIntPtr id);
 UIntPtr ScPsWaitProcess(UIntPtr id);
 Void ScPsLock(PLock lock);
 Void ScPsUnlock(PLock lock);
-PProcessPty ScPsGetPty(Void);
-Void ScPsAllocPty(Void (*kbdclear)(PProcessPty), Boolean (*kbdback)(PProcessPty), Boolean (*kbdwrite)(PProcessPty, WChar), Boolean (*read)(PProcessPty, UIntPtr, PWChar), Boolean (*write)(PProcessPty, UIntPtr, PWChar));
-Void ScPsFreePty(Void);
 Void ScPsExitThread(UIntPtr ret);
 Void ScPsExitProcess(UIntPtr ret);
 Void ScPsForceSwitch(Void);
@@ -55,9 +50,5 @@ Boolean ScFsControlFile(IntPtr file, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf);
 UIntPtr ScFsGetFileSize(IntPtr file);
 UIntPtr ScFsGetPosition(IntPtr file);
 Void ScFsSetPosition(IntPtr file, UIntPtr base, UIntPtr off);
-Boolean ScIpcCreatePort(PWChar name);
-Void ScIpcRemovePort(PWChar name);
-Void ScIpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf);
-PIpcMessage ScIpcReceiveMessage(PWChar name);
 
 #endif		// __CHICAGO_SC_H__

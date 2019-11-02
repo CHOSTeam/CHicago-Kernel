@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on September 21 of 2018, at 20:40 BRT
-// Last edited on October 12 of 2018, at 16:12 BRT
+// Last edited on September 09 of 2019, at 16:14 BRT
 
 #include <chicago/alloc-int.h>
 #include <chicago/mm.h>
@@ -128,6 +128,35 @@ UIntPtr MmAllocUserMemory(UIntPtr size) {
 	return block->start;
 }
 
+UIntPtr MmAllocAlignedUserMemory(UIntPtr size, UIntPtr align) {
+	if (size == 0) {																											// Some checks...
+		return 0;
+	} else if (align == 0) {
+		return 0;
+	} else if ((align & (align - 1)) != 0) {
+		return 0;
+	}
+	
+	UIntPtr p0 = MmAllocUserMemory(size + align);																				// Alloc the memory
+	
+	if (p0 == 0) {
+		return 0;																												// Failed/Out of memory :(
+	}
+	
+	MmFreeUserMemory(p0);																										// Free the allocated memory
+	
+	UIntPtr p1 = MmAllocUserMemory(size + align + ((p0 + (align - (p0 % align))) - p0));										// Now, let's alloc the real amount of bytes that we're going to use
+	
+	if (p1 == 0) {
+		return 0;																												// Failed
+	}
+	
+	PUIntPtr p2 = (PUIntPtr)(p1 + (align - (p1 % align)));
+	p2[-1] = p1;
+	
+	return (UIntPtr)p2;
+}
+
 Void MmFreeUserMemory(UIntPtr addr) {
 	if (addr == 0) {																											// Some checks...
 		return;
@@ -156,6 +185,10 @@ Void MmFreeUserMemory(UIntPtr addr) {
 	}
 }
 
+Void MmFreeAlignedUserMemory(UIntPtr block) {
+	MmFreeUserMemory(((PUIntPtr)block)[-1]);
+}
+
 UIntPtr MmReallocUserMemory(UIntPtr addr, UIntPtr size) {
 	if ((addr == 0) || (size == 0)) {
 		return 0;
@@ -176,4 +209,12 @@ UIntPtr MmReallocUserMemory(UIntPtr addr, UIntPtr size) {
 	MmFreeUserMemory(addr);
 	
 	return new;
+}
+
+UIntPtr MmGetUserAllocSize(UIntPtr addr) {
+	if ((addr == 0) || (addr >= MM_USER_END)) {																					// Sanity check	
+		return 0;
+	}
+	
+	return ((PAllocBlock)(addr - sizeof(AllocBlock)))->size;																	// Return the size
 }

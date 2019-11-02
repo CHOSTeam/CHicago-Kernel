@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 15 of 2018, at 20:03 BRT
-// Last edited on April 277 of 2019, at 11:00 BRT
+// Last edited on October 25 of 2019, at 16:57 BRT
 
 #ifndef __CHICAGO_STRING_H__
 #define __CHICAGO_STRING_H__

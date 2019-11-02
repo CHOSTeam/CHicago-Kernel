@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 24 of 2018, at 14:57 BRT
-// Last edited on November 10 of 2018, at 11:34 BRT
+// Last edited on October 27 of 2019, at 18:08 BRT
 
 #include <chicago/arch/idt.h>
 #include <chicago/arch/port.h>
@@ -17,14 +17,18 @@ static Void PITHandler(PRegisters regs) {
 
 Void TimerSleep(UIntPtr ms) {
 	UIntPtr eticks = PITTicks + ms;				// Let's sleep for n mseconds!
-	while (PITTicks < eticks)
+	
+	while (PITTicks < eticks) {
 		Asm Volatile("pause");
+	}
 }
 
 Void TimerSleepProcess(UIntPtr ms) {
 	UIntPtr eticks = PITTicks + ms;				// Let's sleep for n mseconds!
-	while (PITTicks < eticks)
+	
+	while (PITTicks < eticks) {
 		PsSwitchTask(Null);
+	}
 }
 
 Void PITInit(Void) {

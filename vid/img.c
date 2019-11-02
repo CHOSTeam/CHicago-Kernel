@@ -1,19 +1,29 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on April 18 of 2019, at 12:04 BRT
-// Last edited on September 05 of 2019, at 18:55 BRT
+// Last edited on September 09 of 2019, at 15:46 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/display.h>
 #include <chicago/img.h>
+#include <chicago/mm.h>
 #include <chicago/string.h>
 
-PImage ImgCreate(UIntPtr width, UIntPtr height, UInt8 bpp) {
+static UIntPtr ImgAlloc(UIntPtr size, Boolean user, Boolean align) {
+	if (align) {
+		size = MM_PAGE_SIZE - (size % MM_PAGE_SIZE);																			// Align the size to MM_PAGE_SIZE
+		return user ? MmAllocAlignedUserMemory(size, MM_PAGE_SIZE) : MemAAllocate(size, MM_PAGE_SIZE);							// And alloc aligned to MM_PAGE_SIZE...
+	}
+	
+	return user ? MmAllocUserMemory(size) : MemAllocate(size);																	// Just call the normal functions
+}
+
+PImage ImgCreate(UIntPtr width, UIntPtr height, UInt8 bpp, Boolean user, Boolean align) {
 	if ((width == 0) || (height == 0) || ((bpp != 3) && (bpp != 4))) {															// Sanity checks
 		return Null;
 	}
 	
-	PImage img = (PImage)MemAllocate(sizeof(Image) + width * height * bpp);														// Alloc the img struct + the buffer
+	PImage img = (PImage)ImgAlloc(sizeof(Image) + width * height * bpp, user, align);											// Alloc the img struct + the buffer
 	
 	if (img != Null) {																											// Failed?
 		img->width = width;																										// Nope, so let's setup everything
@@ -25,12 +35,12 @@ PImage ImgCreate(UIntPtr width, UIntPtr height, UInt8 bpp) {
 	return img;
 }
 
-PImage ImgCreateBuf(UIntPtr width, UIntPtr height, UInt8 bpp, UIntPtr buf) {
+PImage ImgCreateBuf(UIntPtr width, UIntPtr height, UInt8 bpp, UIntPtr buf, Boolean user, Boolean align) {
 	if ((width == 0) || (height == 0) || ((bpp != 3) && (bpp != 4))) {															// Sanity checks
 		return Null;
 	}
 	
-	PImage img = (PImage)MemAllocate(sizeof(Image));																			// Alloc the img struct
+	PImage img = (PImage)ImgAlloc(sizeof(Image), user, align);																	// Alloc the img struct
 	
 	if (img != Null) {																											// Failed?
 		img->width = width;																										// Nope, so let's setup everything
@@ -42,7 +52,7 @@ PImage ImgCreateBuf(UIntPtr width, UIntPtr height, UInt8 bpp, UIntPtr buf) {
 	return img;
 }
 
-PImage ImgLoadBMPBuf(PUInt8 buf) {
+PImage ImgLoadBMPBuf(PUInt8 buf, Boolean user, Boolean align) {
 	if (buf == Null) {																											// Sanity check
 		return Null;
 	}
@@ -55,7 +65,7 @@ PImage ImgLoadBMPBuf(PUInt8 buf) {
 		return Null;
 	}
 	
-	PImage img = ImgCreate(hdr->width, hdr->height, hdr->bpp / 8);																// Create the return img struct
+	PImage img = ImgCreate(hdr->width, hdr->height, hdr->bpp / 8, user, align);													// Create the return img struct
 	
 	if (img == Null) {
 		return Null;																											// Failed :(
@@ -77,7 +87,7 @@ PImage ImgRescale(PImage src, UIntPtr width, UIntPtr height) {
 		return Null;
 	}
 	
-	PImage img = ImgCreate(width, height, src->bpp);																			// Create the new image
+	PImage img = ImgCreate(width, height, src->bpp, src->user, src->align);														// Create the new image
 	
 	if (img == Null) {
 		return Null;																											// ...

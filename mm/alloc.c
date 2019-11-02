@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 13 of 2018, at 00:44 BRT
-// Last edited on April 20 of 2019, at 18:09 BRT
+// Last edited on October 26 of 2019, at 12:34 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/alloc-int.h>
@@ -236,4 +236,12 @@ UIntPtr MemReallocate(UIntPtr block, UIntPtr size) {
 	}
 	
 	return block;
+}
+
+UIntPtr MemGetAllocSize(UIntPtr block) {
+	if (block == 0) {																											// Sanity check	
+		return 0;
+	}
+	
+	return ((PAllocBlock)(block - sizeof(AllocBlock)))->size;																	// Return the size
 }

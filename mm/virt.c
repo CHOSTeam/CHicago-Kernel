@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on September 15 of 2018, at 12:46 BRT
-// Last edited on February 26 of 2019, at 20:13 BRT
+// Last edited on November 01 of 2019, at 16:49 BRT
 
 #include <chicago/mm.h>
 #include <chicago/process.h>
@@ -53,6 +53,7 @@ UInt32 VirtConvertFlags2(UInt32 flags) {
 
 UIntPtr VirtAllocAddress(UIntPtr addr, UIntPtr size, UInt32 flags) {
 	Boolean check = True;
+	Boolean aor = (flags & VIRT_FLAGS_AOR) == VIRT_FLAGS_AOR;
 	
 	if ((size % MM_PAGE_SIZE) != 0) {													// Page align the size
 		size += MM_PAGE_SIZE - (size % MM_PAGE_SIZE);
@@ -88,22 +89,28 @@ UIntPtr VirtAllocAddress(UIntPtr addr, UIntPtr size, UInt32 flags) {
 	UInt32 flgs = VirtConvertFlags(flags);												// Convert the flags
 	
 	for (UIntPtr i = addr; i < addr + size; i += MM_PAGE_SIZE) {						// And let's do it!
-		UIntPtr phys = MmReferencePage(0);												// Alloc some phys space
+		UIntPtr phys = aor ? 0 : MmReferencePage(0);									// Alloc some phys space (if we need to)
 		
-		if (phys == 0) {																// Failed?
+		if (phys == 0 && !aor) {														// Failed?
 			for (UIntPtr j = old; j < i; j += MM_PAGE_SIZE) {							// Yes, so undo everything :(
-				MmDereferencePage(MmGetPhys(j));
+				if ((MmQuery(j) & MM_MAP_AOR) != MM_MAP_AOR) {
+					MmDereferencePage(MmGetPhys(j));
+				}
+				
 				MmUnmap(j);
 			}
 			
 			return 0;
 		}
 		
-		if (!MmMap(i, phys, flgs)) {													// Try to map!
+		if (!MmMap(i, phys, flgs | (aor ? MM_MAP_AOR : 0))) {							// Try to map!
 			MmDereferencePage(phys);													// Failed, undo everything...
 			
 			for (UIntPtr j = old; j < i; j += MM_PAGE_SIZE) {
-				MmDereferencePage(MmGetPhys(j));
+				if ((MmQuery(j) & MM_MAP_AOR) != MM_MAP_AOR) {
+					MmDereferencePage(MmGetPhys(j));
+				}
+				
 				MmUnmap(j);
 			}
 			
@@ -134,7 +141,10 @@ Boolean VirtFreeAddress(UIntPtr addr, UIntPtr size) {
 			return False;																// No...
 		}
 		
-		MmDereferencePage(MmGetPhys(i));												// Free/dereference the physical page
+		if ((MmQuery(i) & MM_MAP_AOR) != MM_MAP_AOR) {									// Free/dereference the physical page
+			MmDereferencePage(MmGetPhys(i));
+		}
+		
 		MmUnmap(i);																		// And unmap
 	}
 	
@@ -169,7 +179,11 @@ Boolean VirtChangeProtection(UIntPtr addr, UIntPtr size, UInt32 flags) {
 	for (UIntPtr i = addr; i < addr + size; i += MM_PAGE_SIZE) {						// Let's try to do it!
 		if (!MmQuery(i)) {																// Mapped?
 			return False;																// No...
-		} else if (!MmMap(i, MmGetPhys(i), flgs)) {										// Try to remap with the new protection
+		}
+		
+		UInt32 extra = ((MmQuery(i) & MM_MAP_AOR) == MM_MAP_AOR) ? MM_MAP_AOR : 0;		// Get if we need to set the AOR flag
+		
+		if (!MmMap(i, MmGetPhys(i), flgs | extra)) {									// Try to remap with the new protection
 			return False;																// Failed :(
 		}
 	}

@@ -1,35 +1,13 @@
 // File author is Ítalo Lima Marconato Matias
 //
-// Created on November 10 of 2018, at 21:18 BRT
-// Last edited on August 30 of 2019, at 14:00 BRT
+// Created on November 02 of 2019, at 12:12 BRT
+// Last edited on November 02 of 2019, at 19:22 BRT
 
 #include <chicago/alloc.h>
-#include <chicago/chexec.h>
-#include <chicago/exec.h>
-#include <chicago/file.h>
+#include <chicago/elf.h>
 #include <chicago/mm.h>
 #include <chicago/process.h>
 #include <chicago/string.h>
-
-static PFsNode ExecFindFile(PWChar path) {
-	if (path == Null) {																											// Sanity check
-		return Null;
-	} else if (path[0] == '\\') {																								// Non-relative path?
-		return FsOpenFile(path);																								// Yes :)
-	}
-	
-	PWChar full = FsJoinPath(L"\\System\\Libraries", path);																		// Let's search on \System\Libraries
-	
-	if (full == Null) {																											// Failed to join the path?
-		return Null;																											// Yes :(
-	}
-	
-	PFsNode file = FsOpenFile(full);																							// Try to open it!
-	
-	MemFree((UIntPtr)full);																										// Free the full path
-	
-	return file;																												// Return
-}
 
 static PWChar ExecGetName(PWChar path, Boolean user) {
 	if (path == Null) {																											// Sanity check
@@ -105,215 +83,28 @@ static PExecHandle ExecGetHandle(PWChar path) {
 	return Null;
 }
 
-static Boolean ExecGetSymbolLocation(PCHExecSymbol sym, UIntPtr base, PExecHandle handle, PUIntPtr outloc) {
-	if ((sym == Null) || (base == 0) || (handle == Null) || (outloc == Null)) {													// Sanity checks
-		return False;
-	} else if ((sym->flags & CHEXEC_SYMBOL_FLAGS_UNDEF) == CHEXEC_SYMBOL_FLAGS_UNDEF) {											// Try to find in other handles?
-		ListForeach(PsCurrentProcess->global_handle_list, i) {																	// Yes
-			UIntPtr sm = ExecGetSymbol((PExecHandle)i->data, sym->name);														// Try to get the symbol in this handle
-			
-			if (sm != 0) {
-				*outloc = sm;																									// Found!
-				return True;
-			}
-		}
-		
-		ListForeach(handle->deps, i) {																							// Let's try to get the symbol in the private dependency handles
-			UIntPtr sm = ExecGetSymbol((PExecHandle)i->data, sym->name);
-			
-			if (sm != 0) {
-				*outloc = sm;																									// Found!
-				return True;
-			}
-		}
-		
-		return False;
-	} else {
-		*outloc = base + sym->virt;																								// No, just add the base to it!
-		return True;
-	}
-}
-
-static Boolean ExecFillDependencyTable(PList list, PUInt8 buf) {
-	if ((list == Null) || (buf == Null)) {																						// Sanity checks
-		return False;
-	}
-	
-	PCHExecHeader hdr = (PCHExecHeader)buf;
-	PCHExecDependency dep = (PCHExecDependency)(((UIntPtr)buf) + hdr->dep_start);
-	
-	for (UIntPtr i = 0; i < hdr->dep_count; i++) {																				// Let's do it!
-		PExecHandle handle = ExecLoadLibrary(dep->name, False);																	// Try to load this library
-		
-		if (handle == Null) {
-			ListForeach(list, i) {																								// Failed...
-				ExecCloseLibrary((PExecHandle)i->data);
-			}
-			
-			return False;
-		} else if (!handle->resolved) {
-			ExecCloseLibrary(handle);																							// Recursive...
-			
-			ListForeach(list, i) {
-				ExecCloseLibrary((PExecHandle)i->data);
-			}
-			
-			return False;
-		} else if (!ListAdd(list, handle)) {																					// Try to add it to the list!
-			ExecCloseLibrary(handle);																							// Failed...
-			
-			ListForeach(list, i) {
-				ExecCloseLibrary((PExecHandle)i->data);
-			}
-			
-			return False;
-		}
-		
-		dep = (PCHExecDependency)(((UIntPtr)dep) + sizeof(CHExecDependency) + (dep->name_len * sizeof(WChar)));
-	}
-	
-	return True;
-}
-
-Boolean ExecFillSymbolTable(PList list, UIntPtr base, PExecHandle handle, PUInt8 buf) {
-	if ((list == Null) || (base == 0) || (handle == Null) || (buf == Null)) {													// Sanity checks
-		return False;
-	}
-	
-	PCHExecHeader hdr = (PCHExecHeader)buf;
-	PCHExecSymbol sym = (PCHExecSymbol)(((UIntPtr)buf) + hdr->st_start);
-	
-	for (UIntPtr i = 0; i < hdr->st_count; i++) {																				// Let's do it!
-		PExecSymbol sm = (PExecSymbol)MmAllocUserMemory(sizeof(ExecSymbol));													// Alloc space for the sumbol
-		
-		if (sm == Null) {
-			ListForeach(list, i) {																								// Failed...
-				MmFreeUserMemory((UIntPtr)(((PExecSymbol)i->data)->name));
-				MmFreeUserMemory((UIntPtr)i->data);
-			}
-			
-			return False;
-		}
-		
-		sm->name = (PWChar)MmAllocUserMemory(sym->name_len * sizeof(WChar));													// Alloc space for the name
-		
-		if (sm->name == Null) {
-			MmFreeUserMemory((UIntPtr)sm);																						// Failed...
-			
-			ListForeach(list, i) {
-				MmFreeUserMemory((UIntPtr)(((PExecSymbol)i->data)->name));
-				MmFreeUserMemory((UIntPtr)i->data);
-			}
-			
-			return False;
-		}
-		
-		StrCopy(sm->name, sym->name);																							// Copy the name
-		
-		if (!ExecGetSymbolLocation(sym, base, handle, &sm->loc)) {																// Get the symbol location
-			MmFreeUserMemory((UIntPtr)sm->name);																				// Failed...
-			MmFreeUserMemory((UIntPtr)sm);
-			
-			ListForeach(list, i) {
-				MmFreeUserMemory((UIntPtr)(((PExecSymbol)i->data)->name));
-				MmFreeUserMemory((UIntPtr)i->data);
-			}
-			
-			return False;
-		} else if (!ListAdd(list, sm)) {																						// Try to add it to the list!
-			MmFreeUserMemory((UIntPtr)sm->name);																				// Failed...
-			MmFreeUserMemory((UIntPtr)sm);
-			
-			ListForeach(list, i) {
-				MmFreeUserMemory((UIntPtr)(((PExecSymbol)i->data)->name));
-				MmFreeUserMemory((UIntPtr)i->data);
-			}
-			
-			return False;
-		}
-		
-		sym = (PCHExecSymbol)(((UIntPtr)sym) + sizeof(CHExecSymbol) + (sym->name_len * sizeof(WChar)));
-	}
-	
-	return True;
-}
-
-Boolean ExecRelocate(UIntPtr base, PExecHandle handle, PUInt8 buf) {
-	if ((base == 0) || (handle == Null) || (buf == Null)) {																		// Sanity checks
-		return False;
-	}
-	
-	PCHExecHeader hdr = (PCHExecHeader)buf;
-	PCHExecRelocation rel = (PCHExecRelocation)(((UIntPtr)buf) + hdr->rel_start);
-	
-	for (UIntPtr i = 0; i < hdr->rel_count; i++) {																				// Let's do it...
-		UIntPtr incr = rel->incr;
-		
-		if ((rel->op & CHEXEC_REL_OP_REL) == CHEXEC_REL_OP_REL) {																// Relative
-			incr -= rel->virt;
-		} else if ((rel->op & CHEXEC_REL_OP_SYM) == CHEXEC_REL_OP_SYM) {														// Symbol
-			UIntPtr sym = ExecGetSymbol(Null, rel->name);																		// Try to get the symbol
-			
-			if (sym == 0) {
-				return False;																									// Failed
-			}
-			
-			incr += sym;
-		} else if ((rel->op & CHEXEC_REL_OP_REL_SYM) == CHEXEC_REL_OP_REL_SYM) {												// Relative symbol
-			UIntPtr sym = ExecGetSymbol(Null, rel->name);																		// Try to get the symbol
-			
-			if (sym == 0) {
-				return False;																									// Failed
-			}
-			
-			incr += sym - (base + rel->virt);
-		} else {
-			incr += base;																										// Absolute
-		}
-		
-		if ((rel->op & CHEXEC_REL_OP_BYTE) == CHEXEC_REL_OP_BYTE) {																// Byte
-			*((PUInt8)(base + rel->virt)) += (UInt8)incr;
-		} else if ((rel->op & CHEXEC_REL_OP_WORD) == CHEXEC_REL_OP_WORD) {														// Word
-			*((PUInt16)(base + rel->virt)) += (UInt16)incr;
-		} else if ((rel->op & CHEXEC_REL_OP_DWORD) == CHEXEC_REL_OP_DWORD) {													// DWord
-			*((PUInt32)(base + rel->virt)) += (UInt32)incr;
-		}
-		
-		rel = (PCHExecRelocation)(((UIntPtr)rel) + sizeof(CHExecRelocation) + (rel->name_len * sizeof(WChar)));
-	}
-	
-	return True;
-}
-
-static Boolean ExecLoadLibraryInt(PExecHandle handle, PUInt8 buf) {
-	if (!CHExecValidateHeader(buf, CHEXEC_HEADER_FLAGS_LIBRARY)) {																// Validate the header
-		ListFree(handle->deps);																									// Invalid CHExec file :(
+static Boolean ExecLoadLibraryInt(PExecHandle handle, PELFHdr hdr) {
+	if (!ELFCheck(hdr)) {																										// Validate the header
+		ListFree(handle->deps);																									// Invalid dynamic ELF file :(
 		ListFree(handle->symbols);
 		MmFreeUserMemory((UIntPtr)handle->name);
-		
 		return False;
 	}
 	
-	handle->base = CHExecLoadSections(buf);																						// Load the sections
+	handle->base = ELFLoadSections(hdr);																						// Load the sections
 	
 	if (handle->base == 0) {
 		ListFree(handle->deps);																									// Failed, free everything
 		ListFree(handle->symbols);
 		MmFreeUserMemory((UIntPtr)handle->name);
-		
 		return False;
-	}
-	
-	if (!ExecFillDependencyTable(handle->deps, buf)) {																			// Load the dependencies
+	} else if (!ELFLoadDeps(hdr, handle)) {																						// Load the dependencies
 		MmFreeUserMemory(handle->base);																							// Failed, free everything
 		ListFree(handle->deps);
 		ListFree(handle->symbols);
 		MmFreeUserMemory((UIntPtr)handle->name);
-		
 		return False;
-	}
-	
-	if (!ExecFillSymbolTable(handle->symbols, handle->base, handle, buf)) {														// Fill the symbol table
+	} else if (!ELFAddSymbols(hdr, handle)) {																					// Fill the symbol table
 		ListForeach(handle->deps, i) {																							// Failed, close all the dep handles
 			ExecCloseLibrary((PExecHandle)i->data);
 		}
@@ -324,9 +115,7 @@ static Boolean ExecLoadLibraryInt(PExecHandle handle, PUInt8 buf) {
 		MmFreeUserMemory((UIntPtr)handle->name);
 		
 		return False;
-	}
-	
-	if (!ExecRelocate(handle->base, handle, buf)) {																				// Relocate
+	} else if (!ELFRelocate(hdr, handle->base)) {																				// Finally, relocate!
 		ListForeach(handle->symbols, i) {																						// Failed, free the symbol table
 			MmFreeUserMemory((UIntPtr)(((PExecSymbol)i->data)->name));
 			MmFreeUserMemory((UIntPtr)i->data);
@@ -383,7 +172,7 @@ PExecHandle ExecLoadLibrary(PWChar path, Boolean global) {
 		return Null;																											// Failed
 	}
 	
-	PFsNode file = ExecFindFile(path);																							// Try to open it
+	PFsNode file = ELFFindFile(path);																							// Try to open it
 	
 	if (file == Null) {
 		MemFree((UIntPtr)name);																									// Failed
@@ -395,15 +184,11 @@ PExecHandle ExecLoadLibrary(PWChar path, Boolean global) {
 	if (buf == Null) {
 		FsCloseFile(file);																										// Failed
 		MemFree((UIntPtr)name);
-		
 		return Null;
-	}
-	
-	if (!FsReadFile(file, 0, file->length, buf)) {																				// Try to read it!
+	} else if (!FsReadFile(file, 0, file->length, buf)) {																		// Try to read it!
 		MemFree((UIntPtr)buf);																									// Failed
 		FsCloseFile(file);
 		MemFree((UIntPtr)name);
-		
 		return Null;
 	}
 	
@@ -414,7 +199,6 @@ PExecHandle ExecLoadLibrary(PWChar path, Boolean global) {
 	if (handle == Null) {
 		MemFree((UIntPtr)buf);																									// Failed...
 		MemFree((UIntPtr)name);
-		
 		return Null;
 	}
 	
@@ -426,7 +210,6 @@ PExecHandle ExecLoadLibrary(PWChar path, Boolean global) {
 		MmFreeUserMemory((UIntPtr)handle);																						// Failed...
 		MemFree((UIntPtr)buf);
 		MemFree((UIntPtr)name);
-		
 		return Null;
 	}
 	
@@ -437,7 +220,6 @@ PExecHandle ExecLoadLibrary(PWChar path, Boolean global) {
 		MmFreeUserMemory((UIntPtr)handle);
 		MemFree((UIntPtr)buf);
 		MemFree((UIntPtr)name);
-		
 		return Null;
 	}
 	
@@ -449,14 +231,10 @@ PExecHandle ExecLoadLibrary(PWChar path, Boolean global) {
 		MmFreeUserMemory((UIntPtr)handle);
 		MemFree((UIntPtr)buf);
 		MemFree((UIntPtr)name);
-		
 		return Null;
-	}
-	
-	if (!ExecLoadLibraryInt(handle, buf)) {																						// Run the internal routines for loading it!
+	} else if (!ExecLoadLibraryInt(handle, (PELFHdr)buf)) {																		// Run the internal routines for loading it!
 		MmFreeUserMemory((UIntPtr)handle);																						// Failed to load it...
 		MemFree((UIntPtr)buf);
-		
 		return Null;
 	}
 	

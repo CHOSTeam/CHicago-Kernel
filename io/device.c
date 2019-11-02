@@ -1,9 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 14 of 2018, at 22:35 BRT
-// Last edited on September 01 of 2019, at 15:09 BRT
-
-#define __CHICAGO_NETWORK__
+// Last edited on October 28 of 2019, at 10:23 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -109,45 +107,6 @@ Boolean FsAddCdRom(PVoid priv, Boolean (*read)(PDevice, UIntPtr, UIntPtr, PUInt8
 	}
 	
 	return True;
-}
-
-Boolean FsAddNetworkDevice(PNetworkDevice dev, Boolean (*write)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*control)(PDevice, UIntPtr, PUInt8, PUInt8)) {
-	if (FsDeviceList == Null) {													// Device list was initialized?
-		return False;															// No...
-	}
-	
-	UIntPtr nlen = StrFormat(Null, L"Network%d", dev->id);						// Get the length of the name
-	PWChar name = (PWChar)MemAllocate(nlen);									// Alloc space for the name
-	
-	if (name == Null) {
-		return False;															// Failed
-	}
-	
-	StrFormat(name, L"Network%d", dev->id);										// Format the name string!
-	
-	if (!FsAddDevice(name, dev, Null, write, control)) {						// Try to add it!
-		MemFree((UIntPtr)name);													// Failed, free the name and return
-		return False;
-	}
-	
-	return True;
-}
-
-Boolean FsRemoveNetworkDevice(PNetworkDevice dev) {
-	UIntPtr nlen = StrFormat(Null, L"Network%d", dev->id);						// Get the length of the name
-	PWChar name = (PWChar)MemAllocate(nlen);									// Alloc space for the name
-	
-	if (name == Null) {
-		return False;															// Failed
-	}
-	
-	StrFormat(name, L"Network%d", dev->id);										// Format the name string!
-	
-	Boolean ret = FsRemoveDevice(name);											// Try to remove it!
-	
-	MemFree((UIntPtr)name);														// Free the name in the end
-	
-	return ret;
 }
 
 Boolean FsRemoveDevice(PWChar name) {
@@ -261,7 +220,5 @@ Void FsInitDevices(Void) {
 	NullDeviceInit();																// Add the Null device
 	ZeroDeviceInit();																// Add the Zero device
 	ConsoleDeviceInit();															// Add the Console device
-	RawMouseDeviceInit();															// Add the RawMouse device
-	RawKeyboardDeviceInit();														// Add the RawKeyboard device
 	FrameBufferDeviceInit();														// Add the FrameBuffer device
 }

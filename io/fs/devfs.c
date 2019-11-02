@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 16 of 2018, at 18:29 BRT
-// Last edited on December 10 of 2018, at 17:28 BRT
+// Last edited on October 29 of 2019, at 16:56 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -55,7 +55,7 @@ Boolean DevFsOpenFile(PFsNode node) {
 Void DevFsCloseFile(PFsNode node) {
 	if (node == Null) {																			// Null pointer?
 		return;																					// Yes
-	} else if (StrCompare(node->name, L"\\")) {													// Root directory?
+	} else if (StrCompare(node->name, L"/")) {													// Root directory?
 		return;																					// Yes, DON'T FREE IT, NEVER!
 	}
 	
@@ -150,31 +150,31 @@ Boolean DevFsControlFile(PFsNode file, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf) {
 }
 
 Void DevFsInit(Void) {
-	PWChar path = StrDuplicate(L"\\Devices");													// Try to duplicate the path string
+	PWChar path = StrDuplicate(L"/Devices");													// Try to duplicate the path string
 	
 	if (path == Null) {																			// Failed?
-		DbgWriteFormated("PANIC! Couldn't mount \\Devices\r\n");								// Yes (halt, as we need DevFs for everything)
+		DbgWriteFormated("PANIC! Couldn't mount /Devices\r\n");									// Yes (halt, as we need DevFs for everything)
 		Panic(PANIC_KERNEL_INIT_FAILED);
 	}
 	
 	PWChar type = StrDuplicate(L"DevFs");														// Try to duplicate the type string
 	
 	if (type == Null) {																			// Failed?
-		DbgWriteFormated("PANIC! Couldn't mount \\Devices\r\n");								// Yes (same as above)
+		DbgWriteFormated("PANIC! Couldn't mount /Devices\r\n");									// Yes (same as above)
 		Panic(PANIC_KERNEL_INIT_FAILED);
 	}
 	
 	PFsNode root = (PFsNode)MemAllocate(sizeof(FsNode));										// Try to alloc some space for the root directory
 	
 	if (root == Null) {																			// Failed?
-		DbgWriteFormated("PANIC! Couldn't mount \\Devices\r\n");								// Yes (same as above)
+		DbgWriteFormated("PANIC! Couldn't mount /Devices\r\n");									// Yes (same as above)
 		Panic(PANIC_KERNEL_INIT_FAILED);
 	}
 	
-	root->name = StrDuplicate(L"\\");															// Try to duplicate the root directory string
+	root->name = StrDuplicate(L"/");															// Try to duplicate the root directory string
 	
 	if (root->name == Null) {																	// Failed?
-		DbgWriteFormated("PANIC! Couldn't mount \\Devices\r\n");								// Yes (same as above)
+		DbgWriteFormated("PANIC! Couldn't mount /Devices\r\n");									// Yes (same as above)
 		Panic(PANIC_KERNEL_INIT_FAILED);
 	}
 	
@@ -192,7 +192,7 @@ Void DevFsInit(Void) {
 	root->control = Null;
 	
 	if (!FsAddMountPoint(path, type, root)) {													// Try to add this device
-		DbgWriteFormated("PANIC! Couldn't mount \\Devices\r\n");								// Failed (same as above)
+		DbgWriteFormated("PANIC! Couldn't mount /Devices\r\n");									// Failed (same as above)
 		Panic(PANIC_KERNEL_INIT_FAILED);
 	}
 }

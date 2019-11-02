@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 17 of 2018, at 16:10 BRT
-// Last edited on August 30 of 2019, at 16:56 BRT
+// Last edited on November 02 of 2019, at 18:12 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/file.h>
@@ -52,7 +52,7 @@ Boolean Iso9660OpenFile(PFsNode node) {
 Void Iso9660CloseFile(PFsNode node) {
 	if (node == Null) {																								// Null pointer?
 		return;																										// Yes
-	} else if (StrCompare(node->name, L"\\")) {																		// Root directory?
+	} else if (StrCompare(node->name, L"/")) {																		// Root directory?
 		return;																										// Yes, don't free it, it's important for us (only the umount function can free it)
 	}
 	
@@ -92,7 +92,7 @@ PWChar Iso9660ReadDirectoryEntry(PFsNode dir, UIntPtr entry) {
 	}
 	
 	for (UIntPtr i = rent->extent_length_lsb; i > 0; ) {															// Let's do it!
-		if (!dev->read(dev, (rent->extent_lba_lsb + soff) * 2048, 2048, off)) {
+		if (!dev->read(dev, (rent->extent_lba_lsb + soff) * 2048, i >= 2048 ? 2048 : i, off)) {
 			MemFree((UIntPtr)data);
 			return Null;
 		}
@@ -108,7 +108,7 @@ PWChar Iso9660ReadDirectoryEntry(PFsNode dir, UIntPtr entry) {
 	
 	UIntPtr idx = 0;
 	
-	for (off = data; (UIntPtr)(off - data) <= rent->extent_length_lsb; ) {											// Now, let's search for the file/directory of index 'i' inside of it
+	for (off = data; (UIntPtr)(off - data) < rent->extent_length_lsb; ) {											// Now, let's search for the file/directory of index 'i' inside of it
 		PIso9660DirEntry dent = (PIso9660DirEntry)off;
 		
 		if (dent->directory_record_size == 0) {																		// 0-sized directory record?
@@ -182,7 +182,7 @@ PFsNode Iso9660FindInDirectory(PFsNode dir, PWChar name) {
 	}
 	
 	for (UIntPtr i = rent->extent_length_lsb; i > 0; ) {
-		if (!dev->read(dev, (rent->extent_lba_lsb + soff) * 2048, 2048, off)) {
+		if (!dev->read(dev, (rent->extent_lba_lsb + soff) * 2048, i >= 2048 ? 2048 : i, off)) {
 			MemFree((UIntPtr)data);
 			return Null;
 		}
@@ -219,12 +219,12 @@ PFsNode Iso9660FindInDirectory(PFsNode dir, PWChar name) {
 			}
 			
 			if (dent->name[dent->name_length - 2] == ';' && dent->name[dent->name_length - 1] == '1') {
-					StrUnicodeFromC(dename, (PChar)dent->name, dent->name_length - 2);
-					dename[dent->name_length - 2] = '\0';
-				} else {
-					StrUnicodeFromC(dename, (PChar)dent->name, dent->name_length);
-					dename[dent->name_length] = '\0';
-				}
+				StrUnicodeFromC(dename, (PChar)dent->name, dent->name_length - 2);
+				dename[dent->name_length - 2] = '\0';
+			} else {
+				StrUnicodeFromC(dename, (PChar)dent->name, dent->name_length);
+				dename[dent->name_length] = '\0';
+			}
 			
 			if (StrGetLength(dename) == StrGetLength(name)) {														// Same length?
 				if (StrCompare(dename, name)) {																		// YES! It's the entry that we want?
@@ -400,7 +400,7 @@ PFsMountPoint Iso9660Mount(PFsNode file, PWChar path) {
 		return Null;
 	}
 	
-	mp->root->name = StrDuplicate(L"\\");																			// Duplicate the name
+	mp->root->name = StrDuplicate(L"/");																			// Duplicate the name
 	
 	if (mp->root->name == Null) {
 		MemFree((UIntPtr)mp->root);

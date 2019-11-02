@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:14 BRT
-// Last edited on September 01 of 2019, at 17:14 BRT
+// Last edited on October 29 of 2019, at 18:09 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/mm.h>
@@ -15,18 +15,6 @@ static Boolean ScCheckPointer(PVoid ptr) {
 	if ((ptr == Null) || (((UIntPtr)ptr) >= MM_USER_END)) {																									// Check if the pointer is inside of the userspace!
 #else
 	if ((ptr == Null) || ((UIntPtr)ptr) < MM_USER_START || ((UIntPtr)ptr) >= MM_USER_END) {																	// Same as above
-#endif
-		return False;
-	} else {
-		return True;	
-	}
-}
-	
-static Boolean ScCheckPointer2(PVoid ptr) {
-#if (MM_USER_START == 0)																																	// Let's fix an compiler warning :)
-	if ((ptr != Null) && (((UIntPtr)ptr) >= MM_USER_END)) {																									// Check if the pointer is inside of the userspace!
-#else
-	if ((ptr != Null) && (((UIntPtr)ptr) < MM_USER_START || ((UIntPtr)ptr) >= MM_USER_END)) {																// Same as above
 #endif
 		return False;
 	} else {
@@ -182,22 +170,6 @@ Void ScPsUnlock(PLock lock) {
 	}
 	
 	PsUnlock(lock);																																			// Just redirect
-}
-
-PProcessPty ScPsGetPty(Void) {
-	return PsGetPty();																																		// Just redirect
-}
-
-Void ScPsAllocPty(Void (*kbdclear)(PProcessPty), Boolean (*kbdback)(PProcessPty), Boolean (*kbdwrite)(PProcessPty, WChar), Boolean (*read)(PProcessPty, UIntPtr, PWChar), Boolean (*write)(PProcessPty, UIntPtr, PWChar)) {
-	if (!ScCheckPointer2(kbdclear) || !ScCheckPointer2(kbdback) || !ScCheckPointer2(kbdwrite) || !ScCheckPointer2(read) || !ScCheckPointer2(write)) {		// Check is the pointers are inside of the userspace
-		return;
-	}
-	
-	PsAllocPty(kbdclear, kbdback, kbdwrite, read, write);																									// Just redirect
-}
-
-Void ScPsFreePty(Void) {
-	PsFreePty();																																			// Just redirect
 }
 
 Void ScPsExitThread(UIntPtr ret) {
@@ -388,33 +360,5 @@ Void ScFsSetPosition(IntPtr file, UIntPtr base, UIntPtr off) {
 		} else if (base == 2) {																																// Base = File End
 			node->offset = node->length + off;
 		}
-	}
-}
-	
-Boolean ScIpcCreatePort(PWChar name) {
-	if (!ScCheckPointer(name)) {																															// Sanity checks
-		return False;
-	} else {
-		return IpcCreatePort(name) != Null;																													// Just redirect
-	}
-}
-
-Void ScIpcRemovePort(PWChar name) {
-	if (ScCheckPointer(name)) {																																// Sanity checks
-		IpcRemovePort(name);																																// Just redirect
-	}
-}
-
-Void ScIpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf) {
-	if (ScCheckPointer(port) && ScCheckPointer(buf)) {																										// Sanity checks
-		IpcSendMessage(port, msg, size, buf);																												// Just redirect
-	}
-}
-
-PIpcMessage ScIpcReceiveMessage(PWChar name) {
-	if (!ScCheckPointer(name)) {																															// Sanity checks
-		return Null;
-	} else {
-		return IpcReceiveMessage(name);																														// Just redirect
 	}
 }

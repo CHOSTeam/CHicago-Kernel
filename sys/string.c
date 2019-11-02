@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 15 of 2018, at 19:05 BRT
-// Last edited on August 30 of 2019, at 14:13 BRT
+// Last edited on November 02 of 2019, at 12:40 BRT
 
 #include <chicago/alloc.h>
 
@@ -221,6 +221,18 @@ static UIntPtr StrFormatWriteString(PWChar str, UIntPtr n, PWChar data) {
 	return len;																		// Return the length of the string
 }
 
+static UIntPtr StrFormatWriteCString(PWChar str, UIntPtr n, PChar data) {
+	UIntPtr len = StrGetLengthC(data);												// Get the length of the data
+	
+	if (str != Null) {																// We have our string?
+		for (UIntPtr i = 0; i < len; i++) {											// Yes, copy it!
+			str[n + i] = (WChar)data[i];
+		}
+	}
+	
+	return len;																		// Return the length of the string
+}
+
 static UIntPtr StrFormatWriteInteger(PWChar str, UIntPtr n, UIntPtr data, UInt8 base) {
 	if (data == 0) {																// Our algorithm doesn't works if the data is 0
 		if (str != Null) {															// We have our string?
@@ -264,6 +276,10 @@ UIntPtr StrFormat(PWChar str, PWChar data, ...) {
 			switch (data[++i]) {													// Yes, let's parse it!
 			case 's': {																// String
 				n += StrFormatWriteString(str, n, (PWChar)VariadicArg(va, PWChar));
+				break;
+			}
+			case 'S': {																// C String
+				n += StrFormatWriteCString(str, n, (PChar)VariadicArg(va, PChar));
 				break;
 			}
 			case 'c': {																// Character

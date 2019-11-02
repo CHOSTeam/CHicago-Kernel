@@ -1,22 +1,29 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 27 of 2018, at 14:19 BRT
-// Last edited on April 20 of 2019, at 11:36 BRT
+// Last edited on October 27 of 2019, at 22:19 BRT
 
 #include <chicago/console.h>
 #include <chicago/debug.h>
+#include <chicago/process.h>
 
+Lock DbgLock = { False, Null };
 Boolean DbgRedirect = False;
 
 Void DbgSetRedirect(Boolean red) {
-	DbgRedirect = red;
+	PsLock(&DbgLock);														// Lock
+	DbgRedirect = red;														// Set the redirect prop
+	PsUnlock(&DbgLock);														// Unlock
 }
 
 Boolean DbgGetRedirect(Void) {
-	return DbgRedirect;
+	PsLock(&DbgLock);														// Lock
+	Boolean red = DbgRedirect;												// Save the redirect prop
+	PsUnlock(&DbgLock);														// Unlock
+	return red;
 }
 
-Void DbgWriteCharacter(Char data) {
+static Void DbgWriteCharacterInt2(Char data) {
 	DbgWriteCharacterInt(data);												// Write the character
 	
 	if (DbgRedirect) {														// Redirect to the console (maybe)
@@ -24,26 +31,40 @@ Void DbgWriteCharacter(Char data) {
 	}
 }
 
+Void DbgWriteCharacter(Char data) {
+	PsLock(&DbgLock);														// Lock
+	DbgWriteCharacterInt2(data);											// Write the character
+	PsUnlock(&DbgLock);														// Unlock
+}
+
+static Void DbgWriteStringInt(PChar data) {
+	for (UInt32 i = 0; data[i] != '\0'; i++) {
+		DbgWriteCharacterInt2(data[i]);
+	}
+}
+
 Void DbgWriteString(PChar data) {
+	PsLock(&DbgLock);														// Lock!
+	
 	Boolean refresh = ConGetRefresh();
 	
 	if (DbgRedirect && refresh) {											// Redirect to the console?
 		ConSetRefresh(False);												// Yes, disable the refresh
 	}
 	
-	for (UInt32 i = 0; data[i] != '\0'; i++) {
-		DbgWriteCharacter(data[i]);
-	}
+	DbgWriteStringInt(data);												// Write the string
 	
 	if (DbgRedirect && refresh) {
 		ConSetRefresh(True);												// Enable the refresh
 		ConRefreshScreen();													// And refresh
 	}
+	
+	PsUnlock(&DbgLock);														// Unlock
 }
 
-Void DbgWriteInteger(UIntPtr data, UInt8 base) {
+static Void DbgWriteIntegerInt(UIntPtr data, UInt8 base) {
 	if (data == 0) {
-		DbgWriteCharacter('0');
+		DbgWriteCharacterInt('0');
 		return;
 	}
 	
@@ -54,10 +75,31 @@ Void DbgWriteInteger(UIntPtr data, UInt8 base) {
 		buf[i] = "0123456789ABCDEF"[data % base];
 	}
 	
-	DbgWriteString(&buf[i + 1]);
+	DbgWriteStringInt(&buf[i + 1]);
+}
+
+Void DbgWriteInteger(UIntPtr data, UInt8 base) {
+	PsLock(&DbgLock);														// Lock!
+	
+	Boolean refresh = ConGetRefresh();
+	
+	if (DbgRedirect && refresh) {											// Redirect to the console?
+		ConSetRefresh(False);												// Yes, disable the refresh
+	}
+	
+	DbgWriteIntegerInt(data, base);											// Write the integer
+	
+	if (DbgRedirect && refresh) {
+		ConSetRefresh(True);												// Enable the refresh
+		ConRefreshScreen();													// And refresh
+	}
+	
+	PsUnlock(&DbgLock);														// Unlock
 }
 
 Void DbgWriteFormated(PChar data, ...) {
+	PsLock(&DbgLock);														// Lock!
+	
 	VariadicList va;
 	VariadicStart(va, data);												// Let's start our va list with the arguments provided by the user (if any)
 	
@@ -69,27 +111,27 @@ Void DbgWriteFormated(PChar data, ...) {
 	
 	for (UInt32 i = 0; data[i] != '\0'; i++) {
 		if (data[i] != '%') {												// It's an % (integer, string, character or other)?
-			DbgWriteCharacter(data[i]);										// Nope
+			DbgWriteCharacterInt2(data[i]);									// Nope
 		} else {
 			switch (data[++i]) {											// Yes! So let's parse it!
 			case 's': {														// String
-				DbgWriteString((PChar)VariadicArg(va, PChar));
+				DbgWriteStringInt((PChar)VariadicArg(va, PChar));
 				break;
 			}
 			case 'c': {														// Character
-				DbgWriteCharacter((Char)VariadicArg(va, Int));
+				DbgWriteCharacterInt2((Char)VariadicArg(va, Int));
 				break;
 			}
 			case 'd': {														// Decimal Number
-				DbgWriteInteger((UIntPtr)VariadicArg(va, UIntPtr), 10);
+				DbgWriteIntegerInt((UIntPtr)VariadicArg(va, UIntPtr), 10);
 				break;
 			}
 			case 'x': {														// Hexadecimal Number
-				DbgWriteInteger((UIntPtr)VariadicArg(va, UIntPtr), 16);
+				DbgWriteIntegerInt((UIntPtr)VariadicArg(va, UIntPtr), 16);
 				break;
 			}
 			default: {														// None of the others...
-				DbgWriteCharacter(data[i]);
+				DbgWriteCharacterInt2(data[i]);
 				break;
 			}
 			}
@@ -102,4 +144,5 @@ Void DbgWriteFormated(PChar data, ...) {
 	}
 	
 	VariadicEnd(va);
+	PsUnlock(&DbgLock);														// Unlock
 }

@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 27 of 2018, at 14:59 BRT
-// Last edited on September 01 of 2019, at 15:10 BRT
+// Last edited on November 02 of 2019, at 16:34 BRT
 
 #define __CHICAGO_PROCESS__
 
@@ -10,18 +10,15 @@
 #include <chicago/alloc.h>
 #include <chicago/arch.h>
 #include <chicago/debug.h>
-#include <chicago/ipc.h>
 #include <chicago/mm.h>
 #include <chicago/panic.h>
 #include <chicago/process.h>
 #include <chicago/string.h>
 #include <chicago/timer.h>
 #include <chicago/list.h>
-#include <chicago/queue.h>
 #include <chicago/virt.h>
 
 extern Void KernelMainLate(Void);
-extern PProcessPty KernelInitPty(Void);
 
 Boolean PsTaskSwitchEnabled = False;
 PThread PsCurrentThread = Null;
@@ -31,6 +28,7 @@ PList PsSleepList = Null;
 PList PsWaittList = Null;
 PList PsWaitpList = Null;
 PList PsWaitlList = Null;
+PList PsKillList = Null;
 UIntPtr PsNextID = 0;
 
 PThread PsCreateThreadInt(UIntPtr entry, UIntPtr userstack, Boolean user) {
@@ -55,6 +53,7 @@ PThread PsCreateThreadInt(UIntPtr entry, UIntPtr userstack, Boolean user) {
 	th->waitl = Null;																															// We're not waiting anything (for now)
 	th->waitp = Null;
 	th->waitt = Null;
+	th->killp = False;
 	
 	return th;
 }
@@ -92,10 +91,9 @@ PProcess PsCreateProcessInt(PWChar name, UIntPtr entry, UIntPtr dir) {
 	proc->mem_usage = 0;
 	proc->handle_list = Null;
 	proc->global_handle_list = Null;
-	proc->files = ListNew(False, False);																										// Init our process file list
+	proc->files = ListNew(False, False);																										// Init the file list for the process
 	proc->last_fid = 0;
 	proc->exec_path = Null;
-	proc->pty = KernelInitPty();																												// TEMP
 	
 	if (proc->files == Null) {
 		ListFree(proc->threads);																												// Failed...
@@ -334,47 +332,6 @@ Void PsUnlock(PLock lock) {
 	PsUnlockTaskSwitch(old);																													// Unlock (the task switching)
 }
 
-PProcessPty PsGetPty(Void) {
-	return ((PsCurrentThread == Null) || (PsCurrentProcess == Null) || (PsCurrentProcess->pty == Null)) ? Null : PsCurrentProcess->pty;			// Just return the pty from this process
-}
-
-Void PsAllocPty(Void (*kbdclear)(PProcessPty), Boolean (*kbdback)(PProcessPty), Boolean (*kbdwrite)(PProcessPty, WChar), Boolean (*read)(PProcessPty, UIntPtr, PWChar), Boolean (*write)(PProcessPty, UIntPtr, PWChar)) {
-	if ((PsCurrentThread == Null) || (PsCurrentProcess == Null)) {																				// Sanity checks
-		return;
-	}
-	
-	PsFreePty();																																// First, free the current pty (if we have any)
-	
-	PsCurrentProcess->pty = (PProcessPty)MmAllocUserMemory(sizeof(ProcessPty));																	// Now, alloc the pty struct
-	
-	if (PsCurrentProcess->pty == Null) {
-		return;																																	// Failed :(
-	}
-	
-	PsCurrentProcess->pty->krnl = False;																										// Setup everything
-	PsCurrentProcess->pty->kbdclear = kbdclear;																													
-	PsCurrentProcess->pty->kbdback = kbdback;
-	PsCurrentProcess->pty->kbdwrite = kbdwrite;
-	PsCurrentProcess->pty->read = read;
-	PsCurrentProcess->pty->write = write;
-}
-
-Void PsFreePty(Void) {
-	PProcessPty pty = PsGetPty();																												// Get the current pty
-	
-	if (pty == Null) {
-		return;																																	// We don't have any, so we don't need to do anything :)
-	}
-	
-	if (pty->krnl) {																															// And free the pty
-		MemFree((UIntPtr)pty);
-	} else {
-		MmFreeUserMemory((UIntPtr)pty);
-	}
-	
-	PsCurrentProcess->pty = Null;																												// Finally, set that we don't have any pty anymore
-}
-
 Void PsExitThread(UIntPtr ret) {
 	if ((PsCurrentThread == Null) || (PsCurrentProcess == Null) || (PsProcessList == Null)) {													// Sanity checks
 		return;
@@ -419,9 +376,7 @@ Void PsExitThread(UIntPtr ret) {
 		}
 	}
 	
-	PsFreeContext(PsCurrentThread->ctx);																										// Free the context
-	MemFree((UIntPtr)PsCurrentThread);																											// And the current thread itself
-	
+	ListAdd(PsKillList, PsCurrentThread);																										// Add this thread to the kill list
 	PsUnlockTaskSwitch(old);																													// Unlock
 	PsSwitchTask(PsDontRequeue);																												// Switch to the next thread
 	ArchHalt();																																	// Halt
@@ -437,15 +392,14 @@ Void PsExitProcess(UIntPtr ret) {
 	}
 	
 	PsLockTaskSwitch(old);																														// Lock
-	MmSwitchDirectory(MmKernelDirectory);																										// Switch to the kernel directory
-	ArchSwitchToKernelStack();																													// Switch to the kernel stack
 	
 	ListForeach(PsCurrentProcess->files, i) {																									// Close all the files that this process used
 		PProcessFile pf = (PProcessFile)i->data;
-		
 		FsCloseFile(pf->file);
 		MemFree((UIntPtr)pf);
 	}
+	
+	ListFree(PsCurrentProcess->files);																											// And free the file list itself
 	
 	ListForeach(PsCurrentProcess->threads, i) {																									// Let's free and remove all the threads
 		PThread th = (PThread)i->data;
@@ -549,16 +503,6 @@ Void PsExitProcess(UIntPtr ret) {
 		}
 	}
 	
-	if (IpcPortList != Null) {																													// Let's remove any ipc port that this process created
-		ListForeach(IpcPortList, i) {
-			PIpcPort port = (PIpcPort)i->data;
-			
-			if (port->proc == PsCurrentProcess) {																								// Found?
-				IpcRemovePort(port->name);																										// Yes, remove it
-			}
-		}
-	}
-	
 	UIntPtr idx = 0;
 	Boolean found = False;
 	
@@ -575,13 +519,9 @@ Void PsExitProcess(UIntPtr ret) {
 		ListRemove(PsProcessList, idx);																											// Yes, remove it!
 	}
 	
-	PsFreePty();																																// Free the pty (if we have it)
-	ListFree(PsCurrentProcess->files);																											// Free the file list
-	MmFreeDirectory(PsCurrentProcess->dir);																										// Free the directory
-	MemFree((UIntPtr)PsCurrentProcess->name);																									// Free the name
-	MemFree((UIntPtr)PsCurrentProcess);																											// And the current process itself
-//	PsFreeContext(PsCurrentThread->ctx);																										// BUG: When we try to free the current thread context, we get a page fault
-	MemFree((UIntPtr)PsCurrentThread);																											// Free the thread struct
+	PsCurrentThread->killp = True;																												// We should also kill the process
+	
+	ListAdd(PsKillList, PsCurrentThread);																										// Add this thread to the kill list
 	PsUnlockTaskSwitch(old);																													// Unlock
 	PsSwitchTask(PsDontRequeue);																												// Switch to the next process
 	ArchHalt();																																	// Halt
@@ -651,6 +591,44 @@ Void PsWakeup2(PList list, PThread th) {
 	PsUnlockTaskSwitch(old);
 }
 
+static Void PsKillerThread(Void) {
+	while (True) {																																// In this loop. we're going to kill all the process and threads that we need to kill!
+		if (PsKillList->length == 0) {																											// We have anything to kill?
+			PsSwitchTask(Null);																													// Nope, switch into the next thread
+			continue;
+		}
+		
+		PsLockTaskSwitch(old);																													// Lock task switching
+		
+		for (PListNode i = PsKillList->tail; i != Null; i = PsKillList->tail) {																	// Let's kill everything that we need to kill
+			PThread th = (PThread)i->data;																										// Get the thread
+			
+			if (th->killp) {																													// Kill the process too?
+				MmFreeDirectory(th->parent->dir);																								// Yeah! Free the directory
+				MemFree((UIntPtr)th->parent->name);																								// Free the name
+				MemFree((UIntPtr)th->parent);																									// And the process struct itself
+			}
+			
+			PsFreeContext(th->ctx);																												// Free the thread context
+			MemFree((UIntPtr)th);																												// And free the thread struct :)
+			ListRemove(PsKillList, PsKillList->length - 1);																						// Finally, remove the thread from the kill list
+		}
+		
+		PsUnlockTaskSwitch(old);																												// Unlock task switching
+	}
+}
+
+Void PsInitKillerThread(Void) {
+	PThread th = PsCreateThread((UIntPtr)PsKillerThread, 0, False);																				// Now, let's try to create the killer thread
+	
+	if (th == Null) {
+		DbgWriteFormated("PANIC! Failed to init tasking\r\n");																					// ...
+		Panic(PANIC_KERNEL_INIT_FAILED);
+	}
+	
+	PsAddThread(th);																															// And, add it!
+}
+
 Void PsInit(Void) {
 	if ((PsThreadQueue = QueueNew(False)) == Null) {																							// Try to init the process queue
 		DbgWriteFormated("PANIC! Failed to init tasking\r\n");
@@ -678,6 +656,11 @@ Void PsInit(Void) {
 	}
 	
 	if ((PsWaitlList = ListNew(False, False)) == Null) {																						// Try to init the waitl list
+		DbgWriteFormated("PANIC! Failed to init tasking\r\n");
+		Panic(PANIC_KERNEL_INIT_FAILED);
+	}
+	
+	if ((PsKillList = ListNew(False, False)) == Null) {																							// Try to init the kill list
 		DbgWriteFormated("PANIC! Failed to init tasking\r\n");
 		Panic(PANIC_KERNEL_INIT_FAILED);
 	}

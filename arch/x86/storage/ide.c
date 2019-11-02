@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 14 of 2018, at 23:40 BRT
-// Last edited on June 15 of 2019, at 10:04 BRT
+// Last edited on November 02 of 2019, at 19:48 BRT
 
 #include <chicago/arch/ide.h>
 #include <chicago/arch/idt.h>
@@ -51,7 +51,7 @@ static Boolean IDEPoll(UInt16 base, Boolean adv) {
 	return True;
 }
 
-static Boolean IDESendSCSICommand(UInt16 base, Boolean slave, UInt8 cmd, UInt32 lba, UInt8 sects, UInt16 size, PUInt8 buf) {
+static Boolean IDESendSCSICommand(UInt16 base, Boolean slave, UInt8 cmd, UInt32 lba, UInt16 size, PUInt8 buf) {
 	UInt8 scmd[12] = { 0 };
 	
 	PortOutByte(base + ATA_REG_CONTROL, IDEIRQInvoked = 0);														// Enable the IRQs
@@ -61,7 +61,7 @@ static Boolean IDESendSCSICommand(UInt16 base, Boolean slave, UInt8 cmd, UInt32 
 	scmd[3] = (lba >> 16) & 0xFF;
 	scmd[4] = (lba >> 8) & 0xFF;
 	scmd[5] = lba & 0xFF;
-	scmd[9] = sects;
+	scmd[9] = 1;
 	
 	PortOutByte(base + ATA_REG_HDDEVSEL, slave << 4);															// Select the drive
 	
@@ -188,7 +188,7 @@ static Boolean IDEReadSectors(UInt16 base, Boolean slave, Boolean addr48, Boolea
 	
 	if (atapi) {																								// ATAPI?
 		for (UInt32 i = 0; i < count; i++) {																	// Yes, so use the read command using SCSI commands
-			ret = IDESendSCSICommand(base, slave, ATAPI_CMD_READ, lba + i, 1, 2048, buf + (i * 2048));
+			ret = IDESendSCSICommand(base, slave, ATAPI_CMD_READ, lba + i, 2048, buf + (i * 2048));
 		}
 	} else {
 		for (UInt32 i = 0; i < count; i++) {																	// No, so use the ATA read sector function
@@ -218,6 +218,7 @@ static Boolean IDEDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) 
 	UIntPtr bsize = idev->atapi ? 2048 : 512;																	// Get the block size
 	UIntPtr cur = off / bsize;
 	UIntPtr end = (off + len) / bsize;
+	UIntPtr start = 0;
 	
 	if ((off % bsize) != 0) {																					// "Align" the start
 		PUInt8 buff = (PUInt8)MemAllocate(bsize);																// Alloc memory for reading the disk
@@ -232,6 +233,7 @@ static Boolean IDEDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) 
 		StrCopyMemory(buf, buff + (off % bsize), bsize - (off % bsize));										// Copy it into the user buffer
 		MemFree((UIntPtr)buff);
 		cur++;
+		start += bsize - (off % bsize);
 	}
 	
 	if (((off + len) % bsize) != 0) {																			// "Align" the end
@@ -252,10 +254,13 @@ static Boolean IDEDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) 
 		}
 	}
 	
-	if (cur < end) {																							// Let's read!
-		if (!IDEReadSectors(idev->base, idev->slave, idev->addr48, idev->atapi, end - cur, cur, buf + (off % bsize))) {
+	if (cur <= end) {																							// Let's read!
+		if (!IDEReadSectors(idev->base, idev->slave, idev->addr48, idev->atapi, 1, cur, buf + start)) {
 			return False;																						// Failed...
 		}
+		
+		cur++;
+		start += bsize;
 	}
 	
 	return True;

@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on January 17 of 2019, at 21:06 BRT
-// Last edited on June 15 of 2019, at 10:03 BRT
+// Last edited on November 02 of 2019, at 19:22 BRT
 
 #include <chicago/arch/ahci.h>
 #include <chicago/arch/ide.h>
@@ -114,7 +114,6 @@ static Boolean AHCISATAReadSectors(PHBAPort port, UIntPtr virt, UIntPtr lba, UIn
 	
 	fis->type = FIS_TYPE_REG_H2D;																						// Set the type
 	fis->c = 1;																											// Command
-	fis->featl = 1;																										// We're using DMA
 	fis->cmd = ATA_CMD_READ_DMA_EXT;																					// Set the command
 	fis->lba0 = (UInt8)lba;																								// Set the LBA low part
 	fis->lba1 = (UInt8)(lba >> 8);
@@ -191,7 +190,6 @@ static Boolean AHCISATAWriteSectors(PHBAPort port, UIntPtr virt, UIntPtr lba, UI
 	
 	fis->type = FIS_TYPE_REG_H2D;																						// Set the type
 	fis->c = 1;																											// Command
-	fis->featl = 1;																										// We're using DMA
 	fis->cmd = ATA_CMD_WRITE_DMA_EXT;																					// Set the command
 	fis->lba0 = (UInt8)lba;																								// Set the LBA low part
 	fis->lba1 = (UInt8)(lba >> 8);
@@ -271,25 +269,15 @@ static Boolean AHCISATAPIReadSectors(PHBAPort port, UIntPtr virt, UIntPtr lba, U
 	fis->c = 1;																											// We're sending a command
 	fis->featl = 1;																										// We're using DMA
 	fis->cmd = ATA_CMD_PACKET;																							// ATAPI Packet
-	fis->lba1 = 2048 & 0xFF;
-	fis->lba2 = 2048 >> 8;
-	fis->cntl = (UInt8)count;
-	fis->cnth = (UInt8)(count >> 8);
 	
 	PUInt8 packet = (PUInt8)(&tbl->acmd);
 	
 	packet[0] = ATAPI_CMD_READ;																							// Setup SCSI packet
-	packet[1] = 0x00;
 	packet[2] = ((lba >> 24) & 0xFF);
 	packet[3] = ((lba >> 16) & 0xFF);
 	packet[4] = ((lba >> 8) & 0xFF);
 	packet[5] = (lba & 0xFF);
-	packet[6] = 0x00;
-	packet[7] = 0x00;
-	packet[8] = 0x00;
 	packet[9] = 0x01;
-	packet[10] = 0x00;
-	packet[11] = 0x00;
 	
 	while (((port->tfd & 0x88) != 0) && (spin < 1000000)) {																// Wait until the port is no longer busy
 		spin++;
@@ -340,6 +328,7 @@ static Boolean AHCIDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf)
 	
 	UIntPtr cur = off / bsize;
 	UIntPtr end = (off + len) / bsize;
+	UIntPtr start = 0;
 	
 	if ((off % bsize) != 0) {																							// "Align" the start
 		PUInt8 buff = (PUInt8)MemAllocate(bsize);																		// Alloc memory for reading the disk
@@ -354,6 +343,7 @@ static Boolean AHCIDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf)
 		StrCopyMemory(buf, buff + (off % bsize), bsize - (off % bsize));												// Copy it into the user buffer
 		MemFree((UIntPtr)buff);
 		cur++;
+		start += bsize - (off % bsize);
 	}
 	
 	if (((off + len) % bsize) != 0) {																					// "Align" the end
@@ -374,10 +364,13 @@ static Boolean AHCIDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf)
 		}
 	}
 	
-	if (cur < end) {																									// Let's read!
-		if (!AHCIReadSectors(adev->port, adev->virt, bsize, cur, end - cur, buf + (off % bsize))) {
+	if (cur <= end) {																									// Let's read!
+		if (!AHCIReadSectors(adev->port, adev->virt, bsize, cur, 1, buf + start)) {
 			return False;																								// Failed...
 		}
+		
+		cur++;
+		start += bsize;
 	}
 	
 	return True;
