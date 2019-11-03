@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 25 of 2018, at 20:11 BRT
-// Last edited on November 02 of 2019, at 17:14 BRT
+// Last edited on November 03 of 2019, at 15:27 BRT
 
 #ifndef __CHICAGO_ELF_H__
 #define __CHICAGO_ELF_H__
@@ -155,8 +155,8 @@ UIntPtr ELFLoadSections(PELFHdr hdr);
 Boolean ELFAddSymbols(PELFHdr hdr, PExecHandle handle);
 PFsNode ELFFindFile(PWChar path);
 Boolean ELFLoadDeps(PELFHdr hdr, PExecHandle handle);
-Boolean ArchELFRelocate(PELFHdr hdr, UIntPtr base, PELFRel rel, PChar strtab, PELFSym sym, UInt8 type);
-Boolean ArchELFRelocateA(PELFHdr hdr, UIntPtr base, PELFRelA rela, PChar strtab, PELFSym sym, UInt8 type);
-Boolean ELFRelocate(PELFHdr hdr, UIntPtr base);
+Boolean ArchELFRelocate(PELFHdr hdr, PExecHandle handle, UIntPtr base, PELFRel rel, PChar strtab, PELFSym sym, UInt8 type);
+Boolean ArchELFRelocateA(PELFHdr hdr, PExecHandle handle, UIntPtr base, PELFRelA rela, PChar strtab, PELFSym sym, UInt8 type);
+Boolean ELFRelocate(PELFHdr hdr, PExecHandle handle, UIntPtr base);
 
 #endif		// __CHICAGO_ELF_H__

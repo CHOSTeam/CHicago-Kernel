@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:21 BRT
-// Last edited on November 02 of 2019, at 15:05 BRT
+// Last edited on November 03 of 2019, at 20:08 BRT
 
 .section .text
 
@@ -85,7 +85,7 @@ ArchUserJump:
 	push $0x23																											// SS should be 0x23
 	pushl 8(%ebp)																										// This is the user stack
 	pushf																												// Push the EFLAGS
-	push $0x1B																											// EIP should be 0x1B (user mode code segment)
+	push $0x1B																											// CS should be 0x1B (user mode code segment)
 	pushl 4(%ebp)																										// This is the user code entry
 	
 	iret																												// GO!

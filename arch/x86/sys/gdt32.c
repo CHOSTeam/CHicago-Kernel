@@ -52,6 +52,6 @@ Void GDTInit(Void) {
 	GDTSetGate(3, 0, 0xFFFFFFFF, 0xFA, 0xCF);						// User mode code entry
 	GDTSetGate(4, 0, 0xFFFFFFFF, 0xF2, 0xCF);						// User mode data entry
 	GDTWriteTSS(5, 0x10, 0);										// TSS entry
-	GDTLoad((UInt32)GDTEntries, sizeof(GDTEntries) * 6 - 1);		// Load new GDT
+	GDTLoad((UInt32)GDTEntries, sizeof(GDTEntries) - 1);			// Load new GDT
 	TSSLoad(0x2B);													// Load the TSS
 }

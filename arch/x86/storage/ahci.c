@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on January 17 of 2019, at 21:06 BRT
-// Last edited on November 02 of 2019, at 19:22 BRT
+// Last edited on November 03 of 2019, at 16:05 BRT
 
 #include <chicago/arch/ahci.h>
 #include <chicago/arch/ide.h>
@@ -316,7 +316,7 @@ static Boolean AHCIReadSectors(PHBAPort port, UIntPtr virt, UIntPtr bsize, UIntP
 
 static Boolean AHCIWriteSectors(PHBAPort port, UIntPtr virt, UIntPtr bsize, UIntPtr lba, UIntPtr count, PUInt8 buf) {
 	if (bsize == 512) {																									// SATA?
-		return AHCISATAWriteSectors(port, virt, lba, count, buf);														// Yes, redirect to AHCISATAWriteSectors
+		return AHCISATAWriteSectors(port, virt, lba, count * bsize, buf);												// Yes, redirect to AHCISATAWriteSectors
 	} else {
 		return False;																									// SATAPI, we don't support write in it!
 	}
@@ -327,51 +327,51 @@ static Boolean AHCIDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf)
 	PAHCIDevice adev = (PAHCIDevice)dev->priv;
 	
 	UIntPtr cur = off / bsize;
-	UIntPtr end = (off + len) / bsize;
+	UIntPtr end = (off + len - 1) / bsize;
 	UIntPtr start = 0;
+	PUInt8 buff = (PUInt8)MemAAllocate(bsize, 0x10000);																	// Alloc memory for reading the disk
+	
+	if (buf == Null) {
+		return False;
+	}
 	
 	if ((off % bsize) != 0) {																							// "Align" the start
-		PUInt8 buff = (PUInt8)MemAllocate(bsize);																		// Alloc memory for reading the disk
-		
-		if (buff == Null) {
-			return False;																								// Failed...
-		} else if (!AHCIReadSectors(adev->port, adev->virt, bsize, cur, 1, buff)) {										// Read this block
-			MemFree((UIntPtr)buff);																						// Failed...
+		if (!AHCIReadSectors(adev->port, adev->virt, bsize, cur, 1, buff)) {											// Read this block
+			MemAFree((UIntPtr)buff);																					// Failed...
 			return False;
 		}
 		
 		StrCopyMemory(buf, buff + (off % bsize), bsize - (off % bsize));												// Copy it into the user buffer
-		MemFree((UIntPtr)buff);
 		cur++;
 		start += bsize - (off % bsize);
 	}
 	
 	if (((off + len) % bsize) != 0) {																					// "Align" the end
-		PUInt8 buff = (PUInt8)MemAllocate(bsize);																		// Alloc memory for reading the disk
-		
-		if (buff == Null) {
-			return False;																								// Failed...
-		} else if (!AHCIReadSectors(adev->port, adev->virt, bsize, end, 1, buff)) {										// Read this block
-			MemFree((UIntPtr)buff);																						// Failed...
+		if (!AHCIReadSectors(adev->port, adev->virt, bsize, end, 1, buff)) {											// Read this block
+			MemAFree((UIntPtr)buff);																					// Failed...
 			return False;
 		}
 		
 		StrCopyMemory(buf + len - ((off + len) % bsize), buff, (off + len) % bsize);									// Copy it into the user buffer
-		MemFree((UIntPtr)buff);
 		
 		if (end != 0) {																									// Only decrease the end if it isn't 0
 			end--;
 		}
 	}
 	
-	if (cur <= end) {																									// Let's read!
-		if (!AHCIReadSectors(adev->port, adev->virt, bsize, cur, 1, buf + start)) {
-			return False;																								// Failed...
+	while (cur <= end) {																								// Let's read!
+		if (!AHCIReadSectors(adev->port, adev->virt, bsize, cur, 1, buff)) {
+			MemAFree((UIntPtr)buff);																					// Failed...
+			return False;
 		}
+		
+		StrCopyMemory(buf + start, buff, bsize);																		// Copy it into the user buffer
 		
 		cur++;
 		start += bsize;
 	}
+	
+	MemAFree((UIntPtr)buff);																							// Free the buffer
 	
 	return True;
 }
@@ -385,58 +385,61 @@ static Boolean AHCIDeviceWrite(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf
 	}
 	
 	UIntPtr cur = off / bsize;
-	UIntPtr end = (off + len) / bsize;
+	UIntPtr end = (off + len - 1) / bsize;
+	UIntPtr start = 0;
+	PUInt8 buff = (PUInt8)MemAAllocate(bsize, 0x10000);																	// Alloc memory for reading the disk
+	
+	if (buf == Null) {
+		return False;
+	}
 	
 	if ((off % bsize) != 0) {																							// "Align" the start
-		PUInt8 buff = (PUInt8)MemAllocate(bsize);																		// Alloc memory for reading the disk
-		
-		if (buff == Null) {
-			return False;																								// Failed...
-		} else if (!AHCIReadSectors(adev->port, adev->virt, bsize, cur, 1, buff)) {										// Read this block
-			MemFree((UIntPtr)buff);																						// Failed...
+		if (!AHCIReadSectors(adev->port, adev->virt, bsize, cur, 1, buff)) {											// Read this block
+			MemAFree((UIntPtr)buff);																					// Failed...
 			return False;
 		}
 		
 		StrCopyMemory(buff + (off % bsize), buf + (off % bsize), bsize - (off % bsize));								// Write back to the buffer
 		
 		if (!AHCIWriteSectors(adev->port, adev->virt, bsize, cur, 1, buff)) {											// Write this block back
-			MemFree((UIntPtr)buff);																						// Failed...
+			MemAFree((UIntPtr)buff);																					// Failed...
 			return False;
 		}
 		
-		MemFree((UIntPtr)buff);
 		cur++;
+		start += bsize;
 	}
 	
 	if (((off + len) % bsize) != 0) {																					// "Align" the end
-		PUInt8 buff = (PUInt8)MemAllocate(bsize);																		// Alloc memory for reading the disk
-		
-		if (buff == Null) {
-			return False;																								// Failed...
-		} else if (!AHCIReadSectors(adev->port, adev->virt, bsize, end, 1, buff)) {										// Read this block
-			MemFree((UIntPtr)buff);																						// Failed...
+		if (!AHCIReadSectors(adev->port, adev->virt, bsize, end, 1, buff)) {											// Read this block
+			MemAFree((UIntPtr)buff);																					// Failed...
 			return False;
 		}
 		
 		StrCopyMemory(buff + ((off + len) % bsize), buf + len - ((off + len) % bsize), (off + len) % bsize);			// Write back to the buffer
 		
 		if (!AHCIWriteSectors(adev->port, adev->virt, bsize, end, 1, buff)) {											// Write this block back
-			MemFree((UIntPtr)buff);																						// Failed...
+			MemAFree((UIntPtr)buff);																					// Failed...
 			return False;
 		}
-		
-		MemFree((UIntPtr)buff);
 		
 		if (end != 0) {																									// Only decrease the end if it isn't 0
 			end--;
 		}
 	}
 	
-	if (cur < end) {																									// Let's write!
-		if (!AHCIWriteSectors(adev->port, adev->virt, bsize, cur, end - cur, buf + (off % bsize))) {
+	while (cur <= end) {																									// Let's write!
+		StrCopyMemory(buff, buf + start, bsize);																		// Copy from the user buffer
+		
+		if (!AHCIWriteSectors(adev->port, adev->virt, bsize, cur, 1, buff)) {
 			return False;																								// Failed...
 		}
+		
+		cur++;
+		start += bsize;
 	}
+	
+	MemAFree((UIntPtr)buff);																							// Free the buffer
 	
 	return True;
 }

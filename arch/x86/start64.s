@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:21 BRT
-// Last edited on November 02 of 2019, at 15:06 BRT
+// Last edited on November 03 of 2019, at 20:09 BRT
 
 .section .text
 
@@ -85,12 +85,12 @@ ArchUserJump:
 	mov %ax, %es
 	
 	push $0x23																											// SS should be 0x23
-	pushq %rdi																											// This is the user stack
-	pushf																												// Push the EFLAGS
+	pushq %rsi																											// This is the user stack
+	pushfq																												// Push the RFLAGS
 	push $0x1B																											// CS should be 0x1B (user mode code segment)
-	pushq %rsi																											// This is the user code entry
+	pushq %rdi																											// This is the user code entry
 	
-	iret																												// GO!
+	iretq																												// GO!
 
 GDTPointerLimit:
 	.word 0																												// GDT limit storage

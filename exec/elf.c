@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 31 of 2019, at 18:57 BRT
-// Last edited on November 02 of 2019, at 19:42 BRT
+// Last edited on November 03 of 2019, at 19:59 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/elf.h>
@@ -67,15 +67,15 @@ UIntPtr ELFLoadSections(PELFHdr hdr) {
 	}
 	
 	UIntPtr size = ELFGetSize(hdr);
-	UIntPtr base = MmAllocUserMemory(size);																					// Alloc space for loading it
+	UIntPtr base = MmAllocAlignedUserMemory(size, MM_PAGE_SIZE);															// Alloc space for loading it
 	
 	if (base == 0) {
 		return 0;
 	} else if (!VirtChangeProtection(base, size, VIRT_PROT_READ | VIRT_PROT_WRITE | VIRT_PROT_EXEC)) {						// Change the protection
-		MmFreeUserMemory(base);																								// Failed, free everything
+		MmFreeAlignedUserMemory(base);																						// Failed, free everything
 		return 0;
 	} else if (!ELFLoadPHdrs(hdr, base)) {																					// And try to load it!
-		MmFreeUserMemory(base);																								// Failed, free everything
+		MmFreeAlignedUserMemory(base);																						// Failed, free everything
 		return 0;
 	}
 	
@@ -298,7 +298,7 @@ Boolean ELFLoadDeps(PELFHdr hdr, PExecHandle handle) {
 			return False;
 		}
 		
-		PExecHandle hndl = ExecLoadLibrary(name, False);																	// Try to load it
+		PExecHandle hndl = ExecLoadLibrary(name, handle == Null);															// Try to load it
 		
 		MemFree((UIntPtr)name);																								// Free the name
 		
@@ -326,18 +326,22 @@ Boolean ELFLoadDeps(PELFHdr hdr, PExecHandle handle) {
 	return True;
 }
 
-static Boolean ELFRelocateInt(PELFHdr hdr, UIntPtr base, PChar rel, PChar strtab, PChar symtab, UIntPtr entsize, UIntPtr syment, UIntPtr limit, Boolean a) {
+static Boolean ELFRelocateInt(PELFHdr hdr, PExecHandle handle, UIntPtr base, PChar rel, PChar strtab, PChar symtab, UIntPtr entsize, UIntPtr syment, UIntPtr limit, Boolean a) {
 	if (hdr == Null || rel == Null || strtab == Null || symtab == Null) {													// Sanity checks
 		return False;	
 	}
 	
 	for (PChar end = rel + limit; rel < end; rel += entsize) {																// Let's iterate!
 		PELFRel cur = (PELFRel)rel;																							// Get the ELFRel
-		PELFSym sym = (PELFSym)(symtab + ((cur->info >> 8) * syment));														// Get the symbol that it may need
+#ifdef ARCH_64																												// Get the symbol that it may need
+		PELFSym sym = (PELFSym)(symtab + ((cur->info >> 32) * syment));
+#else
+		PELFSym sym = (PELFSym)(symtab + ((cur->info >> 8) * syment));
+#endif
 		
-		if (a && !ArchELFRelocateA(hdr, base, (PELFRelA)cur, symtab, sym, (UInt8)cur->info)) {								// Call the arch specific function
+		if (a && !ArchELFRelocateA(hdr, handle, base, (PELFRelA)cur, strtab, sym, (UInt8)cur->info)) {						// Call the arch specific function
 			return False;
-		} else if (!a && !ArchELFRelocate(hdr, base, cur, symtab, sym, (UInt8)cur->info)) {
+		} else if (!a && !ArchELFRelocate(hdr, handle, base, cur, strtab, sym, (UInt8)cur->info)) {
 			return False;
 		}
 	}
@@ -345,7 +349,7 @@ static Boolean ELFRelocateInt(PELFHdr hdr, UIntPtr base, PChar rel, PChar strtab
 	return True;
 }
 
-Boolean ELFRelocate(PELFHdr hdr, UIntPtr base) {
+Boolean ELFRelocate(PELFHdr hdr, PExecHandle handle, UIntPtr base) {
 	if (hdr == Null) {																										// Sanity check
 		return False;
 	}
@@ -356,7 +360,8 @@ Boolean ELFRelocate(PELFHdr hdr, UIntPtr base) {
 		return False;
 	}
 	
-	PChar strtab = ELFGetDynPtr(hdr, dyn, 0x05);																			// Get some stuff that we need
+	UIntPtr pltrelsz = ELFGetDynVal(hdr, dyn, 0x02);																		// Get some stuff that we need
+	PChar strtab = ELFGetDynPtr(hdr, dyn, 0x05);
 	PChar symtab = ELFGetDynPtr(hdr, dyn, 0x06);
 	PChar rela = ELFGetDynPtr(hdr, dyn, 0x07);
 	UIntPtr relasz = ELFGetDynVal(hdr, dyn, 0x08);
@@ -365,15 +370,26 @@ Boolean ELFRelocate(PELFHdr hdr, UIntPtr base) {
 	PChar rel = ELFGetDynPtr(hdr, dyn, 0x11);
 	UIntPtr relsz = ELFGetDynVal(hdr, dyn, 0x12);
 	UIntPtr relent = ELFGetDynVal(hdr, dyn, 0x13);
+	UIntPtr pltrel = ELFGetDynVal(hdr, dyn, 0x14);
+	PChar jmprel = ELFGetDynPtr(hdr, dyn, 0x17);
 	
 	if (strtab == Null || symtab == Null || syment == 0) {
 		return False;																										// Failed, we can't continue
-	} else if (rel != Null && !ELFRelocateInt(hdr, base, rel, strtab, symtab, relent, syment, relsz, False)) {				// First, use the ELFRel section
+	} else if (rel != Null && !ELFRelocateInt(hdr, handle, base, rel, strtab, symtab, relent, syment, relsz, False)) {		// First, use the ELFRel section
 		return False;
 	}
 	
-	if (rela != Null && !ELFRelocateInt(hdr, base, rela, strtab, symtab, relaent, syment, relasz, True)) {					// Now, use the ELFRelA section
+	if (rela != Null && !ELFRelocateInt(hdr, handle, base, rela, strtab, symtab, relaent, syment, relasz, True)) {			// Now, use the ELFRelA section
 		return False;
+	}
+	
+	if (jmprel != Null) {																									// We have the jmprel section?
+		Boolean a = pltrel == 0x07;																							// Yes, get if it is ELFRelA or ELFRel
+		UIntPtr entsz = a ? sizeof(ELFRelA) : sizeof(ELFRel);
+		
+		if (!ELFRelocateInt(hdr, handle, base, jmprel, strtab, symtab, entsz, syment, pltrelsz, a)) {						// And reloc!
+			return False;
+		}
 	}
 	
 	return True;

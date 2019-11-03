@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:21 BRT
-// Last edited on October 29 of 2019, at 16:58 BRT
+// Last edited on November 03 of 2019, at 19:47 BRT
 
 #include <chicago/arch/ahci.h>
 #include <chicago/arch/bootmgr.h>
@@ -40,7 +40,7 @@ Void ArchInitFPU(Void) {
 	
 	cr0 &= ~(1 << 2);																							// Disable the EMulation bit
 	cr0 |= 1 << 1;																								// Set the Monitor co-Processor bit
-	cr4 |= (1 << 9) | (1 << 10);																				// Set the OS support for FXsave and fxrStoR instructions bit and the OS support for unMasked siMd floating point EXCPTions bit
+	cr4 |= (1 << 9) | (1 << 10);																				// Set the OS support for FXsave and fxrStoR instructions bit and the OS support for unMasked SIMD floating point EXCPTions bit
 	
 	Asm Volatile("mov %0, %%cr0" :: "r"(cr0));																	// Write the new CR0
 	Asm Volatile("mov %0, %%cr4" :: "r"(cr4));																	// Write the new CR4

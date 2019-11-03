@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 02 of 2019, at 12:12 BRT
-// Last edited on November 02 of 2019, at 19:22 BRT
+// Last edited on November 03 of 2019, at 19:57 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/elf.h>
@@ -99,7 +99,7 @@ static Boolean ExecLoadLibraryInt(PExecHandle handle, PELFHdr hdr) {
 		MmFreeUserMemory((UIntPtr)handle->name);
 		return False;
 	} else if (!ELFLoadDeps(hdr, handle)) {																						// Load the dependencies
-		MmFreeUserMemory(handle->base);																							// Failed, free everything
+		MmFreeAlignedUserMemory(handle->base);																					// Failed, free everything
 		ListFree(handle->deps);
 		ListFree(handle->symbols);
 		MmFreeUserMemory((UIntPtr)handle->name);
@@ -109,13 +109,13 @@ static Boolean ExecLoadLibraryInt(PExecHandle handle, PELFHdr hdr) {
 			ExecCloseLibrary((PExecHandle)i->data);
 		}
 		
-		MmFreeUserMemory(handle->base);																							// And free everything
+		MmFreeAlignedUserMemory(handle->base);																					// And free everything
 		ListFree(handle->deps);
 		ListFree(handle->symbols);
 		MmFreeUserMemory((UIntPtr)handle->name);
 		
 		return False;
-	} else if (!ELFRelocate(hdr, handle->base)) {																				// Finally, relocate!
+	} else if (!ELFRelocate(hdr, handle, handle->base)) {																		// Finally, relocate!
 		ListForeach(handle->symbols, i) {																						// Failed, free the symbol table
 			MmFreeUserMemory((UIntPtr)(((PExecSymbol)i->data)->name));
 			MmFreeUserMemory((UIntPtr)i->data);
@@ -125,7 +125,7 @@ static Boolean ExecLoadLibraryInt(PExecHandle handle, PELFHdr hdr) {
 			ExecCloseLibrary((PExecHandle)i->data);
 		}
 		
-		MmFreeUserMemory(handle->base);																							// And free everything
+		MmFreeAlignedUserMemory(handle->base);																					// And free everything
 		ListFree(handle->deps);
 		ListFree(handle->symbols);
 		MmFreeUserMemory((UIntPtr)handle->name);
