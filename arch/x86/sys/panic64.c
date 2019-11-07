@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 27 of 2018, at 21:48 BRT
-// Last edited on October 28 of 2019, at 15:40 BRT
+// Last edited on November 07 of 2019, at 18:26 BRT
 
 #include <chicago/arch/registers.h>
 
@@ -60,7 +60,7 @@ Void ArchPanic(UInt32 err, PVoid priv) {
 	}
 	
 	if (PsCurrentThread != Null) {																				// Tasking initialized?
-		if (!((PsCurrentThread->id == 0) && (PsCurrentProcess->id == 0))) {										// Yes, this is the main kernel process?
+		if (PsCurrentProcess->id != 0) {																		// Yes, this is the main kernel process?
 			ConAcquireLock();																					// Nope, we don't want a dead lock, right?
 			
 			if (ConGetCursorX() != 0) {																			// Print the error to the screen

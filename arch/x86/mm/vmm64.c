@@ -1,11 +1,12 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 19:19 BRT
-// Last edited on November 03 of 2019, at 19:16 BRT
+// Last edited on November 06 of 2019, at 17:04 BRT
 
 #include <chicago/arch/vmm.h>
 
 #include <chicago/mm.h>
+#include <chicago/string.h>
 
 UIntPtr MmGetPhys(UIntPtr virt) {
 	if ((MmGetP4(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																		// This P4 entry exists?
@@ -173,7 +174,7 @@ UIntPtr MmFindHighestFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count) {
 	}
 	
 	UIntPtr c = 0;
-	UIntPtr p = start;
+	UIntPtr p = end;
 	
 	for (UIntPtr i = end - 0x8000000000; i > start; i -= 0x8000000000) {														// Let's try to find the first free virtual address!
 		if ((MmGetP4(i) & PAGE_PRESENT) != PAGE_PRESENT) {																		// This P4 is allocated?
@@ -307,7 +308,8 @@ Boolean MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags) {
 			MmSetP4(virt, block, 0x07);																							// No, so put the p4 entry as present, writeable and set the user bit
 		}
 		
-		MmInvlpg((UIntPtr)(&MmGetP4(virt)));																					// Update the TLB
+		MmInvlpg(MmGetP3Loc(virt));																								// Update the TLB
+		StrSetMemory((PUInt8)(MmGetP3Loc(virt)), 0, 0x1000);																	// And clean the p3 entries
 	}
 	
 	if ((MmGetP3(virt) & PAGE_HUGE) == PAGE_HUGE) {																				// This P3 entry is a huge one? (1GiB page)
@@ -325,7 +327,8 @@ Boolean MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags) {
 			MmSetP3(virt, block, 0x07);																							// No, so put the p3 entry as present, writeable and set the user bit
 		}
 		
-		MmInvlpg((UIntPtr)(&MmGetP3(virt)));																					// Update the TLB
+		MmInvlpg(MmGetP2Loc(virt));																								// Update the TLB
+		StrSetMemory((PUInt8)(MmGetP2Loc(virt)), 0, 0x1000);																	// And clean the p2 entries
 	}
 	
 	if ((MmGetP2(virt) & PAGE_HUGE) == PAGE_HUGE) {																				// This P2 entry is a huge one? (2MiB page)
@@ -343,7 +346,8 @@ Boolean MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags) {
 			MmSetP2(virt, block, 0x07);																							// No, so put the p3 entry as present, writeable and set the user bit
 		}
 		
-		MmInvlpg((UIntPtr)(&MmGetP2(virt)));																					// Update the TLB
+		MmInvlpg(MmGetP1Loc(virt));																								// Update the TLB
+		StrSetMemory((PUInt8)(MmGetP1Loc(virt)), 0, 0x1000);																	// And clean the p2 entries
 	}
 	
 	MmSetP1(virt, phys, flags2);																								// Map the phys addr to the virt addr
@@ -372,7 +376,10 @@ Boolean MmUnmap(UIntPtr virt) {
 	}
 }
 
+extern UIntPtr MmKernelDirectoryInt;
+
 UIntPtr MmCreateDirectory(Void) {
+	PUInt64 cp4 = (PUInt64)0xFFFFFFFFFFFFF000;
 	UIntPtr ret = MmReferencePage(0);																							// Allocate one physical page
 	PUInt64 p4 = Null;
 	
@@ -386,14 +393,12 @@ UIntPtr MmCreateDirectory(Void) {
 	}
 	
 	for (UInt64 i = 0; i < 512; i++) {																							// Let's fill the P4!
-		UIntPtr addr = (i << 39) + ((i >= 256) ? (1ull << 48) : 0);
-		
-		if (((MmGetP4(addr) & PAGE_PRESENT) != PAGE_PRESENT) || (!((i == 256) || (i == 257) || (i == 511)))) {					// We're going to copy this p4 entry?
+		if (((cp4[i] & PAGE_PRESENT) != PAGE_PRESENT) || (!((i == 256) || (i == 257) || (i == 511)))) {							// We're going to copy this p4 entry?
 			p4[i] = 0;																											// Nope
 		} else if (i == 511) {																									// Recursive mapping entry?
 			p4[i] = (ret & PAGE_MASK) | 3;																						// Yes
 		} else {
-			p4[i] = MmGetP4(addr);																								// Just copy it
+			p4[i] = cp4[i];																										// Just copy it
 		}
 	}
 	

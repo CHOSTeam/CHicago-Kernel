@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 16 of 2018, at 18:28 BRT
-// Last edited on November 02 of 2019, at 16:30 BRT
+// Last edited on November 06 of 2019, at 17:37 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -12,6 +12,18 @@
 
 PList FsMountPointList = Null;
 PList FsTypeList = Null;
+
+static UIntPtr FsCountSeparations(PWChar path) {
+	UIntPtr count = 0;
+	
+	for (UIntPtr i = 0; i < StrGetLength(path); i++) {
+		if (path[i] == '/') {
+			count++;
+		}
+	}
+	
+	return count;
+}
 
 PList FsTokenizePath(PWChar path) {
 	if (path == Null) {																													// Path is Null?
@@ -25,6 +37,9 @@ PList FsTokenizePath(PWChar path) {
 	
 	if (list == Null || clone == Null) {																								// Failed to alloc it?
 		return Null;																													// Yes, so we can't do anything :(
+	} else if (FsCountSeparations(path) == 0) {																							// If the path doesn't have any '/', we don't need to do anything
+		ListAdd(list, clone);
+		return list;
 	}
 	
 	PWChar tok = StrTokenize(clone, L"/");																								// Let's tokenize it!
@@ -59,21 +74,26 @@ PWChar FsCanonicalizePath(PWChar path) {
 		return Null;																													// :(
 	}
 	
-	PWChar tok = StrTokenize(path, L"/");																								// First, let's tokenize it (if you want, take a look in the FsTokenizePath function)
 	PWChar final = Null;
 	PWChar foff = Null;
 	UIntPtr fsize = 0;
 	
-	while (tok != Null) {
-		if ((StrGetLength(tok) == 2) && (StrCompare(tok, L".."))) {
-			if (list->length > 0) {
-				MemFree((UIntPtr)(ListRemove(list, list->length - 1)));
-			}
-		} else if (!(((StrGetLength(tok) == 1) && (StrCompare(tok, L"."))) || StrGetLength(tok) == 0)) {
-			ListAdd(list, StrDuplicate(tok));
-		}
+	if (FsCountSeparations(path) == 1) {																								// Do we need to tokenize it?
+		ListAdd(list, StrDuplicate(path));																								// Nope :)
+	} else {
+		PWChar tok = StrTokenize(path, L"/");																							// So, we need to tokenize it (if you want, take a look in the FsTokenizePath function)
 		
-		tok = StrTokenize(Null, L"/");
+		while (tok != Null) {
+			if ((StrGetLength(tok) == 2) && (StrCompare(tok, L".."))) {
+				if (list->length > 0) {
+					MemFree((UIntPtr)(ListRemove(list, list->length - 1)));
+				}
+			} else if (!(((StrGetLength(tok) == 1) && (StrCompare(tok, L"."))) || StrGetLength(tok) == 0)) {
+				ListAdd(list, StrDuplicate(tok));
+			}
+
+			tok = StrTokenize(Null, L"/");
+		}
 	}
 	
 	if (list->length == 0) {																											// Root directory?
@@ -463,7 +483,7 @@ PFsMountPoint FsGetMountPoint(PWChar path, PWChar *outp) {
 					MemFree((UIntPtr)dup);																								// WE FOUND IT! So free our duplicate, we don't need it anymore :)
 					
 					if (outp != Null) {																									// If the user requested, let's save the relative path
-						if ((mp->path[StrGetLength(mp->path) - 1] == '/') || (StrCompare(mp->path, path))) {							// The mount point path finishes with an slash (or we're trying to "get" the root directory of the mount point)?
+						if ((mp->path[StrGetLength(mp->path) - 1] == '/') || (StrCompare(path, mp->path))) {							// The mount point path finishes with an slash (or we're trying to "get" the root directory of the mount point)?
 							*outp = path + StrGetLength(mp->path);																		// Yes, so we can use mp->path length
 						} else {
 							*outp = path + StrGetLength(mp->path) + 1;																	// No, so we need to use mp->path length + 1

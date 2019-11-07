@@ -1,12 +1,16 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on September 15 of 2018, at 12:48 BRT
-// Last edited on November 01 of 2019, at 16:45 BRT
+// Last edited on November 07 of 2019, at 17:58 BRT
 
 #ifndef __CHICAGO_VIRT_H__
 #define __CHICAGO_VIRT_H__
 
 #include <chicago/types.h>
+
+#ifndef MM_PAGE_SIZE
+#define MM_PAGE_SIZE 0x1000
+#endif
 
 #define VIRT_FLAGS_HIGHEST 0x01
 #define VIRT_FLAGS_AOR 0x02

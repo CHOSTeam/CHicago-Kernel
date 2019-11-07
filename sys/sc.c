@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:14 BRT
-// Last edited on October 29 of 2019, at 18:09 BRT
+// Last edited on November 07 of 2019, at 17:54 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/mm.h>
@@ -118,7 +118,7 @@ UIntPtr ScVirtGetUsage(Void) {
 }
 
 UIntPtr ScPsCreateThread(UIntPtr entry) {
-	UIntPtr stack = VirtAllocAddress(0, 0x8000, VIRT_PROT_READ | VIRT_PROT_WRITE | VIRT_FLAGS_HIGHEST);														// Alloc the stack
+	UIntPtr stack = VirtAllocAddress(0, 0x100000, VIRT_PROT_READ | VIRT_PROT_WRITE | VIRT_FLAGS_HIGHEST | VIRT_FLAGS_AOR);									// Alloc the stack
 	
 	if (stack == 0) {
 		return 0;
@@ -127,7 +127,7 @@ UIntPtr ScPsCreateThread(UIntPtr entry) {
 	PThread th = PsCreateThread(entry, stack, True);																										// Create a new thread
 	
 	if (th == Null) {
-		VirtFreeAddress(stack, 0x8000);																														// Failed
+		VirtFreeAddress(stack, 0x100000);																													// Failed
 		return 0;
 	}
 	
@@ -361,4 +361,44 @@ Void ScFsSetPosition(IntPtr file, UIntPtr base, UIntPtr off) {
 			node->offset = node->length + off;
 		}
 	}
+}
+	
+UIntPtr ScExecCreateProcess(PWChar path) {
+	if (!ScCheckPointer(path)) {																															// Sanity check
+		return 0;
+	}
+	
+	PProcess proc = ExecCreateProcess(path);																												// Try to create the process
+	
+	if (proc == Null) {
+		return 0;
+	}
+	
+	PsAddProcess(proc);																																		// Run it and return the ID
+	
+	return proc->id;
+}
+
+PExecHandle ScExecLoadLibrary(PWChar path, Boolean global) {
+	if (!ScCheckPointer(path)) {																															// Sanity check
+		return 0;
+	}
+	
+	return ExecLoadLibrary(path, global);																													// And redirect
+}
+
+Void ScExecCloseLibrary(PExecHandle handle) {
+	if (!ScCheckPointer(handle)) {																															// Sanity check
+		return;
+	}
+	
+	ExecCloseLibrary(handle);																																// And redirect
+}
+
+UIntPtr ScExecGetSymbol(PExecHandle handle, PWChar name) {
+	if (!ScCheckPointer(handle) || !ScCheckPointer(name)) {																									// Sanity check
+		return 0;
+	}
+	
+	return ExecGetSymbol(handle, name);																														// And redirect
 }

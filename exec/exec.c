@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 01 of 2019, at 16:50 BRT
-// Last edited on November 03 of 2019, at 20:02 BRT
+// Last edited on November 06 of 2019, at 16:32 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/arch.h>
@@ -90,12 +90,12 @@ static Void ExecCreateProcessInt(Void) {
 		VirtFreeAddress(stack, 0x100000);
 		PsExitProcess((UIntPtr)-1);
 	} else if (!ELFLoadDeps((PELFHdr)buf, Null)) {																							// Load the dependencies
-		MmFreeAlignedUserMemory(base);
+		MmFreeUserMemory(base);
 		MemFree((UIntPtr)buf);
 		VirtFreeAddress(stack, 0x100000);
 		PsExitProcess((UIntPtr)-1);
 	} else if (!ELFRelocate((PELFHdr)buf, Null, base)) {																					// And relocate!
-		MmFreeAlignedUserMemory(base);
+		MmFreeUserMemory(base);
 		MemFree((UIntPtr)buf);
 		VirtFreeAddress(stack, 0x100000);
 		PsExitProcess((UIntPtr)-1);
@@ -103,7 +103,7 @@ static Void ExecCreateProcessInt(Void) {
 	
 	MemFree((UIntPtr)buf);																													// Free the buffer
 	ArchUserJump(entry, stack + 0x100000);																									// Jump!
-	MmFreeAlignedUserMemory(base);																											// If it returns (somehow), free the sections
+	MmFreeUserMemory(base);																													// If it returns (somehow), free the sections
 	VirtFreeAddress(stack, 0x100000);																										// Free the stack
 	PsExitProcess((UIntPtr)-1);																												// And exit
 }

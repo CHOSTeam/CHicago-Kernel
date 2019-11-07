@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 19:26 BRT
-// Last edited on November 01 of 2019, at 16:36 BRT
+// Last edited on November 06 of 2019, at 17:04 BRT
 
 #ifndef __CHICAGO_ARCH_VMM_H__
 #define __CHICAGO_ARCH_VMM_H__
@@ -45,24 +45,30 @@
 #define MmGetP4Int(p4, i) ((PUInt64)(p4))[MmGetP4Idx(i)]
 #define MmSetP4Int(p4, i, p, f) ((PUInt64)(p4))[MmGetP4Idx(i)] = ((p) & PAGE_MASK) | ((f) & 0xFFF)
 
+#define MmGetP3LocInt(p3, i) (UIntPtr)((PUInt64)((p3) + MmGetP4TIdx(i)))
 #define MmGetP3Int(p3, i) ((PUInt64)((p3) + MmGetP4TIdx(i)))[MmGetP3Idx(i)]
 #define MmSetP3Int(p3, i, p, f) ((PUInt64)((p3) + MmGetP4TIdx(i)))[MmGetP3Idx(i)] = ((p) & PAGE_MASK) | ((f) & 0xFFF)
 
+#define MmGetP2LocInt(p2, i) (UIntPtr)((PUInt64)((p2) + MmGetP3TIdx(i)))
 #define MmGetP2Int(p2, i) ((PUInt64)((p2) + MmGetP3TIdx(i)))[MmGetP2Idx(i)]
 #define MmSetP2Int(p2, i, p, f) ((PUInt64)((p2) + MmGetP3TIdx(i)))[MmGetP2Idx(i)] = ((p) & PAGE_MASK) | ((f) & 0xFFF)
 
+#define MmGetP1LocInt(p1, i) (UIntPtr)((PUInt64)((p1) + MmGetP2TIdx(i)))
 #define MmGetP1Int(p1, i) ((PUInt64)((p1) + MmGetP2TIdx(i)))[MmGetP1Idx(i)]
 #define MmSetP1Int(p1, i, p, f) ((PUInt64)((p1) + MmGetP2TIdx(i)))[MmGetP1Idx(i)] = ((p) & PAGE_MASK) | ((f) & 0xFFF)
 
 #define MmGetP4(i) MmGetP4Int(0xFFFFFFFFFFFFF000, i)
 #define MmSetP4(i, p, f) MmSetP4Int(0xFFFFFFFFFFFFF000, i, p, f)
 
+#define MmGetP3Loc(i) MmGetP3LocInt(0xFFFFFFFFFFE00000, i)
 #define MmGetP3(i) MmGetP3Int(0xFFFFFFFFFFE00000, i)
 #define MmSetP3(i, p, f) MmSetP3Int(0xFFFFFFFFFFE00000, i, p, f)
 
+#define MmGetP2Loc(i) MmGetP2LocInt(0xFFFFFFFFC0000000, i)
 #define MmGetP2(i) MmGetP2Int(0xFFFFFFFFC0000000, i)
 #define MmSetP2(i, p, f) MmSetP2Int(0xFFFFFFFFC0000000, i, p, f)
 
+#define MmGetP1Loc(i) MmGetP1LocInt(0xFFFFFF8000000000, i)
 #define MmGetP1(i) MmGetP1Int(0xFFFFFF8000000000, i)
 #define MmSetP1(i, p, f) MmSetP1Int(0xFFFFFF8000000000, i, p, f)
 

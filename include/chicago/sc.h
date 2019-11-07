@@ -1,12 +1,12 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:04 BRT
-// Last edited on October 29 of 2019, at 17:17 BRT
+// Last edited on November 06 of 2019, at 18:27 BRT
 
 #ifndef __CHICAGO_SC_H__
 #define __CHICAGO_SC_H__
 
-#include <chicago/process.h>
+#include <chicago/exec.h>
 
 typedef struct {
 	PUInt32 major;
@@ -50,5 +50,9 @@ Boolean ScFsControlFile(IntPtr file, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf);
 UIntPtr ScFsGetFileSize(IntPtr file);
 UIntPtr ScFsGetPosition(IntPtr file);
 Void ScFsSetPosition(IntPtr file, UIntPtr base, UIntPtr off);
+UIntPtr ScExecCreateProcess(PWChar path);
+PExecHandle ScExecLoadLibrary(PWChar path, Boolean global);
+Void ScExecCloseLibrary(PExecHandle handle);
+UIntPtr ScExecGetSymbol(PExecHandle handle, PWChar name);
 
 #endif		// __CHICAGO_SC_H__

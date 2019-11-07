@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 29 of 2018, at 18:10 BRT
-// Last edited on October 29 of 2019, at 18:13 BRT
+// Last edited on November 06 of 2019, at 18:41 BRT
 
 #include <chicago/arch/idt.h>
 #include <chicago/sc.h>
@@ -143,6 +143,18 @@ static Void ArchScHandler(PRegisters regs) {
 	case 0x21: {																								// Boolean FsSetPosition(IntPtr file, IntPtr base, UIntPtr off)
 		ScFsSetPosition(regs->rbx, regs->rcx, regs->rdx);
 		break;
+	}
+	case 0x22: {																								// UIntPtr ExecCreateProcess(PWChar path)
+		regs->rax = ScExecCreateProcess((PWChar)regs->rbx);
+	}
+	case 0x23: {																								// PExecHandle ExecLoadLibrary(PWChar path, Boolean global)
+		regs->rax = (UIntPtr)ScExecLoadLibrary((PWChar)regs->rbx, regs->rcx);
+	}
+	case 0x24: {																								// Void ScExecCloseLibrary(PExecHandle handle)
+		ScExecCloseLibrary((PExecHandle)regs->rbx);
+	}
+	case 0x25: {																								// UIntPtr ExecGetSymbol(PExecHandle handle, PWChar name)
+		regs->rax = ScExecGetSymbol((PExecHandle)regs->rbx, (PWChar)regs->rcx);
 	}
 	default: {
 		regs->rax = (UIntPtr)-1;

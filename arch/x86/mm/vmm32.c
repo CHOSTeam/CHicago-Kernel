@@ -1,11 +1,12 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 19:19 BRT
-// Last edited on November 03 of 2019, at 17:17 BRT
+// Last edited on November 07 of 2019, at 19:44 BRT
 
 #include <chicago/arch/vmm.h>
 
 #include <chicago/mm.h>
+#include <chicago/string.h>
 
 UIntPtr MmGetPhys(UIntPtr virt) {
 	if ((MmGetPDE(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																			// The page table exists?
@@ -200,7 +201,8 @@ Boolean MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags) {
 			MmSetPDE(virt, block, 0x07);																							// No, so put the pde as present, writeable and set the user bit
 		}
 		
-		MmInvlpg((UIntPtr)(&MmGetPDE(virt)));																						// Refresh the TLB
+		MmInvlpg(MmGetPTELoc(virt));																								// Refresh the TLB
+		StrSetMemory((PUInt8)(MmGetPTELoc(virt)), 0, 0x1000);																		// And clean the PTE entries
 	} else if ((MmGetPDE(virt) & PAGE_HUGE) == PAGE_HUGE) {																			// 4MiB page?
 		return False;																												// Yes, but sorry, we don't support mapping it YET
 	}
@@ -265,7 +267,7 @@ Void MmFreeDirectory(UIntPtr dir) {
 		return;
 	}
 	
-	for (UInt32 i = 0; i < 768; i++) {																								// Let's free the user tables
+	for (UInt32 i = 0; i < 767; i++) {																								// Let's free the user tables
 		if ((tmp[i] & PAGE_PRESENT) == PAGE_PRESENT) {																				// Present?
 			if ((tmp[i] & PAGE_HUGE) == PAGE_HUGE) {																				// Yes, 4MiB page?
 				MmDereferencePage(tmp[i] & PAGE_MASK);																				// Yes, free it!

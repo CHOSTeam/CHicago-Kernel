@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:14 BRT
-// Last edited on November 03 of 2019, at 12:50 BRT
+// Last edited on November 07 of 2019, at 19:55 BRT
 
 #include <chicago/arch.h>
 #include <chicago/console.h>
@@ -77,21 +77,17 @@ Void KernelMainLate(Void) {
 	
 	DbgSetRedirect(False);																												// Disable the redirect feature of the Dbg* functions, as it may be enabled
 	ConSetSurface(DispBackBuffer, True, False, 0, 0);																					// Init the console in fullscreen mode
-	ConClearScreen();																													// Clear the screen
-	ConWriteFormated(NlsGetMessage(NLS_OS_NAME), CHICAGO_ARCH);																			// Print some system informations
-	ConWriteFormated(NlsGetMessage(NLS_OS_CODENAME), CHICAGO_CODENAME);
-	ConWriteFormated(NlsGetMessage(NLS_OS_VSTR), CHICAGO_MAJOR, CHICAGO_MINOR, CHICAGO_BUILD);
 	
-	PProcess proc = ExecCreateProcess(L"/System/Programs/sesmgr.che");																	// Let's create the session manager process
+	PProcess proc = ExecCreateProcess(L"/System/Programs/osmngr.che");																	// Let's create the initial process
 	
 	if (proc == Null) {
-		DbgWriteFormated("PANIC! Couldn't start the /System/Programs/sesmgr.che program\r\n");											// Failed, so let's panic
+		DbgWriteFormated("PANIC! Couldn't start the /System/Programs/osmngr.che program\r\n");											// Failed, so let's panic
 		Panic(PANIC_KERNEL_UNEXPECTED_ERROR);
 	}
 	
-	PsAddProcess(proc);																													// Add the session manager process
+	PsAddProcess(proc);																													// Add it
 	PsWaitProcess(proc->id);																											// And it is never supposed to exit, so this should halt us
-	DbgWriteFormated("PANIC! The \\System\\Programs\\sesmgr.che program closed\r\n");													// ... Panic
+	DbgWriteFormated("PANIC! The /System/Programs/osmngr.che program closed\r\n");														// ... Panic
 	Panic(PANIC_KERNEL_UNEXPECTED_ERROR);
 	ArchHalt();
 }
