@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 28 of 2018, at 01:09 BRT
-// Last edited on October 27 of 2019, at 19:24 BRT
+// Last edited on November 08 of 2019, at 18:24 BRT
 
 #define __CHICAGO_ARCH_PROCESS__
 
@@ -31,10 +31,10 @@ PContext PsCreateContext(UIntPtr entry, UIntPtr userstack, Boolean user) {
 		return Null;																								// Failed :(
 	}
 	
-	PUIntPtr kstack = (PUIntPtr)(ctx->kstack + PS_STACK_SIZE - 8);													// Let's setup the context registers!
+	PUIntPtr kstack = (PUIntPtr)(ctx->kstack + PS_STACK_SIZE - 16);													// Let's setup the context registers!
 	
 	*kstack-- = user ? 0x23 : 0x10;																					// Push what we need for using the IRET in the first schedule
-	*kstack-- = user ? userstack : (UIntPtr)(ctx->kstack + PS_STACK_SIZE - 1);
+	*kstack-- = user ? userstack : (UIntPtr)(ctx->kstack + PS_STACK_SIZE - 16);
 	*kstack-- = 0x202;
 	*kstack-- = user ? 0x1B : 0x08;
 	*kstack-- = entry;

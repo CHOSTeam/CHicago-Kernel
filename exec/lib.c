@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 02 of 2019, at 12:12 BRT
-// Last edited on November 05 of 2019, at 18:42 BRT
+// Last edited on November 08 of 2019, at 16:55 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/elf.h>
@@ -38,7 +38,7 @@ static PWChar ExecGetName(PWChar path, Boolean user) {
 	}
 	
 	if (user) {																													// Copy to userspace?
-		PWChar ret = (PWChar)MmAllocUserMemory((StrGetLength(last) + 1) * sizeof(WChar));											// Yes! Alloc the required space
+		PWChar ret = (PWChar)MmAllocUserMemory((StrGetLength(last) + 1) * sizeof(WChar));										// Yes! Alloc the required space
 		
 		if (ret == Null) {
 			MemFree((UIntPtr)last);																								// Failed...
@@ -99,7 +99,7 @@ static Boolean ExecLoadLibraryInt(PExecHandle handle, PELFHdr hdr) {
 		MmFreeUserMemory((UIntPtr)handle->name);
 		return False;
 	} else if (!ELFLoadDeps(hdr, handle)) {																						// Load the dependencies
-		MmFreeUserMemory(handle->base);																							// Failed, free everything
+		MmFreeAlignedUserMemory(handle->base);																					// Failed, free everything
 		ListFree(handle->deps);
 		ListFree(handle->symbols);
 		MmFreeUserMemory((UIntPtr)handle->name);
@@ -109,7 +109,7 @@ static Boolean ExecLoadLibraryInt(PExecHandle handle, PELFHdr hdr) {
 			ExecCloseLibrary((PExecHandle)i->data);
 		}
 		
-		MmFreeUserMemory(handle->base);																							// And free everything
+		MmFreeAlignedUserMemory(handle->base);																					// And free everything
 		ListFree(handle->deps);
 		ListFree(handle->symbols);
 		MmFreeUserMemory((UIntPtr)handle->name);
@@ -125,7 +125,7 @@ static Boolean ExecLoadLibraryInt(PExecHandle handle, PELFHdr hdr) {
 			ExecCloseLibrary((PExecHandle)i->data);
 		}
 		
-		MmFreeUserMemory(handle->base);																							// And free everything
+		MmFreeAlignedUserMemory(handle->base);																					// And free everything
 		ListFree(handle->deps);
 		ListFree(handle->symbols);
 		MmFreeUserMemory((UIntPtr)handle->name);
@@ -293,7 +293,7 @@ Void ExecCloseLibrary(PExecHandle handle) {
 	ListFree(handle->deps);																										// Free the dep handle list
 	ListFree(handle->symbols);																									// Free the symbol list
 	MmFreeUserMemory((UIntPtr)handle->name);																					// Free the name
-	MmFreeUserMemory((UIntPtr)handle->base);																					// Free the loaded sections
+	MmFreeAlignedUserMemory((UIntPtr)handle->base)		;																		// Free the loaded sections
 	MmFreeUserMemory((UIntPtr)handle);																							// And free the handle itself
 }
 

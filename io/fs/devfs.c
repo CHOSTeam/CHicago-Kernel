@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 16 of 2018, at 18:29 BRT
-// Last edited on November 06 of 2019, at 17:40 BRT
+// Last edited on November 08 of 2019, at 17:51 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -90,10 +90,16 @@ PFsNode DevFsFindInDirectory(PFsNode dir, PWChar name) {
 		return Null;																			// Yes (Why?)
 	}
 	
-	PDevice dev = FsGetDevice(name);															// Try to get the device by the name
+	UIntPtr inode = FsGetDeviceID(name);														// Try to get the device by the name
 	
-	if (dev == Null) {																			// Failed?
+	if (inode == (UIntPtr)-1) {																	// Failed?
 		return Null;																			// Yes
+	}
+	
+	PDevice dev = FsGetDeviceByID(inode);														// Get the dev struct
+	
+	if (dev == Null) {
+		return Null;																			// Failed :(
 	}
 	
 	PFsNode node = (PFsNode)MemAllocate(sizeof(FsNode));										// Alloc the fs node struct
@@ -111,14 +117,7 @@ PFsNode DevFsFindInDirectory(PFsNode dir, PWChar name) {
 	
 	node->priv = Null;
 	node->flags = FS_FLAG_FILE;
-	node->inode = FsGetDeviceID(name);															// Try to get the device idx in the list
-	
-	if (node->inode == (UIntPtr)-1) {															// Failed?
-		MemFree((UIntPtr)node->name);															// Yes, so free everything
-		MemFree((UIntPtr)node);
-		return Null;																			// And return
-	}
-	
+	node->inode = inode;
 	node->length = 0;
 	node->offset = 0;
 	node->read = DevFsReadFile;

@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 28 of 2018, at 01:15 BRT
-// Last edited on October 27 of 2019, at 19:39 BRT
+// Last edited on November 08 of 2019, at 18:25 BRT
 
 #ifndef __CHICAGO_ARCH_PROCESS_H__
 #define __CHICAGO_ARCH_PROCESS_H__

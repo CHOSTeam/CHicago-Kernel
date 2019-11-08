@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 31 of 2019, at 18:57 BRT
-// Last edited on November 05 of 2019, at 18:43 BRT
+// Last edited on November 08 of 2019, at 16:59 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/elf.h>
@@ -67,15 +67,15 @@ UIntPtr ELFLoadSections(PELFHdr hdr) {
 	}
 	
 	UIntPtr size = ELFGetSize(hdr);
-	UIntPtr base = MmAllocUserMemory(size);																					// Alloc space for loading it
+	UIntPtr base = MmAllocAlignedUserMemory(size, MM_PAGE_SIZE);															// Alloc space for loading it
 	
 	if (base == 0) {
 		return 0;
 	} else if (!VirtChangeProtection(base, size, VIRT_PROT_READ | VIRT_PROT_WRITE | VIRT_PROT_EXEC)) {						// Change the protection
-		MmFreeUserMemory(base);																								// Failed, free everything
+		MmFreeAlignedUserMemory(base);																						// Failed, free everything
 		return 0;
 	} else if (!ELFLoadPHdrs(hdr, base)) {																					// And try to load it!
-		MmFreeUserMemory(base);																								// Failed, free everything
+		MmFreeAlignedUserMemory(base);																						// Failed, free everything
 		return 0;
 	}
 	
