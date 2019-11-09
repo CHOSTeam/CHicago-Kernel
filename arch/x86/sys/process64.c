@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 28 of 2018, at 01:09 BRT
-// Last edited on November 08 of 2019, at 18:24 BRT
+// Last edited on November 08 of 2019, at 21:30 BRT
 
 #define __CHICAGO_ARCH_PROCESS__
 
@@ -92,7 +92,7 @@ Void PsSwitchTaskForce(PRegisters regs) {
 		}
 	}
 	
-	GDTSetKernelStack((UInt64)(PsCurrentThread->ctx->kstack));														// Switch the kernel stack in the tss
+	GDTSetKernelStack((UInt64)(PsCurrentThread->ctx->kstack) + PS_STACK_SIZE - 16);									// Switch the kernel stack in the tss
 	StrCopyMemory(PsFPUStateSave, PsCurrentThread->ctx->fpu_state, 512);											// And load the new fpu state
 	Asm Volatile("fxrstor (%0)" :: "r"(PsFPUStateSave));
 	
@@ -139,7 +139,7 @@ Void PsSwitchTaskTimer(PRegisters regs) {
 	old->ctx->rsp = (UIntPtr)regs;																					// Save the old context
 	
 	QueueAdd(PsThreadQueue, old);																					// Add the old thread to the queue again
-	GDTSetKernelStack((UInt64)(PsCurrentThread->ctx->kstack));														// Switch the kernel stack in the tss
+	GDTSetKernelStack((UInt64)(PsCurrentThread->ctx->kstack) + PS_STACK_SIZE - 16);									// Switch the kernel stack in the tss
 	Asm Volatile("fxsave (%0)" :: "r"(PsFPUStateSave));																// Save the old fpu state
 	StrCopyMemory(old->ctx->fpu_state, PsFPUStateSave, 512);
 	StrCopyMemory(PsFPUStateSave, PsCurrentThread->ctx->fpu_state, 512);											// And load the new one

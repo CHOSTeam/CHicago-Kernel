@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 13 of 2018, at 00:44 BRT
-// Last edited on November 08 of 2019, at 17:28 BRT
+// Last edited on November 08 of 2019, at 20:52 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/alloc-int.h>
@@ -156,7 +156,7 @@ UIntPtr MemAAllocate(UIntPtr size, UIntPtr align) {
 Void MemFree(UIntPtr block) {
 	if (block == 0) {																											// Some checks...
 		return;
-	} else if (block < (UIntPtr)MemAllocateBase) {
+	} else if (block < ((UIntPtr)MemAllocateBase) + sizeof(AllocBlock)) {
 		return;
 	} else if (block >= HeapGetCurrent()) {
 		return;
@@ -198,44 +198,27 @@ UIntPtr MemZAllocate(UIntPtr size) {
 }
 
 UIntPtr MemReallocate(UIntPtr block, UIntPtr size) {
-	if (size == 0) {
+	if ((block == 0) || (size == 0)) {
 		return 0;
-	} else if (block == 0) {
-		return MemAllocate(size);
-	} else if (block < (UIntPtr)MemAllocateBase) {
+	} else if (block < ((UIntPtr)MemAllocateBase) + sizeof(AllocBlock)) {
 		return 0;
 	} else if (block >= HeapGetCurrent()) {
 		return 0;
 	} else if ((size % sizeof(UIntPtr)) != 0) {
-		size += MM_PAGE_SIZE - (size % sizeof(UIntPtr));
+		size += sizeof(UIntPtr) - (size % sizeof(UIntPtr));
 	}
 	
 	PAllocBlock blk = (PAllocBlock)(block - sizeof(AllocBlock));
+	UIntPtr new = MemAllocate(size);
 	
-	if (blk->size > (size + sizeof(AllocBlock))) {
-		MemAllocateSplitBlock(blk, size);
-	} else {
-		if ((blk->next != Null) && (blk->next->free) && (((blk->size - sizeof(AllocBlock)) + blk->next->size) >= size)) {
-			MemAllocateFuseBlock(blk);
-			
-			if (blk->size > (size + sizeof(AllocBlock))) {
-				MemAllocateSplitBlock(blk, size);
-			}
-		} else {
-			UIntPtr new = MemAllocate(size);
-			
-			if (new == 0) {
-				return 0;
-			}
-			
-			StrCopyMemory((PUInt8)(((PAllocBlock)(new - sizeof(AllocBlock)))->start), (PUInt8)blk->start, blk->size);
-			MemFree(block);
-			
-			return new;
-		}
+	if (new == 0) {
+		return 0;
 	}
 	
-	return block;
+	StrCopyMemory((PUInt8)(((PAllocBlock)(new - sizeof(AllocBlock)))->start), (PUInt8)blk->start, (blk->size > size) ? size : blk->size);
+	MemFree(block);
+	
+	return new;
 }
 
 UIntPtr MemGetAllocSize(UIntPtr block) {
