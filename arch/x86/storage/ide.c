@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 14 of 2018, at 23:40 BRT
-// Last edited on November 03 of 2019, at 16:05 BRT
+// Last edited on November 09 of 2019, at 10:28 BRT
 
 #include <chicago/arch/ide.h>
 #include <chicago/arch/idt.h>
@@ -250,14 +250,22 @@ static Boolean IDEDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) 
 	}
 	
 	while (cur <= end) {																						// Let's read!
-		if (!IDEReadSectors(idev->base, idev->slave, idev->addr48, idev->atapi, 1, cur, buff)) {
+		UIntPtr size = (end - cur + 1) * bsize;																	// Get the length of the data that we would need to read
+		UIntPtr sects = end - cur + 1;
+		
+		if (size > 0x10000) {																					// More than 64KiB?
+			size = 0x10000;																						// Yes, but we only want to read 64KiB or less
+			sects = size / bsize;
+		}
+		
+		if (!IDEReadSectors(idev->base, idev->slave, idev->addr48, idev->atapi, sects, cur, buff)) {
 			return False;																						// Failed...
 		}
 		
-		StrCopyMemory(buf + start, buff, bsize);																// Copy it into the user buffer
+		StrCopyMemory(buf + start, buff, size);																	// Copy it into the user buffer
 		
-		cur++;
-		start += bsize;
+		cur += sects;
+		start += size;
 	}
 	
 	MemAFree((UIntPtr)buff);																					// Free the buffer
@@ -313,14 +321,22 @@ static Boolean IDEDeviceWrite(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf)
 	}
 	
 	while (cur <= end) {																						// Let's write!
-		StrCopyMemory(buff, buf + start, bsize);																// Copy from the user buffer
+		UIntPtr size = (end - cur + 1) * bsize;																	// Get the length of the data that we would need to read
+		UIntPtr sects = end - cur + 1;
 		
-		if (!IDEWriteSectors(idev->base, idev->slave, idev->addr48, idev->atapi, 1, cur, buff)) {
+		if (size > 0x10000) {																					// More than 64KiB?
+			size = 0x10000;																						// Yes, but we only want to read 64KiB or less
+			sects = size / bsize;
+		}
+		
+		StrCopyMemory(buff, buf + start, size);																	// Copy from the user buffer
+		
+		if (!IDEWriteSectors(idev->base, idev->slave, idev->addr48, idev->atapi, sects, cur, buff)) {
 			return False;																						// Failed...
 		}
 		
-		cur++;
-		start += bsize;
+		cur += sects;
+		start += size;
 	}
 	
 	MemAFree((UIntPtr)buff);																					// Free the buffer

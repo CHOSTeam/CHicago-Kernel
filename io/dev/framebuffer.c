@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 18 of 2018, at 22:24 BRT
-// Last edited on February 24 of 2019, at 16:30 BRT
+// Last edited on November 11 of 2019, at 14:10 BRT
 
 #include <chicago/debug.h>
 #include <chicago/device.h>
@@ -12,7 +12,7 @@
 Boolean FrameBufferDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) {
 	(Void)dev;																												// Avoid compiler's unused parameter warning
 	
-	if ((off + len) >= (DispGetWidth() * DispGetHeight() * DispGetBytesPerPixel())) {										// Too high address?
+	if ((off + len) > (DispGetWidth() * DispGetHeight() * DispGetBytesPerPixel())) {										// Too high address?
 		return False;																										// Yes!
 	} else {
 		StrCopyMemory(buf, (PVoid)(DispGetFrameBuffer() + off), len);														// No, so let's read from the real framebuffer!
@@ -23,7 +23,7 @@ Boolean FrameBufferDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf)
 Boolean FrameBufferDeviceWrite(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) {
 	(Void)dev;																												// Avoid compiler's unused parameter warning
 	
-	if ((off + len) >= (DispGetWidth() * DispGetHeight() * DispGetBytesPerPixel())) {										// Too high address?
+	if ((off + len) > (DispGetWidth() * DispGetHeight() * DispGetBytesPerPixel())) {										// Too high address?
 		return False;																										// Yes...
 	} else {
 		StrCopyMemory((PVoid)(DispGetFrameBuffer() + off), buf, len);														// No, so let's write to the real framebuffer!

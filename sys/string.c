@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 15 of 2018, at 19:05 BRT
-// Last edited on November 02 of 2019, at 12:40 BRT
+// Last edited on November 7 of 2019, at 09:55 BRT
 
 #include <chicago/alloc.h>
 
@@ -326,9 +326,9 @@ PWChar StrTokenize(PWChar str, PWChar delim) {
 		}
 	} else if (temp == Null) {														// Not the first call but temp is Null?
 		return Null;																// Yes, so return Null
-	} else {
-		str = temp;
 	}
+	
+	str = temp;																		// Set the string
 	
 	UIntPtr chars = 0;
 	UIntPtr flag = 0;
@@ -380,9 +380,9 @@ PChar StrTokenizeC(PChar str, PChar delim) {
 		}
 	} else if (temp == Null) {														// Not the first call but temp is Null?
 		return Null;																// Yes, so return Null
-	} else {
-		str = temp;
 	}
+	
+	str = temp;																		// Set the string
 	
 	UIntPtr chars = 0;
 	UIntPtr flag = 0;

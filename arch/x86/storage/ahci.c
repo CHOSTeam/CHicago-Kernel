@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on January 17 of 2019, at 21:06 BRT
-// Last edited on November 03 of 2019, at 16:05 BRT
+// Last edited on November 11 of 2019, at 14:22 BRT
 
 #include <chicago/arch/ahci.h>
 #include <chicago/arch/ide.h>
@@ -229,6 +229,7 @@ static Boolean AHCISATAWriteSectors(PHBAPort port, UIntPtr virt, UIntPtr lba, UI
 }
 
 static Boolean AHCISATAPIReadSectors(PHBAPort port, UIntPtr virt, UIntPtr lba, UIntPtr count, PUInt8 buf) {
+	UInt8 sects = (UInt8)count;
 	UIntPtr physadd = virt - MmGetPhys(virt);
 	UInt16 prdtl = (UInt16)((count - 1) >> 4);
 	IntPtr spin = 0;
@@ -277,7 +278,7 @@ static Boolean AHCISATAPIReadSectors(PHBAPort port, UIntPtr virt, UIntPtr lba, U
 	packet[3] = ((lba >> 16) & 0xFF);
 	packet[4] = ((lba >> 8) & 0xFF);
 	packet[5] = (lba & 0xFF);
-	packet[9] = 0x01;
+	packet[9] = sects;
 	
 	while (((port->tfd & 0x88) != 0) && (spin < 1000000)) {																// Wait until the port is no longer busy
 		spin++;
@@ -360,15 +361,23 @@ static Boolean AHCIDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf)
 	}
 	
 	while (cur <= end) {																								// Let's read!
-		if (!AHCIReadSectors(adev->port, adev->virt, bsize, cur, 1, buff)) {
+		UIntPtr size = (end - cur + 1) * bsize;																			// Get the length of the data that we would need to read
+		UIntPtr sects = end - cur + 1;
+		
+		if (size > 0x10000) {																							// More than 64KiB?
+			size = 0x10000;																								// Yes, but we only want to read 64KiB or less
+			sects = size / bsize;
+		}
+		
+		if (!AHCIReadSectors(adev->port, adev->virt, bsize, cur, sects, buff)) {
 			MemAFree((UIntPtr)buff);																					// Failed...
 			return False;
 		}
 		
-		StrCopyMemory(buf + start, buff, bsize);																		// Copy it into the user buffer
+		StrCopyMemory(buf + start, buff, size);																			// Copy it into the user buffer
 		
-		cur++;
-		start += bsize;
+		cur += sects;
+		start += size;
 	}
 	
 	MemAFree((UIntPtr)buff);																							// Free the buffer
@@ -428,15 +437,23 @@ static Boolean AHCIDeviceWrite(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf
 		}
 	}
 	
-	while (cur <= end) {																									// Let's write!
-		StrCopyMemory(buff, buf + start, bsize);																		// Copy from the user buffer
+	while (cur <= end) {																								// Let's write!
+		UIntPtr size = (end - cur + 1) * bsize;																			// Get the length of the data that we would need to write
+		UIntPtr sects = end - cur + 1;
 		
-		if (!AHCIWriteSectors(adev->port, adev->virt, bsize, cur, 1, buff)) {
+		if (size > 0x10000) {																							// More than 64KiB?
+			size = 0x10000;																								// Yes, but we only want to read 64KiB or less
+			sects = size / bsize;
+		}
+		
+		StrCopyMemory(buff, buf + start, size);																			// Copy from the user buffer
+		
+		if (!AHCIWriteSectors(adev->port, adev->virt, bsize, cur, sects, buff)) {
 			return False;																								// Failed...
 		}
 		
-		cur++;
-		start += bsize;
+		cur += sects;
+		start += size;
 	}
 	
 	MemAFree((UIntPtr)buff);																							// Free the buffer

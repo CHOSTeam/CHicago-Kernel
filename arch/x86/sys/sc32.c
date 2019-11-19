@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 00:48 BRT
-// Last edited on November 07 of 2019, at 19:51 BRT
+// Last edited on November 16 of 2019, at 11:25 BRT
 
 #include <chicago/arch/idt.h>
 #include <chicago/sc.h>
@@ -88,73 +88,73 @@ static Void ArchScHandler(PRegisters regs) {
 		ScPsExitProcess(regs->ebx);
 		break;
 	}
-	case 0x14: {																								// Void PsForceSwitch(Void)
-		ScPsForceSwitch();
-		break;
-	}
-	case 0x15: {																								// IntPtr FsOpenFile(PWChar path)
+	case 0x14: {																								// IntPtr FsOpenFile(PWChar path)
 		regs->eax = ScFsOpenFile((PWChar)regs->ebx);
 		break;
 	}
-	case 0x16: {																								// Void FsCloseFile(IntPtr file)
+	case 0x15: {																								// Void FsCloseFile(IntPtr file)
 		ScFsCloseFile(regs->ebx);
 		break;
 	}
-	case 0x17: {																								// Boolean FsReadFile(IntPtr file, UIntPtr size, PUInt8 buf)
+	case 0x16: {																								// Boolean FsReadFile(IntPtr file, UIntPtr size, PUInt8 buf)
 		regs->eax = ScFsReadFile(regs->ebx, regs->ecx, (PUInt8)regs->edx);
 		break;
 	}
-	case 0x18: {																								// Boolean FsWriteFile(IntPtr file, UIntPtr size, PUInt8 buf)
+	case 0x17: {																								// Boolean FsWriteFile(IntPtr file, UIntPtr size, PUInt8 buf)
 		regs->eax = ScFsWriteFile(regs->ebx, regs->ecx, (PUInt8)regs->edx);
 		break;
 	}
-	case 0x19: {																								// Boolean FsMountFile(PWChar path, PWChar file, PWChar type)
+	case 0x18: {																								// Boolean FsMountFile(PWChar path, PWChar file, PWChar type)
 		regs->eax = ScFsMountFile((PWChar)regs->ebx, (PWChar)regs->ecx, (PWChar)regs->edx);
 		break;
 	}
-	case 0x1A: {																								// Boolean FsUmountFile(PWChar path)
+	case 0x19: {																								// Boolean FsUmountFile(PWChar path)
 		regs->eax = ScFsUmountFile((PWChar)regs->ebx);
 		break;
 	}
-	case 0x1B: {																								// Boolean FsReadDirectoryEntry(IntPtr dir, UIntPtr entry, PWChar out)
+	case 0x1A: {																								// Boolean FsReadDirectoryEntry(IntPtr dir, UIntPtr entry, PWChar out)
 		regs->eax = ScFsReadDirectoryEntry(regs->ebx, regs->ecx, (PWChar)regs->edx);
 		break;
 	}
-	case 0x1C: {																								// IntPtr FsFindInDirectory(IntPtr dir, PWChar name)
+	case 0x1B: {																								// IntPtr FsFindInDirectory(IntPtr dir, PWChar name)
 		regs->eax = ScFsFindInDirectory(regs->ebx, (PWChar)regs->ecx);
 		break;
 	}
-	case 0x1D: {																								// Boolean FsCreateFile(IntPtr dir, PWChar name, UIntPtr type)
+	case 0x1C: {																								// Boolean FsCreateFile(IntPtr dir, PWChar name, UIntPtr type)
 		regs->eax = ScFsCreateFile(regs->ebx, (PWChar)regs->ecx, regs->edx);
 		break;
 	}
-	case 0x1E: {																								// Boolean FsControlFile(IntPtr file, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf)
+	case 0x1D: {																								// Boolean FsControlFile(IntPtr file, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf)
 		regs->eax = ScFsControlFile(regs->ebx, regs->ecx, (PUInt8)regs->edx, (PUInt8)regs->esi);
 		break;
 	}
-	case 0x1F: {																								// UIntPtr FsGetSize(IntPtr file)
+	case 0x1E: {																								// UIntPtr FsGetSize(IntPtr file)
 		regs->eax = ScFsGetFileSize(regs->ebx);
 		break;
 	}
-	case 0x20: {																								// UIntPtr FsGetPosition(IntPtr file)
+	case 0x1F: {																								// UIntPtr FsGetPosition(IntPtr file)
 		regs->eax = ScFsGetPosition(regs->ebx);
 		break;
 	}
-	case 0x21: {																								// Boolean FsSetPosition(IntPtr file, IntPtr base, UIntPtr off)
+	case 0x20: {																								// Boolean FsSetPosition(IntPtr file, IntPtr base, UIntPtr off)
 		ScFsSetPosition(regs->ebx, regs->ecx, regs->edx);
 		break;
 	}
-	case 0x22: {																								// UIntPtr ExecCreateProcess(PWChar path)
+	case 0x21: {																								// UIntPtr ExecCreateProcess(PWChar path)
 		regs->eax = ScExecCreateProcess((PWChar)regs->ebx);
+		break;
 	}
-	case 0x23: {																								// PExecHandle ExecLoadLibrary(PWChar path, Boolean global)
+	case 0x22: {																								// PLibHandle ExecLoadLibrary(PWChar path, Boolean global)
 		regs->eax = (UIntPtr)ScExecLoadLibrary((PWChar)regs->ebx, regs->ecx);
+		break;
 	}
-	case 0x24: {																								// Void ScExecCloseLibrary(PExecHandle handle)
-		ScExecCloseLibrary((PExecHandle)regs->ebx);
+	case 0x23: {																								// Void ScExecCloseLibrary(PLibHandle handle)
+		ScExecCloseLibrary((PLibHandle)regs->ebx);
+		break;
 	}
-	case 0x25: {																								// UIntPtr ExecGetSymbol(PExecHandle handle, PWChar name)
-		regs->eax = ScExecGetSymbol((PExecHandle)regs->ebx, (PWChar)regs->ecx);
+	case 0x24: {																								// UIntPtr ExecGetSymbol(PLibHandle handle, PWChar name)
+		regs->eax = ScExecGetSymbol((PLibHandle)regs->ebx, (PWChar)regs->ecx);
+		break;
 	}
 	default: {
 		regs->eax = (UIntPtr)-1;

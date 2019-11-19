@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 27 of 2018, at 14:59 BRT
-// Last edited on November 07 of 2019, at 19:35 BRT
+// Last edited on November 10 of 2019, at 11:07 BRT
 
 #define __CHICAGO_PROCESS__
 
@@ -337,8 +337,8 @@ Void PsExitThread(UIntPtr ret) {
 		return;
 	} else if ((PsCurrentThread->id == 0) && (PsCurrentProcess->id == 0)) {																		// Kernel main thread?
 		PsLockTaskSwitch(old);																													// Yes, so PANIC!
-		DbgWriteFormated("PANIC! Tried to close the kernel main thread\r\n");
-		Panic(PANIC_KERNEL_UNEXPECTED_ERROR);
+		DbgWriteFormated("PANIC! The main kernel thread was closed\r\n");
+		Panic(PANIC_KERNEL_MAIN_THREAD_CLOSED);
 	} else if (PsCurrentProcess->threads->length == 1) {																						// We're the only thread?
 		PsExitProcess(ret);																														// Yes, so call PsExitProcess	
 	}
@@ -387,8 +387,8 @@ Void PsExitProcess(UIntPtr ret) {
 		return;
 	} else if (PsCurrentProcess->id == 0) {																										// Kernel process?
 		PsLockTaskSwitch(old);																													// Yes, so PANIC!
-		DbgWriteFormated("PANIC! Tried to close the kernel process\r\n");
-		Panic(PANIC_KERNEL_UNEXPECTED_ERROR);
+		DbgWriteFormated("PANIC! The kernel process was closed\r\n");
+		Panic(PANIC_KERNEL_PROCESS_CLOSED);
 	}
 	
 	PsLockTaskSwitch(old);																														// Lock

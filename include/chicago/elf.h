@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 25 of 2018, at 20:11 BRT
-// Last edited on November 03 of 2019, at 15:27 BRT
+// Last edited on November 16 of 2019, at 11:23 BRT
 
 #ifndef __CHICAGO_ELF_H__
 #define __CHICAGO_ELF_H__
@@ -150,13 +150,13 @@ typedef struct {
 } ELFDyn, *PELFDyn;
 #endif
 
-Boolean ELFCheck(PELFHdr hdr);
+Boolean ELFCheck(PELFHdr hdr, Boolean exec);
 UIntPtr ELFLoadSections(PELFHdr hdr);
-Boolean ELFAddSymbols(PELFHdr hdr, PExecHandle handle);
+Boolean ELFAddSymbols(PELFHdr hdr, PLibHandle handle);
 PFsNode ELFFindFile(PWChar path);
-Boolean ELFLoadDeps(PELFHdr hdr, PExecHandle handle);
-Boolean ArchELFRelocate(PELFHdr hdr, PExecHandle handle, UIntPtr base, PELFRel rel, PChar strtab, PELFSym sym, UInt8 type);
-Boolean ArchELFRelocateA(PELFHdr hdr, PExecHandle handle, UIntPtr base, PELFRelA rela, PChar strtab, PELFSym sym, UInt8 type);
-Boolean ELFRelocate(PELFHdr hdr, PExecHandle handle, UIntPtr base);
+Boolean ELFLoadDeps(PELFHdr hdr, PLibHandle handle);
+Boolean ArchELFRelocate(PELFHdr hdr, PLibHandle handle, UIntPtr base, PELFRel rel, PChar strtab, PELFSym sym, UInt8 type);
+Boolean ArchELFRelocateA(PELFHdr hdr, PLibHandle handle, UIntPtr base, PELFRelA rela, PChar strtab, PELFSym sym, UInt8 type);
+Boolean ELFRelocate(PELFHdr hdr, PLibHandle handle, UIntPtr base);
 
 #endif		// __CHICAGO_ELF_H__

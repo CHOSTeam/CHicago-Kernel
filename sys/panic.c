@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 27 of 2018, at 21:37 BRT
-// Last edited on February 02 of 2019, at 11:37 BRT
+// Last edited on November 10 of 2019, at 11:10 BRT
 
 #include <chicago/console.h>
 #include <chicago/nls.h>
@@ -10,6 +10,11 @@
 PWChar PanicStrings[PANIC_COUNT] = {
 	L"MM_READWRITE_TO_NONPRESENT_AREA",
 	L"MM_WRITE_TO_READONLY_AREA",
+	L"BOOTDEV_MOUNT_FAILED",
+	L"KERNEL_PROCESS_CLOSED",
+	L"KERNEL_MAIN_THREAD_CLOSED",
+	L"OSMNGR_START_FAILED",
+	L"OSMNGR_PROCESS_CLOSED",
 	L"KERNEL_UNEXPECTED_ERROR",
 	L"KERNEL_INIT_FAILED"
 };

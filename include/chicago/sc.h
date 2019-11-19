@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:04 BRT
-// Last edited on November 06 of 2019, at 18:27 BRT
+// Last edited on November 16 of 2019, at 11:24 BRT
 
 #ifndef __CHICAGO_SC_H__
 #define __CHICAGO_SC_H__
@@ -36,7 +36,6 @@ Void ScPsLock(PLock lock);
 Void ScPsUnlock(PLock lock);
 Void ScPsExitThread(UIntPtr ret);
 Void ScPsExitProcess(UIntPtr ret);
-Void ScPsForceSwitch(Void);
 IntPtr ScFsOpenFile(PWChar path);
 Void ScFsCloseFile(IntPtr file);
 Boolean ScFsReadFile(IntPtr file, UIntPtr len, PUInt8 buf);
@@ -51,8 +50,8 @@ UIntPtr ScFsGetFileSize(IntPtr file);
 UIntPtr ScFsGetPosition(IntPtr file);
 Void ScFsSetPosition(IntPtr file, UIntPtr base, UIntPtr off);
 UIntPtr ScExecCreateProcess(PWChar path);
-PExecHandle ScExecLoadLibrary(PWChar path, Boolean global);
-Void ScExecCloseLibrary(PExecHandle handle);
-UIntPtr ScExecGetSymbol(PExecHandle handle, PWChar name);
+PLibHandle ScExecLoadLibrary(PWChar path, Boolean global);
+Void ScExecCloseLibrary(PLibHandle handle);
+UIntPtr ScExecGetSymbol(PLibHandle handle, PWChar name);
 
 #endif		// __CHICAGO_SC_H__

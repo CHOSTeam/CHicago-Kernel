@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:21 BRT
-// Last edited on November 07 of 2019, at 19:49 BRT
+// Last edited on November 15 of 2019, at 22:08 BRT
 
 .section .text
 
@@ -12,11 +12,14 @@ KernelEntry:
 	
 	add $0xC0000000, %ebx																								// Fix the bootmgr data
 	add $0xC0000000, %ecx
+	add $0xC0000000, %ebp
 	
 	mov %ebx, (BootmgrBootDev - 0xC0000000)																				// Save the bootmgr data!
 	mov %ecx, (BootmgrMemMap - 0xC0000000)
 	mov %edx, (BootmgrMemMapCount - 0xC0000000)
 	mov %edi, (ArchBootOptions - 0xC0000000)
+	mov %ebp, (KernelSymbolTable - 0xC0000000)
+	mov %esp, (KernelSymbolTableSize - 0xC0000000)
 	
 	mov (%esi), %eax
 	mov %eax, (BootmgrDispWidth - 0xC0000000)
@@ -486,6 +489,12 @@ BootmgrMemMapCount: .int 0
 
 .global ArchBootOptions
 ArchBootOptions: .int 0
+
+.global KernelSymbolTable
+KernelSymbolTable: .int 0
+
+.global KernelSymbolTableSize
+KernelSymbolTableSize: .int 0
 
 .global BootmgrDispWidth
 BootmgrDispWidth: .int 0

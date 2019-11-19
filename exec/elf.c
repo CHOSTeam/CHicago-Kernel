@@ -1,86 +1,13 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 31 of 2019, at 18:57 BRT
-// Last edited on November 08 of 2019, at 16:59 BRT
+// Last edited on November 16 of 2019, at 11:24 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/elf.h>
 #include <chicago/mm.h>
 #include <chicago/string.h>
 #include <chicago/virt.h>
-
-Boolean ELFCheck(PELFHdr hdr) {
-	if (!StrCompareMemory(hdr->ident, "\177ELF", 4)) {																		// Check the header magic
-		return False;
-	} else if (hdr->type != 3) {																							// Check if this is a dynamic executable/library
-		return False;
-	} else if (hdr->machine != ELF_MACHINE) {																				// Check if this file is for this architecture
-		return False;
-	} else if (hdr->version == 0) {																							// And check if the version isn't zero
-		return False;
-	}
-	
-	return True;
-}
-
-static UIntPtr ELFGetSize(PELFHdr hdr) {
-	if (hdr == Null) {																										// Sanity check
-		return 0;
-	}
-	
-	UIntPtr size = 0;																										// Now, let's iterate the program headers!
-	
-	for (UIntPtr i = 0; i < hdr->ph_num; i++) {
-		PELFPHdr ph = ELF_PH_GET(hdr, i);
-		
-		if (ph->type == 0x01) {																								// Section to load?
-			UIntPtr maxaddr = ((ph->vaddr + ph->msize - 1) / ph->align + 1) * ph->align;									// Yes, get the max address
-			
-			if (maxaddr > size) {																							// Higher than our current size?
-				size = maxaddr;																								// Yes, so let's increase the size
-			}
-		}
-	}
-	
-	return size;
-}
-
-static Boolean ELFLoadPHdrs(PELFHdr hdr, UIntPtr dest) {
-	if (hdr == Null || dest == 0) {																							// Sanity check
-		return False;
-	}
-	
-	for (UIntPtr i = 0; i < hdr->ph_num; i++) {																				// Now, let's iterate the program headers!
-		PELFPHdr ph = ELF_PH_GET(hdr, i);
-		
-		if (ph->type == 0x01) {																								// Section to load?
-			StrCopyMemory((PUInt8)(dest + ph->vaddr), ELF_SHPH_CONTENT(hdr, ph), ph->fsize);								// Yes, load it
-		}
-	}
-	
-	return True;
-}
-
-UIntPtr ELFLoadSections(PELFHdr hdr) {
-	if (hdr == Null) {																										// Sanity check
-		return 0;
-	}
-	
-	UIntPtr size = ELFGetSize(hdr);
-	UIntPtr base = MmAllocAlignedUserMemory(size, MM_PAGE_SIZE);															// Alloc space for loading it
-	
-	if (base == 0) {
-		return 0;
-	} else if (!VirtChangeProtection(base, size, VIRT_PROT_READ | VIRT_PROT_WRITE | VIRT_PROT_EXEC)) {						// Change the protection
-		MmFreeAlignedUserMemory(base);																						// Failed, free everything
-		return 0;
-	} else if (!ELFLoadPHdrs(hdr, base)) {																					// And try to load it!
-		MmFreeAlignedUserMemory(base);																						// Failed, free everything
-		return 0;
-	}
-	
-	return base;
-}
 
 static PVoid ELFGetPHdr(PELFHdr hdr, UInt32 type) {
 	if (hdr == Null) {																										// Sanity check
@@ -126,6 +53,94 @@ static PVoid ELFGetDynPtr(PELFHdr hdr, PELFDyn dyn, IntPtr type) {
 	return Null;
 }
 
+Boolean ELFCheck(PELFHdr hdr, Boolean exec) {
+	if (!StrCompareMemory(hdr->ident, "\177ELF", 4)) {																		// Check the header magic
+		return False;
+	} else if (hdr->type != 3) {																							// Check if this is a dynamic executable/library
+		return False;
+	} else if (hdr->machine != ELF_MACHINE) {																				// Check if this file is for this architecture
+		return False;
+	} else if (hdr->version == 0) {																							// And check if the version isn't zero
+		return False;
+	}
+	
+	if (exec) {																												// Check if this is a executable?
+		PELFDyn dyn = ELFGetPHdr(hdr, 0x02);																				// Yes, get the dyn section of the executable
+	
+		if (dyn == Null) {
+			return False;
+		}
+		
+		UIntPtr flags1 = ELFGetDynVal(hdr, dyn, 0x6FFFFFFB);																// Get the DT_FLAGS_1
+		
+		if ((flags1 & 0x8000000) != 0x8000000) {																			// And check if the PIE flag is set
+			return False;
+		}
+	}
+	
+	return True;
+}
+
+static UIntPtr ELFGetSize(PELFHdr hdr) {
+	if (hdr == Null) {																										// Sanity check
+		return 0;
+	}
+	
+	UIntPtr size = 0;																										// Now, let's iterate the program headers!
+	
+	for (UIntPtr i = 0; i < hdr->ph_num; i++) {
+		PELFPHdr ph = ELF_PH_GET(hdr, i);
+		
+		if (ph->type == 0x01) {																								// Section to load?
+			UIntPtr maxaddr = ((ph->vaddr + ph->msize - 1) / ph->align + 1) * ph->align;									// Yes, get the max address
+			
+			if (maxaddr > size) {																							// Higher than our current size?
+				size = maxaddr;																								// Yes, so let's increase the size
+			}
+		}
+	}
+	
+	return size;
+}
+
+static Boolean ELFLoadPHdrs(PELFHdr hdr, UIntPtr dest) {
+	if (hdr == Null || dest == 0) {																							// Sanity check
+		return False;
+	}
+	
+	for (UIntPtr i = 0; i < hdr->ph_num; i++) {																				// Now, let's iterate the program headers!
+		PELFPHdr ph = ELF_PH_GET(hdr, i);
+		
+		if (ph->type == 0x01) {																								// Section to load?
+			StrCopyMemory((PUInt8)(dest + ph->vaddr), ELF_SHPH_CONTENT(hdr, ph), ph->fsize);								// Yes, load it
+			StrSetMemory((PUInt8)(dest + ph->vaddr + ph->fsize), 0, ph->msize - ph->fsize);
+		}
+	}
+	
+	return True;
+}
+
+UIntPtr ELFLoadSections(PELFHdr hdr) {
+	if (hdr == Null) {																										// Sanity check
+		return 0;
+	}
+	
+	UIntPtr size = ELFGetSize(hdr);
+	UIntPtr base = MmAllocAlignedUserMemory(size, MM_PAGE_SIZE);															// Alloc space for loading it
+	
+	if (base == 0) {
+		return 0;
+	} else if (!VirtChangeProtection(base, size, VIRT_PROT_READ | VIRT_PROT_WRITE | VIRT_PROT_EXEC)) {						// Change the protection
+		MmFreeAlignedUserMemory(base);																						// Failed, free everything
+		return 0;
+	} else if (!ELFLoadPHdrs(hdr, base)) {																					// And try to load it!
+		MmFreeAlignedUserMemory(base);																						// Failed, free everything
+		return 0;
+	}
+	
+	return base;
+}
+
 static PWChar ELFGetWName(PChar name, Boolean user) {
 	if (name == Null) {																										// Sanity check
 		return Null;
@@ -143,12 +158,12 @@ static PWChar ELFGetWName(PChar name, Boolean user) {
 	return ret;																												// And return
 }
 
-static Boolean ELFGetSymbol(PELFSym sym, PWChar name, PExecHandle handle, PUIntPtr out) {
+static Boolean ELFGetSymbol(PELFSym sym, PWChar name, PLibHandle handle, PUIntPtr out) {
 	if (sym == Null || handle == Null || out == Null) {																		// Sanity check
 		return False;
 	} else if (sym->shndx == 0) {																							// Try to find it in other handles?
 		ListForeach(PsCurrentProcess->global_handle_list, i) {																// Yes, first, search on the global handle list
-			UIntPtr sm = ExecGetSymbol((PExecHandle)i->data, name);															// Try to get the symbol in this handle
+			UIntPtr sm = ExecGetSymbol((PLibHandle)i->data, name);															// Try to get the symbol in this handle
 			
 			if (sm != 0) {
 				*out = sm;																									// Found!
@@ -157,12 +172,17 @@ static Boolean ELFGetSymbol(PELFSym sym, PWChar name, PExecHandle handle, PUIntP
 		}
 		
 		ListForeach(handle->deps, i) {																						// Let's try to get the symbol in the private dependency handles
-			UIntPtr sm = ExecGetSymbol((PExecHandle)i->data, name);
+			UIntPtr sm = ExecGetSymbol((PLibHandle)i->data, name);
 			
 			if (sm != 0) {
 				*out = sm;																									// Found!
 				return True;
 			}
+		}
+		
+		if (((sym->info >> 4) & 0x02) == 0x02) {																			// Weak symbol?
+			*out = 1;																										// Yeah, just set the location to one (if we set to zero, it's not going to work)
+			return True;
 		}
 		
 		return False;
@@ -173,7 +193,7 @@ static Boolean ELFGetSymbol(PELFSym sym, PWChar name, PExecHandle handle, PUIntP
 	return True;
 }
 
-Boolean ELFAddSymbols(PELFHdr hdr, PExecHandle handle) {
+Boolean ELFAddSymbols(PELFHdr hdr, PLibHandle handle) {
 	if (hdr == Null || handle == Null) {																					// Sanity check
 		return False;
 	}
@@ -196,17 +216,13 @@ Boolean ELFAddSymbols(PELFHdr hdr, PExecHandle handle) {
 	for (UInt32 i = 1; i < hash[1]; i++) {																					// Now, let's add all the symbols!
 		PELFSym sym = (PELFSym)((UIntPtr)symtab + (i * syment));															// Get this symbol
 		
-		if (((sym->info >> 4) & 0x01) != 0x01) {																			// We need to add it?
+		if (((sym->info >> 4) & 0x01) != 0x01 && ((sym->info >> 4) & 0x02) != 0x02) {										// We need to add it?
 			continue;																										// Nope, it's just a local symbol
 		}
 		
 		PExecSymbol sm = (PExecSymbol)MmAllocUserMemory(sizeof(ExecSymbol));												// Alloc space for the symbol
 		
 		if (sm == Null) {
-			ListForeach(handle->symbols, i) {																				// ...
-				MmFreeUserMemory((UIntPtr)i->data);
-			}
-			
 			return False;
 		}
 		
@@ -214,29 +230,14 @@ Boolean ELFAddSymbols(PELFHdr hdr, PExecHandle handle) {
 		
 		if (sm->name == Null) {
 			MmFreeUserMemory((UIntPtr)sm);																					// Failed... :(
-			
-			ListForeach(handle->symbols, i) {
-				MmFreeUserMemory((UIntPtr)i->data);
-			}
-			
 			return False;
 		} else if (!ELFGetSymbol(sym, sm->name, handle, &sm->loc)) {														// Try to get the symbol location
 			MmFreeUserMemory((UIntPtr)sm->name);																			// Failed...
 			MmFreeUserMemory((UIntPtr)sm);
-			
-			ListForeach(handle->symbols, i) {
-				MmFreeUserMemory((UIntPtr)i->data);
-			}
-			
 			return False;
 		} else if (!ListAdd(handle->symbols, sm)) {																			// Finally, try to add it to the list!
 			MmFreeUserMemory((UIntPtr)sm->name);
 			MmFreeUserMemory((UIntPtr)sm);
-			
-			ListForeach(handle->symbols, i) {
-				MmFreeUserMemory((UIntPtr)i->data);
-			}
-			
 			return False;
 		}
 	}
@@ -261,10 +262,22 @@ PFsNode ELFFindFile(PWChar path) {
 	
 	MemFree((UIntPtr)full);																									// Free the full path
 	
+	if (file == Null) {																										// Try to search on the /Development/Libraries folder?
+		full = FsJoinPath(L"/Development/Libraries", path);																	// Yes
+		
+		if (full == Null) {																									// Failed to join the path?
+			return Null;																									// Yes :(
+		}
+		
+		file = FsOpenFile(full);																							// Try to open it!
+		
+		MemFree((UIntPtr)full);																								// Free the full path
+	}
+	
 	return file;																											// Return
 }
 
-Boolean ELFLoadDeps(PELFHdr hdr, PExecHandle handle) {
+Boolean ELFLoadDeps(PELFHdr hdr, PLibHandle handle) {
 	if (hdr == Null) {																										// Sanity check
 		return False;
 	}
@@ -291,21 +304,21 @@ Boolean ELFLoadDeps(PELFHdr hdr, PExecHandle handle) {
 		if (name == Null) {
 			if (handle != Null) {																							// Failed :(
 				ListForeach(handle->deps, i) {
-					ExecCloseLibrary((PExecHandle)i->data);
+					ExecCloseLibrary((PLibHandle)i->data);
 				}
 			}
 			
 			return False;
 		}
 		
-		PExecHandle hndl = ExecLoadLibrary(name, handle == Null);															// Try to load it
+		PLibHandle hndl = ExecLoadLibrary(name, handle == Null);															// Try to load it
 		
 		MemFree((UIntPtr)name);																								// Free the name
 		
 		if (hndl == Null || !hndl->resolved) {
 			if (handle != Null) {																							// Failed to load/recursive loading...
 				ListForeach(handle->deps, i) {
-					ExecCloseLibrary((PExecHandle)i->data);
+					ExecCloseLibrary((PLibHandle)i->data);
 				}
 			}
 			
@@ -315,7 +328,7 @@ Boolean ELFLoadDeps(PELFHdr hdr, PExecHandle handle) {
 			
 			if (handle != Null) {																							// Failed :(
 				ListForeach(handle->deps, i) {
-					ExecCloseLibrary((PExecHandle)i->data);
+					ExecCloseLibrary((PLibHandle)i->data);
 				}
 			}
 			
@@ -326,7 +339,7 @@ Boolean ELFLoadDeps(PELFHdr hdr, PExecHandle handle) {
 	return True;
 }
 
-static Boolean ELFRelocateInt(PELFHdr hdr, PExecHandle handle, UIntPtr base, PChar rel, PChar strtab, PChar symtab, UIntPtr entsize, UIntPtr syment, UIntPtr limit, Boolean a) {
+static Boolean ELFRelocateInt(PELFHdr hdr, PLibHandle handle, UIntPtr base, PChar rel, PChar strtab, PChar symtab, UIntPtr entsize, UIntPtr syment, UIntPtr limit, Boolean a) {
 	if (hdr == Null || rel == Null || strtab == Null || symtab == Null) {													// Sanity checks
 		return False;	
 	}
@@ -349,7 +362,7 @@ static Boolean ELFRelocateInt(PELFHdr hdr, PExecHandle handle, UIntPtr base, PCh
 	return True;
 }
 
-Boolean ELFRelocate(PELFHdr hdr, PExecHandle handle, UIntPtr base) {
+Boolean ELFRelocate(PELFHdr hdr, PLibHandle handle, UIntPtr base) {
 	if (hdr == Null) {																										// Sanity check
 		return False;
 	}

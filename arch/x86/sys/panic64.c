@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 27 of 2018, at 21:48 BRT
-// Last edited on November 07 of 2019, at 18:26 BRT
+// Last edited on November 10 of 2019, at 11:11 BRT
 
 #include <chicago/arch/registers.h>
 
@@ -55,8 +55,8 @@ Void ArchPanicWriteHex(UInt64 val) {
 }
 
 Void ArchPanic(UInt32 err, PVoid priv) {
-	if (err > PANIC_MM_WRITE_TO_READONLY_AREA) {																// Print the error code to the debug port?
-		DbgWriteFormated("PANIC! %s\r\n", PanicStrings[err - PANIC_KERNEL_UNEXPECTED_ERROR]);					// Yes
+	if (err > PANIC_OSMNGR_PROCESS_CLOSED) {																	// Print the error code to the debug port?
+		DbgWriteFormated("PANIC! %s\r\n", PanicStrings[err - PANIC_OSMNGR_PROCESS_CLOSED]);						// Yes
 	}
 	
 	if (PsCurrentThread != Null) {																				// Tasking initialized?

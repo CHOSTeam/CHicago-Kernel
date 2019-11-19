@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:14 BRT
-// Last edited on November 07 of 2019, at 17:54 BRT
+// Last edited on November 16 of 2019, at 11:24 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/mm.h>
@@ -124,7 +124,7 @@ UIntPtr ScPsCreateThread(UIntPtr entry) {
 		return 0;
 	}
 	
-	PThread th = PsCreateThread(entry, stack, True);																										// Create a new thread
+	PThread th = PsCreateThread(entry, stack + 0x100000 - sizeof(UIntPtr), True);																			// Create a new user thread
 	
 	if (th == Null) {
 		VirtFreeAddress(stack, 0x100000);																													// Failed
@@ -178,10 +178,6 @@ Void ScPsExitThread(UIntPtr ret) {
 
 Void ScPsExitProcess(UIntPtr ret) {
 	PsExitProcess(ret);																																		// Just redirect
-}
-
-Void ScPsForceSwitch(Void) {
-	PsSwitchTask(Null);																																		// Just redirect
 }
 
 IntPtr ScFsOpenFile(PWChar path) {
@@ -302,7 +298,7 @@ Boolean ScFsCreateFile(IntPtr dir, PWChar name, UIntPtr flags) {
 }
 
 Boolean ScFsControlFile(IntPtr file, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf) {
-	if ((file >= PsCurrentProcess->last_fid) || (!ScCheckPointer(ibuf)) || (!ScCheckPointer(obuf))) {														// Sanity checks
+	if ((file >= PsCurrentProcess->last_fid) || (ibuf != Null && !ScCheckPointer(ibuf)) || (obuf != Null && !ScCheckPointer(obuf))) {						// Sanity checks
 		return False;
 	} else {
 		return FsControlFile(((PProcessFile)(ListGet(PsCurrentProcess->files, file)))->file, cmd, ibuf, obuf);												// And redirect
@@ -379,7 +375,7 @@ UIntPtr ScExecCreateProcess(PWChar path) {
 	return proc->id;
 }
 
-PExecHandle ScExecLoadLibrary(PWChar path, Boolean global) {
+PLibHandle ScExecLoadLibrary(PWChar path, Boolean global) {
 	if (!ScCheckPointer(path)) {																															// Sanity check
 		return 0;
 	}
@@ -387,7 +383,7 @@ PExecHandle ScExecLoadLibrary(PWChar path, Boolean global) {
 	return ExecLoadLibrary(path, global);																													// And redirect
 }
 
-Void ScExecCloseLibrary(PExecHandle handle) {
+Void ScExecCloseLibrary(PLibHandle handle) {
 	if (!ScCheckPointer(handle)) {																															// Sanity check
 		return;
 	}
@@ -395,7 +391,7 @@ Void ScExecCloseLibrary(PExecHandle handle) {
 	ExecCloseLibrary(handle);																																// And redirect
 }
 
-UIntPtr ScExecGetSymbol(PExecHandle handle, PWChar name) {
+UIntPtr ScExecGetSymbol(PLibHandle handle, PWChar name) {
 	if (!ScCheckPointer(handle) || !ScCheckPointer(name)) {																									// Sanity check
 		return 0;
 	}

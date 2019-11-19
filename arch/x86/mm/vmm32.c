@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 19:19 BRT
-// Last edited on November 07 of 2019, at 19:44 BRT
+// Last edited on November 11 of 2019, at 15:46 BRT
 
 #include <chicago/arch/vmm.h>
 
@@ -267,7 +267,7 @@ Void MmFreeDirectory(UIntPtr dir) {
 		return;
 	}
 	
-	for (UInt32 i = 0; i < 767; i++) {																								// Let's free the user tables
+	for (UInt32 i = 0; i < 768; i++) {																								// Let's free the user tables
 		if ((tmp[i] & PAGE_PRESENT) == PAGE_PRESENT) {																				// Present?
 			if ((tmp[i] & PAGE_HUGE) == PAGE_HUGE) {																				// Yes, 4MiB page?
 				MmDereferencePage(tmp[i] & PAGE_MASK);																				// Yes, free it!

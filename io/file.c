@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 16 of 2018, at 18:28 BRT
-// Last edited on November 06 of 2019, at 17:37 BRT
+// Last edited on November 17 of 2019, at 12:34 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -79,7 +79,7 @@ PWChar FsCanonicalizePath(PWChar path) {
 	UIntPtr fsize = 0;
 	
 	if (FsCountSeparations(path) == 1) {																								// Do we need to tokenize it?
-		ListAdd(list, StrDuplicate(path));																								// Nope :)
+		ListAdd(list, StrDuplicate(path + 1));																							// Nope :)
 	} else {
 		PWChar tok = StrTokenize(path, L"/");																							// So, we need to tokenize it (if you want, take a look in the FsTokenizePath function)
 		
@@ -88,7 +88,7 @@ PWChar FsCanonicalizePath(PWChar path) {
 				if (list->length > 0) {
 					MemFree((UIntPtr)(ListRemove(list, list->length - 1)));
 				}
-			} else if (!(((StrGetLength(tok) == 1) && (StrCompare(tok, L"."))) || StrGetLength(tok) == 0)) {
+			} else if (!((StrGetLength(tok) == 1) && (StrCompare(tok, L".")))) {
 				ListAdd(list, StrDuplicate(tok));
 			}
 
@@ -96,25 +96,21 @@ PWChar FsCanonicalizePath(PWChar path) {
 		}
 	}
 	
-	if (list->length == 0) {																											// Root directory?
-		final = StrDuplicate(L"/");																										// Yes
-	} else {
-		ListForeach(list, i) {																											// No, so let's get the final size
-			fsize += (StrGetLength((PWChar)(i->data)) + 2) * sizeof(WChar);
-		}
-		
-		final = foff = (PWChar)MemAllocate(fsize);																						// Alloc space
-		
-		if (final == Null) {																											// Failed?
-			ListFree(list);																												// Yes, so free everything and return
-			return Null;
-		}
-		
-		ListForeach(list, i) {																											// Now let's copy everything to the ret string!
-			StrCopy(foff++, L"/");
-			StrCopy(foff, (PWChar)(i->data));
-			foff += StrGetLength((PWChar)(i->data));
-		}
+	ListForeach(list, i) {																												// No, so let's get the final size
+		fsize += (StrGetLength((PWChar)(i->data)) + 2) * sizeof(WChar);
+	}
+	
+	final = foff = (PWChar)MemAllocate(fsize);																							// Alloc space
+	
+	if (final == Null) {																												// Failed?
+		ListFree(list);																													// Yes, so free everything and return
+		return Null;
+	}
+	
+	ListForeach(list, i) {																												// Now let's copy everything to the ret string!
+		StrCopy(foff++, L"/");
+		StrCopy(foff, (PWChar)(i->data));
+		foff += StrGetLength((PWChar)(i->data));
 	}
 	
 	ListFree(list);																														// Free our list
@@ -137,7 +133,7 @@ PWChar FsJoinPath(PWChar src, PWChar incr) {
 	PWChar path = Null;
 	PWChar poff = Null;
 	
-	if ((incr[0] != '/') && (src[StrGetLength(src) - 2] != '/')) {
+	if (incr[0] != '/' && StrGetLength(src) >= 2 && src[StrGetLength(src) - 2] != '/') {
 		psize += sizeof(WChar);
 	}
 	
@@ -150,7 +146,7 @@ PWChar FsJoinPath(PWChar src, PWChar incr) {
 	StrCopy(poff, src);																													// Copy the src
 	poff += StrGetLength(src);
 	
-	if ((incr[0] != '/') && (src[StrGetLength(src)] != '/')) {
+	if (incr[0] != '/' && StrGetLength(src) >= 2 && src[StrGetLength(src) - 2] != '/') {
 		*poff++ = '/';
 	}
 	

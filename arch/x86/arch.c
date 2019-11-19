@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:21 BRT
-// Last edited on November 03 of 2019, at 19:47 BRT
+// Last edited on November 10 of 2019, at 11:07 BRT
 
 #include <chicago/arch/ahci.h>
 #include <chicago/arch/bootmgr.h>
@@ -128,8 +128,8 @@ Void ArchInit(Void) {
 	FsSetBootDevice(BootmgrBootDev);																			// Try to set the boot device
 	
 	if (FsGetBootDevice() == Null) {
-		DbgWriteFormated("PANIC! Couldn't set the boot device\r\n");
-		Panic(PANIC_KERNEL_INIT_FAILED);
+		DbgWriteFormated("PANIC! Failed to mount the boot device\r\n");
+		Panic(PANIC_BOOTDEV_MOUNT_FAILED);
 	} else {
 		DbgWriteFormated("[x86] Devices initialized\r\n");
 	}

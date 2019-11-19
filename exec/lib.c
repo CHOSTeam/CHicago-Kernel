@@ -1,9 +1,10 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 02 of 2019, at 12:12 BRT
-// Last edited on November 08 of 2019, at 16:55 BRT
+// Last edited on November 16 of 2019, at 13:36 BRT
 
 #include <chicago/alloc.h>
+#include <chicago/drv.h>
 #include <chicago/elf.h>
 #include <chicago/mm.h>
 #include <chicago/process.h>
@@ -12,12 +13,20 @@
 static PWChar ExecGetName(PWChar path, Boolean user) {
 	if (path == Null) {																											// Sanity check
 		return Null;
-	} else if (path[0] != '\\') {																								// We really need to get the name?
-		return StrDuplicate(path);																								// Nope :)
 	}
 	
 	PWChar last = Null;
-	PWChar tok = StrTokenize(path, L"\\");
+	Boolean free = True;
+	
+	if (path[0] != '/' && user) {																								// We really need to get the name?
+		last = path;																											// Nope :)
+		free = False;
+		goto a;
+	} else if (path[0] != '/') {
+		return StrDuplicate(path);
+	}
+	
+	PWChar tok = StrTokenize(path, L"/");
 	
 	while (tok != Null) {																										// Let's go!
 		if (last != Null) {																										// Free the old last?
@@ -30,14 +39,14 @@ static PWChar ExecGetName(PWChar path, Boolean user) {
 			return Null;																										// Failed...
 		}
 		
-		tok = StrTokenize(Null, L"\\");																							// Tokenize next
+		tok = StrTokenize(Null, L"/");																							// Tokenize next
 	}
 	
 	if (last == Null) {
 		return Null;																											// Failed...
 	}
 	
-	if (user) {																													// Copy to userspace?
+a:	if (user) {																													// Copy to userspace?
 		PWChar ret = (PWChar)MmAllocUserMemory((StrGetLength(last) + 1) * sizeof(WChar));										// Yes! Alloc the required space
 		
 		if (ret == Null) {
@@ -46,7 +55,10 @@ static PWChar ExecGetName(PWChar path, Boolean user) {
 		}
 		
 		StrCopy(ret, last);																										// Copy!
-		MemFree((UIntPtr)last);
+		
+		if (free) {
+			MemFree((UIntPtr)last);
+		}
 		
 		return ret;
 	} else {
@@ -54,7 +66,7 @@ static PWChar ExecGetName(PWChar path, Boolean user) {
 	}
 }
 
-static PExecHandle ExecGetHandle(PWChar path) {
+static PLibHandle ExecGetHandle(PWChar path) {
 	if ((path == Null) || (PsCurrentThread == Null) || (PsCurrentProcess == Null)) {											// Sanity checks
 		return Null;
 	} else if (PsCurrentProcess->handle_list == Null) {
@@ -68,13 +80,13 @@ static PExecHandle ExecGetHandle(PWChar path) {
 	}
 	
 	ListForeach(PsCurrentProcess->handle_list, i) {																				// Let's search!
-		PWChar hname = ((PExecHandle)i->data)->name;
+		PWChar hname = ((PLibHandle)i->data)->name;
 		
 		if (StrGetLength(hname) != StrGetLength(name)) {																		// Same length?
 			continue;																											// No...
 		} else if (StrCompare(hname, name)) {																					// Found?
 			MemFree((UIntPtr)name);																								// Yes!
-			return (PExecHandle)i->data;
+			return (PLibHandle)i->data;
 		}
 	}
 	
@@ -83,53 +95,23 @@ static PExecHandle ExecGetHandle(PWChar path) {
 	return Null;
 }
 
-static Boolean ExecLoadLibraryInt(PExecHandle handle, PELFHdr hdr) {
-	if (!ELFCheck(hdr)) {																										// Validate the header
-		ListFree(handle->deps);																									// Invalid dynamic ELF file :(
-		ListFree(handle->symbols);
-		MmFreeUserMemory((UIntPtr)handle->name);
+static Boolean ExecLoadLibraryInt(PLibHandle handle, PELFHdr hdr) {
+	if (!ELFCheck(hdr, False)) {																								// Validate the header
 		return False;
 	}
 	
 	handle->base = ELFLoadSections(hdr);																						// Load the sections
 	
 	if (handle->base == 0) {
-		ListFree(handle->deps);																									// Failed, free everything
-		ListFree(handle->symbols);
-		MmFreeUserMemory((UIntPtr)handle->name);
 		return False;
-	} else if (!ELFLoadDeps(hdr, handle)) {																						// Load the dependencies
-		MmFreeAlignedUserMemory(handle->base);																					// Failed, free everything
-		ListFree(handle->deps);
-		ListFree(handle->symbols);
-		MmFreeUserMemory((UIntPtr)handle->name);
+	} else if (!ELFLoadDeps(hdr, handle)) {																						// Load the deps
+		MmFreeAlignedUserMemory(handle->base);
 		return False;
-	} else if (!ELFAddSymbols(hdr, handle)) {																					// Fill the symbol table
-		ListForeach(handle->deps, i) {																							// Failed, close all the dep handles
-			ExecCloseLibrary((PExecHandle)i->data);
-		}
-		
-		MmFreeAlignedUserMemory(handle->base);																					// And free everything
-		ListFree(handle->deps);
-		ListFree(handle->symbols);
-		MmFreeUserMemory((UIntPtr)handle->name);
-		
+	} else if (!ELFAddSymbols(hdr, handle)) {																					// Add the symbols
+		MmFreeAlignedUserMemory(handle->base);
 		return False;
-	} else if (!ELFRelocate(hdr, handle, handle->base)) {																		// Finally, relocate!
-		ListForeach(handle->symbols, i) {																						// Failed, free the symbol table
-			MmFreeUserMemory((UIntPtr)(((PExecSymbol)i->data)->name));
-			MmFreeUserMemory((UIntPtr)i->data);
-		}
-		
-		ListForeach(handle->deps, i) {																							// Close all the dep handles
-			ExecCloseLibrary((PExecHandle)i->data);
-		}
-		
-		MmFreeAlignedUserMemory(handle->base);																					// And free everything
-		ListFree(handle->deps);
-		ListFree(handle->symbols);
-		MmFreeUserMemory((UIntPtr)handle->name);
-		
+	} else if (!ELFRelocate(hdr, handle, handle->base)) {																		// And relocate!
+		MmFreeAlignedUserMemory(handle->base);
 		return False;
 	}
 	
@@ -138,7 +120,7 @@ static Boolean ExecLoadLibraryInt(PExecHandle handle, PELFHdr hdr) {
 	return True;
 }
 
-PExecHandle ExecLoadLibrary(PWChar path, Boolean global) {
+PLibHandle ExecLoadLibrary(PWChar path, Boolean global) {	
 	if ((path == Null) || (PsCurrentThread == Null) || (PsCurrentProcess == Null)) {											// Sanity checks
 		return Null;
 	} else if ((PsCurrentProcess->handle_list == Null) || (PsCurrentProcess->global_handle_list == Null)) {						// Init the handle list (or the global handle list)?
@@ -159,7 +141,7 @@ PExecHandle ExecLoadLibrary(PWChar path, Boolean global) {
 		}
 	}
 	
-	PExecHandle handle = ExecGetHandle(path);																					// First, let's try to get this handle
+	PLibHandle handle = ExecGetHandle(path);																					// First, let's try to get this handle
 	
 	if (handle != Null) {
 		handle->refs++;																											// Ok, just increase the refs
@@ -170,6 +152,9 @@ PExecHandle ExecLoadLibrary(PWChar path, Boolean global) {
 	
 	if (name == Null) {
 		return Null;																											// Failed
+	} else if (StrCompare(L"libchkrnl.elf", name)) {																			// Trying to open the kernel lib that we use to link drivers?
+		MemFree((UIntPtr)name);																									// Yeah, we're not going to allow it
+		return Null;
 	}
 	
 	PFsNode file = ELFFindFile(path);																							// Try to open it
@@ -194,7 +179,7 @@ PExecHandle ExecLoadLibrary(PWChar path, Boolean global) {
 	
 	FsCloseFile(file);																											// Ok, now we can close the file
 	
-	handle = (PExecHandle)MmAllocUserMemory(sizeof(ExecHandle));																// Alloc space for the handle
+	handle = (PLibHandle)MmAllocUserMemory(sizeof(LibHandle));																	// Alloc space for the handle
 	
 	if (handle == Null) {
 		MemFree((UIntPtr)buf);																									// Failed...
@@ -233,8 +218,31 @@ PExecHandle ExecLoadLibrary(PWChar path, Boolean global) {
 		MemFree((UIntPtr)name);
 		return Null;
 	} else if (!ExecLoadLibraryInt(handle, (PELFHdr)buf)) {																		// Run the internal routines for loading it!
-		MmFreeUserMemory((UIntPtr)handle);																						// Failed to load it...
+		ListForeach(handle->symbols, i) {																						// Failed, let's free all the symbols
+			MmFreeUserMemory((UIntPtr)(((PExecSymbol)i->data)->name));
+		}
+		
+		ListForeach(handle->deps, i) {																							// Close all the dependencies
+			ExecCloseLibrary((PLibHandle)i->data);
+		}
+		
+		ListFree(handle->deps);																									// And free everything else
+		ListFree(handle->symbols);
+		MmFreeUserMemory((UIntPtr)handle->name);
+		MmFreeUserMemory((UIntPtr)handle);
 		MemFree((UIntPtr)buf);
+		
+		UIntPtr idx = 0;
+		
+		ListForeach(PsCurrentProcess->handle_list, i) {
+			if (i->data == handle) {
+				ListRemove(PsCurrentProcess->handle_list, idx);
+				break;
+			}
+			
+			idx++;
+		}
+		
 		return Null;
 	}
 	
@@ -250,7 +258,7 @@ PExecHandle ExecLoadLibrary(PWChar path, Boolean global) {
 	return handle;
 }
 
-Void ExecCloseLibrary(PExecHandle handle) {
+Void ExecCloseLibrary(PLibHandle handle) {
 	if ((handle == Null) || (PsCurrentThread == Null) || (PsCurrentProcess == Null)) {											// Sanity checks
 		return;
 	} else if ((PsCurrentProcess->handle_list == Null) || (PsCurrentProcess->global_handle_list == Null)) {						// Even more sanity checks
@@ -283,7 +291,7 @@ Void ExecCloseLibrary(PExecHandle handle) {
 	}
 	
 	ListForeach(handle->deps, i) {																								// Close all the dep handles
-		ExecCloseLibrary((PExecHandle)i->data);
+		ExecCloseLibrary((PLibHandle)i->data);
 	}
 	
 	ListForeach(handle->symbols, i) {																							// Free all the symbols
@@ -293,11 +301,11 @@ Void ExecCloseLibrary(PExecHandle handle) {
 	ListFree(handle->deps);																										// Free the dep handle list
 	ListFree(handle->symbols);																									// Free the symbol list
 	MmFreeUserMemory((UIntPtr)handle->name);																					// Free the name
-	MmFreeAlignedUserMemory((UIntPtr)handle->base)		;																		// Free the loaded sections
+	MmFreeAlignedUserMemory((UIntPtr)handle->base);																				// Free the loaded sections
 	MmFreeUserMemory((UIntPtr)handle);																							// And free the handle itself
 }
 
-UIntPtr ExecGetSymbol(PExecHandle handle, PWChar name) {
+UIntPtr ExecGetSymbol(PLibHandle handle, PWChar name) {
 	if ((name == Null) || (PsCurrentThread == Null) || (PsCurrentProcess == Null)) {											// Sanity checks
 		return 0;
 	} else if (handle == Null) {																								// Search in the global handle list?
@@ -306,7 +314,7 @@ UIntPtr ExecGetSymbol(PExecHandle handle, PWChar name) {
 		}
 		
 		ListForeach(PsCurrentProcess->global_handle_list, i) {																	// Let's search!
-			UIntPtr sym = ExecGetSymbol((PExecHandle)i->data, name);
+			UIntPtr sym = ExecGetSymbol((PLibHandle)i->data, name);
 			
 			if (sym != 0) {
 				return sym;																										// Found :)

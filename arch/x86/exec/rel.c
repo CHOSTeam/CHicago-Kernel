@@ -1,14 +1,14 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 02 of 2018, at 14:02 BRT
-// Last edited on November 03 of 2019, at 17:05 BRT
+// Last edited on November 16 of 2019, at 11:22 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/elf.h>
 #include <chicago/exec.h>
 #include <chicago/string.h>
 
-static Boolean ELFFindSymbol(PExecHandle handle, PChar cname, PUIntPtr out) {
+static Boolean ELFFindSymbol(PLibHandle handle, PChar cname, PUIntPtr out) {
 	PWChar name = (PWChar)MemAllocate(StrFormat(Null, L"%S", cname));														// Alloc space for getting the wide string
 	
 	if (name == Null) {
@@ -18,22 +18,47 @@ static Boolean ELFFindSymbol(PExecHandle handle, PChar cname, PUIntPtr out) {
 	StrFormat(name, L"%S", cname);																							// Get the wide string
 	
 	ListForeach(PsCurrentProcess->global_handle_list, i) {																	// First, search on the global handle list
-		UIntPtr sm = ExecGetSymbol((PExecHandle)i->data, name);																// Try to get the symbol in this handle
+		UIntPtr sm = ExecGetSymbol((PLibHandle)i->data, name);																// Try to get the symbol in this handle
 		
 		if (sm != 0) {
-			*out = sm;																										// Found!
+			if (sm == 1) {																									// Found!
+				sm = 0;
+			}
+			
+			*out = sm;
 			MemFree((UIntPtr)name);
+			
 			return True;
 		}
 	}
 	
-	ListForeach(handle->deps, i) {																							// Let's try to get the symbol in the private dependency handles
-		UIntPtr sm = ExecGetSymbol((PExecHandle)i->data, name);
+	if (handle != Null) {
+		UIntPtr sm = ExecGetSymbol(handle, name);																			// First, search on this handle
 		
 		if (sm != 0) {
-			*out = sm;																										// Found!
+			if (sm == 1) {																									// Found!
+				sm = 0;
+			}
+			
+			*out = sm;
 			MemFree((UIntPtr)name);
+			
 			return True;
+		}
+		
+		ListForeach(handle->deps, i) {																						// Let's try to get the symbol in the private dependency handles
+			UIntPtr sm = ExecGetSymbol((PLibHandle)i->data, name);
+
+			if (sm != 0) {
+				if (sm == 1) {																								// Found!
+					sm = 0;
+				}
+				
+				*out = sm;
+				MemFree((UIntPtr)name);
+				
+				return True;
+			}
 		}
 	}
 	
@@ -42,7 +67,7 @@ static Boolean ELFFindSymbol(PExecHandle handle, PChar cname, PUIntPtr out) {
 	return False;
 }
 
-Boolean ArchELFRelocate(PELFHdr hdr, PExecHandle handle, UIntPtr base, PELFRel rel, PChar strtab, PELFSym sym, UInt8 type) {
+Boolean ArchELFRelocate(PELFHdr hdr, PLibHandle handle, UIntPtr base, PELFRel rel, PChar strtab, PELFSym sym, UInt8 type) {
 	if (hdr == Null || rel == Null || strtab == Null) {																		// First, sanity check
 		return False;
 	}
@@ -74,7 +99,7 @@ Boolean ArchELFRelocate(PELFHdr hdr, PExecHandle handle, UIntPtr base, PELFRel r
 	return True;
 }
 
-Boolean ArchELFRelocateA(PELFHdr hdr, PExecHandle handle, UIntPtr base, PELFRelA rel, PChar strtab, PELFSym sym, UInt8 type) {
+Boolean ArchELFRelocateA(PELFHdr hdr, PLibHandle handle, UIntPtr base, PELFRelA rel, PChar strtab, PELFSym sym, UInt8 type) {
 	if (hdr == Null || rel == Null || strtab == Null) {																		// First, sanity check
 		return False;
 	}

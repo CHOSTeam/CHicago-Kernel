@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:21 BRT
-// Last edited on November 07 of 2019, at 19:49 BRT
+// Last edited on November 15 of 2019, at 22:08 BRT
 
 .section .text
 
@@ -10,45 +10,52 @@
 KernelEntry:
 	cli																													// Clear interrupts
 	
-	movabs $0xFFFF800000000000, %r8																						// Fix the bootmgr data
-	add %r8, %rbx
-	add %r8, %rcx
+	movabs $0xFFFF800000000000, %r9																						// Fix the bootmgr data
+	add %r9, %rbx
+	add %r9, %rcx
+	add %r9, %rbp
 	
 	movabs $BootmgrBootDev, %rax																						// Save the bootmgr data!
-	sub %r8, %rax
+	sub %r9, %rax
 	mov %rbx, (%rax)
 	movabs $BootmgrMemMap, %rax
-	sub %r8, %rax
+	sub %r9, %rax
 	mov %rcx, (%rax)
 	movabs $BootmgrMemMapCount, %rax
-	sub %r8, %rax
+	sub %r9, %rax
 	mov %rdx, (%rax)
 	movabs $ArchBootOptions, %rax
-	sub %r8, %rax
+	sub %r9, %rax
 	mov %rdi, (%rax)
+	movabs $KernelSymbolTable, %rax
+	sub %r9, %rax
+	mov %rbp, (%rax)
+	movabs $KernelSymbolTableSize, %rax
+	sub %r9, %rax
+	mov %r8, (%rax)
 	
 	mov (%rsi), %rax
 	movabs $BootmgrDispWidth, %rbx
-	sub %r8, %rbx
+	sub %r9, %rbx
 	mov %rax, (%rbx)
 	
 	mov 8(%rsi), %rax
 	movabs $BootmgrDispHeight, %rbx
-	sub %r8, %rbx
+	sub %r9, %rbx
 	mov %rax, (%rbx)
 	
 	mov 16(%rsi), %rax
 	movabs $BootmgrDispBpp, %rbx
-	sub %r8, %rbx
+	sub %r9, %rbx
 	mov %rax, (%rbx)
 	
 	mov 24(%rsi), %rax
 	movabs $BootmgrDispPhysAddr, %rbx
-	sub %r8, %rbx
+	sub %r9, %rbx
 	mov %rax, (%rbx)
 	
 	movabs $MmKernelDirectoryP2, %rsi																					// Let's map the first GiB of memory
-	sub %r8, %rsi
+	sub %r9, %rsi
 	xor %rcx, %rcx
 1:
 	mov $0x200000, %rax																									// Each huge P2 will map 2MiB of memory
@@ -60,7 +67,7 @@ KernelEntry:
 	jne 1b																												// Nope
 	
 	movabs $MmKernelDirectoryInt, %rax																					// Setup the initial kernel page directory
-	sub %r8, %rax
+	sub %r9, %rax
 	mov %rax, %cr3
 	
 	movabs $2f, %rcx
@@ -547,6 +554,12 @@ BootmgrMemMapCount: .quad 0
 
 .global ArchBootOptions
 ArchBootOptions: .quad 0
+
+.global KernelSymbolTable
+KernelSymbolTable: .quad 0
+
+.global KernelSymbolTableSize
+KernelSymbolTableSize: .quad 0
 
 .global BootmgrDispWidth
 BootmgrDispWidth: .quad 0

@@ -1,16 +1,17 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 31 of 2018, at 18:45 BRT
-// Last edited on October 27 of 2019, at 11:28 BRT
+// Last edited on November 15 of 2018, at 21:46 BRT
 
 #define __CHICAGO_PMM__
 
 #include <chicago/arch/bootmgr.h>
 #include <chicago/arch/pmm.h>
 
+#include <chicago/arch.h>
 #include <chicago/mm.h>
 
-UIntPtr MmBootAllocPointer = (UIntPtr)&KernelEnd;
+UIntPtr MmBootAllocPointer = 0;
 UIntPtr KernelRealEnd = 0;
 
 UIntPtr MmBootAlloc(UIntPtr size, Boolean align) {
@@ -51,6 +52,7 @@ UIntPtr PMMCountMemory(Void) {
 }
 
 Void PMMInit(Void) {
+	MmBootAllocPointer = KernelSymbolTable + KernelSymbolTableSize;														// Set the start of the temp allocator
 	MmMaxBytes = PMMCountMemory();																						// Get memory size based on the memory map entries
 	MmUsedBytes = MmMaxBytes;																							// We're going to free the avaliable pages later
 	MmPageStack = (PUIntPtr)MmBootAlloc(MmMaxBytes / MM_PAGE_SIZE * sizeof(UIntPtr), False);							// Alloc the page frame allocator stack using the initial boot allocator
