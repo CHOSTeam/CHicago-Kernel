@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 15 of 2019, at 20:07 BRT
-// Last edited on November 17 of 2019, at 18:21 BRT
+// Last edited on December 24 of 2019, at 13:03 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/arch.h>
@@ -109,19 +109,19 @@ static PWChar DrvDuplicateString(PWChar str) {
 }
 
 PLibHandle DrvLoadLibCHKrnl(Void) {
-	if ((PsCurrentProcess->handle_list == Null) || (PsCurrentProcess->global_handle_list == Null)) {	// Init the handle list (or the global handle list)?
-		if (PsCurrentProcess->handle_list == Null) {													// Yes, init the handle list?
-			PsCurrentProcess->handle_list = ListNew(False, False);										// Yes
+	if ((PsCurrentProcess->exec_handles == Null) || (PsCurrentProcess->global_exec_handles == Null)) {	// Init the handle list (or the global handle list)?
+		if (PsCurrentProcess->exec_handles == Null) {													// Yes, init the handle list?
+			PsCurrentProcess->exec_handles = ListNew(False, False);										// Yes
 			
-			if (PsCurrentProcess->handle_list == Null) {
+			if (PsCurrentProcess->exec_handles == Null) {
 				return Null;																			// Failed...
 			}
 		}
 		
-		if (PsCurrentProcess->global_handle_list == Null) {												// Init the global handle list?
-			PsCurrentProcess->global_handle_list = ListNew(False, False);								// Yes
+		if (PsCurrentProcess->global_exec_handles == Null) {											// Init the global handle list?
+			PsCurrentProcess->global_exec_handles = ListNew(False, False);								// Yes
 			
-			if (PsCurrentProcess->global_handle_list == Null) {
+			if (PsCurrentProcess->global_exec_handles == Null) {
 				return Null;																			// Failed
 			}
 		}
@@ -214,7 +214,7 @@ PLibHandle DrvLoadLibCHKrnl(Void) {
 		}
 	}
 	
-	if (!ListAdd(PsCurrentProcess->handle_list, handle)) {												// Add the handle to the handle list
+	if (!ListAdd(PsCurrentProcess->exec_handles, handle)) {												// Add the handle to the handle list
 		ListForeach(handle->symbols, i) {																// Failed, free the symbol table
 			MmFreeUserMemory((UIntPtr)(((PExecSymbol)i->data)->name));
 		}
@@ -227,7 +227,7 @@ PLibHandle DrvLoadLibCHKrnl(Void) {
 		return Null;
 	}
 	
-	ListAdd(PsCurrentProcess->global_handle_list, handle);
+	ListAdd(PsCurrentProcess->global_exec_handles, handle);
 	
 	return handle;
 }

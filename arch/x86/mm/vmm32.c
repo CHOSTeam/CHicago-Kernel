@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 19:19 BRT
-// Last edited on November 11 of 2019, at 15:46 BRT
+// Last edited on December 24 of 2019, at 13:34 BRT
 
 #include <chicago/arch/vmm.h>
 
@@ -283,10 +283,8 @@ Void MmFreeDirectory(UIntPtr dir) {
 			}
 			
 			for (UInt32 j = 0; j < 1024; j++) {
-				UIntPtr page = MmGetPTEInt(tabta, (i << 22) + (j << 12));
-				
-				if ((page & PAGE_PRESENT) == PAGE_PRESENT) {																		// Present?
-					MmDereferencePage(page & PAGE_MASK);																			// Yes, just use the dereference function
+				if ((tabta[j] & PAGE_PRESENT) == PAGE_PRESENT) {																	// Present?
+					MmDereferencePage(tabta[j] & PAGE_MASK);																		// Yes, just use the dereference function
 				}				
 			}
 			

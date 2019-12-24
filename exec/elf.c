@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 31 of 2019, at 18:57 BRT
-// Last edited on November 16 of 2019, at 11:24 BRT
+// Last edited on December 24 of 2019, at 13:04 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/elf.h>
@@ -162,7 +162,7 @@ static Boolean ELFGetSymbol(PELFSym sym, PWChar name, PLibHandle handle, PUIntPt
 	if (sym == Null || handle == Null || out == Null) {																		// Sanity check
 		return False;
 	} else if (sym->shndx == 0) {																							// Try to find it in other handles?
-		ListForeach(PsCurrentProcess->global_handle_list, i) {																// Yes, first, search on the global handle list
+		ListForeach(PsCurrentProcess->global_exec_handles, i) {																// Yes, first, search on the global handle list
 			UIntPtr sm = ExecGetSymbol((PLibHandle)i->data, name);															// Try to get the symbol in this handle
 			
 			if (sm != 0) {

@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 02 of 2019, at 12:12 BRT
-// Last edited on November 16 of 2019, at 13:36 BRT
+// Last edited on December 24 of 2019, at 13:04 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/drv.h>
@@ -69,7 +69,7 @@ a:	if (user) {																													// Copy to userspace?
 static PLibHandle ExecGetHandle(PWChar path) {
 	if ((path == Null) || (PsCurrentThread == Null) || (PsCurrentProcess == Null)) {											// Sanity checks
 		return Null;
-	} else if (PsCurrentProcess->handle_list == Null) {
+	} else if (PsCurrentProcess->exec_handles == Null) {
 		return Null;	
 	}
 	
@@ -79,7 +79,7 @@ static PLibHandle ExecGetHandle(PWChar path) {
 		return Null;																											// Failed...
 	}
 	
-	ListForeach(PsCurrentProcess->handle_list, i) {																				// Let's search!
+	ListForeach(PsCurrentProcess->exec_handles, i) {																			// Let's search!
 		PWChar hname = ((PLibHandle)i->data)->name;
 		
 		if (StrGetLength(hname) != StrGetLength(name)) {																		// Same length?
@@ -123,19 +123,19 @@ static Boolean ExecLoadLibraryInt(PLibHandle handle, PELFHdr hdr) {
 PLibHandle ExecLoadLibrary(PWChar path, Boolean global) {	
 	if ((path == Null) || (PsCurrentThread == Null) || (PsCurrentProcess == Null)) {											// Sanity checks
 		return Null;
-	} else if ((PsCurrentProcess->handle_list == Null) || (PsCurrentProcess->global_handle_list == Null)) {						// Init the handle list (or the global handle list)?
-		if (PsCurrentProcess->handle_list == Null) {																			// Yes, init the handle list?
-			PsCurrentProcess->handle_list = ListNew(False, False);																// Yes
+	} else if ((PsCurrentProcess->exec_handles == Null) || (PsCurrentProcess->global_exec_handles == Null)) {					// Init the handle list (or the global handle list)?
+		if (PsCurrentProcess->exec_handles == Null) {																			// Yes, init the handle list?
+			PsCurrentProcess->exec_handles = ListNew(False, False);																// Yes
 			
-			if (PsCurrentProcess->handle_list == Null) {
+			if (PsCurrentProcess->exec_handles == Null) {
 				return Null;																									// Failed...
 			}
 		}
 		
-		if (PsCurrentProcess->global_handle_list == Null) {																		// Init the global handle list?
-			PsCurrentProcess->global_handle_list = ListNew(False, False);														// Yes
+		if (PsCurrentProcess->global_exec_handles == Null) {																	// Init the global handle list?
+			PsCurrentProcess->global_exec_handles = ListNew(False, False);														// Yes
 			
-			if (PsCurrentProcess->global_handle_list == Null) {
+			if (PsCurrentProcess->global_exec_handles == Null) {
 				return Null;																									// Failed
 			}
 		}
@@ -210,7 +210,7 @@ PLibHandle ExecLoadLibrary(PWChar path, Boolean global) {
 	
 	handle->resolved = False;
 	
-	if (!ListAdd(PsCurrentProcess->handle_list, handle)) {																		// Add this handle to the handle list
+	if (!ListAdd(PsCurrentProcess->exec_handles, handle)) {																		// Add this handle to the handle list
 		ListFree(handle->deps);																									// Failed...
 		ListFree(handle->symbols);
 		MmFreeUserMemory((UIntPtr)handle);
@@ -234,9 +234,9 @@ PLibHandle ExecLoadLibrary(PWChar path, Boolean global) {
 		
 		UIntPtr idx = 0;
 		
-		ListForeach(PsCurrentProcess->handle_list, i) {
+		ListForeach(PsCurrentProcess->exec_handles, i) {
 			if (i->data == handle) {
-				ListRemove(PsCurrentProcess->handle_list, idx);
+				ListRemove(PsCurrentProcess->exec_handles, idx);
 				break;
 			}
 			
@@ -249,7 +249,7 @@ PLibHandle ExecLoadLibrary(PWChar path, Boolean global) {
 	MemFree((UIntPtr)buf);																										// Free our buffer
 	
 	if (global) {
-		if (!ListAdd(PsCurrentProcess->global_handle_list, handle)) {															// Add it to the global handle list
+		if (!ListAdd(PsCurrentProcess->global_exec_handles, handle)) {															// Add it to the global handle list
 			ExecCloseLibrary(handle);																							// Failed...
 			return Null;
 		}
@@ -261,7 +261,7 @@ PLibHandle ExecLoadLibrary(PWChar path, Boolean global) {
 Void ExecCloseLibrary(PLibHandle handle) {
 	if ((handle == Null) || (PsCurrentThread == Null) || (PsCurrentProcess == Null)) {											// Sanity checks
 		return;
-	} else if ((PsCurrentProcess->handle_list == Null) || (PsCurrentProcess->global_handle_list == Null)) {						// Even more sanity checks
+	} else if ((PsCurrentProcess->exec_handles == Null) || (PsCurrentProcess->global_exec_handles == Null)) {					// Even more sanity checks
 		return;
 	} else if (handle->refs > 1) {
 		handle->refs--;																											// Just decrease the refs count
@@ -270,9 +270,9 @@ Void ExecCloseLibrary(PLibHandle handle) {
 	
 	UIntPtr idx = 0;
 	
-	ListForeach(PsCurrentProcess->global_handle_list, i) {																		// Remove it from the global handle list
+	ListForeach(PsCurrentProcess->global_exec_handles, i) {																		// Remove it from the global handle list
 		if (i->data == handle) {
-			ListRemove(PsCurrentProcess->global_handle_list, idx);
+			ListRemove(PsCurrentProcess->global_exec_handles, idx);
 			break;
 		} else {
 			idx++;	
@@ -281,9 +281,9 @@ Void ExecCloseLibrary(PLibHandle handle) {
 	
 	idx = 0;
 	
-	ListForeach(PsCurrentProcess->handle_list, i) {																				// Remove it from the handle list
+	ListForeach(PsCurrentProcess->exec_handles, i) {																			// Remove it from the handle list
 		if (i->data == handle) {
-			ListRemove(PsCurrentProcess->handle_list, idx);
+			ListRemove(PsCurrentProcess->exec_handles, idx);
 			break;
 		} else {
 			idx++;	
@@ -309,11 +309,11 @@ UIntPtr ExecGetSymbol(PLibHandle handle, PWChar name) {
 	if ((name == Null) || (PsCurrentThread == Null) || (PsCurrentProcess == Null)) {											// Sanity checks
 		return 0;
 	} else if (handle == Null) {																								// Search in the global handle list?
-		if (PsCurrentProcess->global_handle_list == Null) {																		// Yes! But the global handle list is initialized?
+		if (PsCurrentProcess->global_exec_handles == Null) {																	// Yes! But the global handle list is initialized?
 			return 0;																											// No :(
 		}
 		
-		ListForeach(PsCurrentProcess->global_handle_list, i) {																	// Let's search!
+		ListForeach(PsCurrentProcess->global_exec_handles, i) {																	// Let's search!
 			UIntPtr sym = ExecGetSymbol((PLibHandle)i->data, name);
 			
 			if (sym != 0) {

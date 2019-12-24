@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 27 of 2018, at 14:42 BRT
-// Last edited on November 02 of 2019, at 12:10 BRT
+// Last edited on December 24 of 2019, at 13:02 BRT
 
 #ifndef __CHICAGO_PROCESS_H__
 #define __CHICAGO_PROCESS_H__
@@ -32,10 +32,10 @@ typedef struct {
 	UIntPtr last_tid;
 	PAllocBlock alloc_base;
 	UIntPtr mem_usage;
-	PList handle_list;
-	PList global_handle_list;
-	PList files;
-	IntPtr last_fid;
+	PList exec_handles;
+	PList global_exec_handles;
+	PList handles;
+	IntPtr last_handle_id;
 	PWChar exec_path;
 } Process, *PProcess;
 

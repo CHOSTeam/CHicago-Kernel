@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 27 of 2018, at 14:59 BRT
-// Last edited on November 10 of 2019, at 11:07 BRT
+// Last edited on December 24 of 2019, at 13:05 BRT
 
 #define __CHICAGO_PROCESS__
 
@@ -13,6 +13,7 @@
 #include <chicago/mm.h>
 #include <chicago/panic.h>
 #include <chicago/process.h>
+#include <chicago/sc.h>
 #include <chicago/string.h>
 #include <chicago/timer.h>
 #include <chicago/list.h>
@@ -89,13 +90,13 @@ PProcess PsCreateProcessInt(PWChar name, UIntPtr entry, UIntPtr dir) {
 	proc->last_tid = 0;
 	proc->alloc_base = Null;
 	proc->mem_usage = 0;
-	proc->handle_list = Null;
-	proc->global_handle_list = Null;
-	proc->files = ListNew(False, False);																										// Init the file list for the process
-	proc->last_fid = 0;
+	proc->exec_handles = Null;
+	proc->global_exec_handles = Null;
+	proc->handles = ListNew(False, False);																										// Init the handle list for the process
+	proc->last_handle_id = 0;
 	proc->exec_path = Null;
 	
-	if (proc->files == Null) {
+	if (proc->handles == Null) {
 		ListFree(proc->threads);																												// Failed...
 		MmFreeDirectory(proc->dir);
 		MemFree((UIntPtr)proc->name);
@@ -106,7 +107,7 @@ PProcess PsCreateProcessInt(PWChar name, UIntPtr entry, UIntPtr dir) {
 	PThread th = PsCreateThreadInt(entry, 0, False);																							// Create the first thread
 	
 	if (th == Null) {
-		ListFree(proc->files);																													// Failed...
+		ListFree(proc->handles);																													// Failed...
 		ListFree(proc->threads);
 		MmFreeDirectory(proc->dir);
 		MemFree((UIntPtr)proc->name);
@@ -120,7 +121,7 @@ PProcess PsCreateProcessInt(PWChar name, UIntPtr entry, UIntPtr dir) {
 	if (!ListAdd(proc->threads, th)) {																											// Add it!
 		PsFreeContext(th->ctx);																													// Failed...
 		MemFree((UIntPtr)th);
-		ListFree(proc->files);
+		ListFree(proc->handles);
 		ListFree(proc->threads);
 		MmFreeDirectory(proc->dir);
 		MemFree((UIntPtr)proc->name);
@@ -393,13 +394,17 @@ Void PsExitProcess(UIntPtr ret) {
 	
 	PsLockTaskSwitch(old);																														// Lock
 	
-	ListForeach(PsCurrentProcess->files, i) {																									// Close all the files that this process used
-		PProcessFile pf = (PProcessFile)i->data;
-		FsCloseFile(pf->file);
-		MemFree((UIntPtr)pf);
+	ListForeach(PsCurrentProcess->handles, i) {																									// Close all the handles that this process used
+		PHandle handle = (PHandle)i->data;
+		
+		if (handle->used != False) {
+			ScFreeHandle(handle->type, handle->data);
+		}
+		
+		MemFree((UIntPtr)handle);
 	}
 	
-	ListFree(PsCurrentProcess->files);																											// And free the file list itself
+	ListFree(PsCurrentProcess->handles);																										// And free the handle list itself
 	
 	ListForeach(PsCurrentProcess->threads, i) {																									// Let's free and remove all the threads
 		PThread th = (PThread)i->data;
