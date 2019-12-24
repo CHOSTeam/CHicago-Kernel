@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:14 BRT
-// Last edited on December 24 of 2019, at 13:09 BRT
+// Last edited on December 24 of 2019, at 16:13 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/mm.h>
@@ -20,9 +20,22 @@ static Boolean ScCheckPointer(PVoid ptr) {
 	} else {
 		return True;	
 	}
+}	
+
+Void ScFreeHandle(UInt8 type, PVoid data) {
+	if (type == HANDLE_TYPE_FILE) {																															// If it's a file, we need to close it
+		FsCloseFile((PFsNode)data);
+	} else if (type == HANDLE_TYPE_LOCK) {																													// If it's a lock, we just need to unlock and free it
+		PsUnlock((PLock)data);
+		MemFree((UIntPtr)data);
+	} else if (type == HANDLE_TYPE_LIBRARY) {																												// If it's a library, we also just need to close it
+		ExecCloseLibrary((PLibHandle)data);
+	} else if (type == HANDLE_TYPE_IPC_RESPONSE_PORT) {																										// If it's a IPC response port, we just need to free it
+		IpcFreeResponsePort((PIpcResponsePort)data);
+	}
 }
 
-static IntPtr ScAppendHandle(UInt8 type, PVoid data) {
+IntPtr ScAppendHandle(UInt8 type, PVoid data) {
 	ListForeach(PsCurrentProcess->handles, i) {																												// Try to find an unused entry
 		PHandle hndl = (PHandle)i->data;
 		
@@ -52,17 +65,6 @@ static IntPtr ScAppendHandle(UInt8 type, PVoid data) {
 	}
 	
 	return PsCurrentProcess->last_handle_id++;
-}
-
-Void ScFreeHandle(UInt8 type, PVoid data) {
-	if (type == HANDLE_TYPE_FILE) {																															// If it's a file, we need to close it
-		FsCloseFile((PFsNode)data);
-	} else if (type == HANDLE_TYPE_LOCK) {																													// If it's a lock, we just need to unlock and free it
-		PsUnlock((PLock)data);
-		MemFree((UIntPtr)data);
-	} else if (type == HANDLE_TYPE_LIBRARY) {																												// If it's a library, we also just need to close it
-		ExecCloseLibrary((PLibHandle)data);
-	}
 }
 
 Void ScSysGetVersion(PSystemVersion ver) {
@@ -520,4 +522,80 @@ UIntPtr ScExecGetSymbol(IntPtr handle, PWChar name) {
 	}
 	
 	return ExecGetSymbol((PLibHandle)hndl->data, name);																										// And redirect
+}
+
+Boolean ScIpcCreatePort(PWChar name) {
+	if (!ScCheckPointer(name)) {																															// Sanity check
+		return False;
+	}
+	
+	return IpcCreatePort(name);
+}
+
+IntPtr ScIpcCreateResponsePort(Void) {
+	return IpcCreateResponsePort();
+}
+
+Void ScIpcRemovePort(PWChar name) {
+	if (!ScCheckPointer(name)) {																															// Sanity check
+		return;
+	}
+	
+	IpcRemovePort(name);
+}
+
+Void ScIpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntPtr rport) {
+	if (rport >= PsCurrentProcess->last_handle_id || !ScCheckPointer(port) || (buf != Null && !ScCheckPointer(buf))) {										// Sanity checks
+		return;
+	}
+	
+	PIpcResponsePort rp = Null;
+	
+	if (rport != -1) {																																		// Should we get the response port from the rport handle?
+		PHandle hndl = ListGet(PsCurrentProcess->handles, rport);																							// Yes, get the handle data
+		
+		if (hndl == Null || hndl->type != HANDLE_TYPE_IPC_RESPONSE_PORT) {
+			return;
+		}
+		
+		rp = (PIpcResponsePort)hndl->data;																													// And the response port struct
+	}
+	
+	IpcSendMessage(port, msg, size, buf, rp);																												// Now redirect!
+}
+
+Void ScIpcSendResponse(IntPtr handle, UInt32 msg, UIntPtr size, PUInt8 buf) {
+	if (handle >= PsCurrentProcess->last_handle_id || (buf != Null && !ScCheckPointer(buf))) {																// Sanity checks
+		return;
+	}
+	
+	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
+	
+	if (hndl == Null || hndl->type != HANDLE_TYPE_IPC_RESPONSE_PORT) {
+		return;
+	}
+	
+	IpcSendResponse((PIpcResponsePort)hndl->data, msg, size, buf);																							// And redirect
+}
+
+PIpcMessage ScIpcReceiveMessage(PWChar name) {
+	if (!ScCheckPointer(name)) {																															// Sanity check
+		return Null;
+	}
+	
+	return IpcReceiveMessage(name);																															// And redirect
+}
+
+PIpcMessage ScIpcReceiveResponse(IntPtr handle) {
+	if (handle >= PsCurrentProcess->last_handle_id) {																										// Sanity check
+		return Null;
+	}
+	
+	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get handle data
+	
+	if (hndl == Null || hndl->type != HANDLE_TYPE_IPC_RESPONSE_PORT) {
+		return Null;
+	}
+	
+	return IpcReceiveResponse((PIpcResponsePort)hndl->data);																								// And redirect
 }

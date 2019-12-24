@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 00:48 BRT
-// Last edited on December 24 of 2019, at 13:30 BRT
+// Last edited on December 24 of 2019, at 16:23 BRT
 
 #include <chicago/arch/idt.h>
 #include <chicago/sc.h>
@@ -150,6 +150,34 @@ static Void ArchScHandler(PRegisters regs) {
 	}
 	case 0x23: {																								// UIntPtr ExecGetSymbol(IntPtr handle, PWChar name)
 		regs->eax = ScExecGetSymbol(regs->ebx, (PWChar)regs->ecx);
+		break;
+	}
+	case 0x24: {																								// Boolean IpcCreatePort(PWChar name)
+		regs->eax = ScIpcCreatePort((PWChar)regs->ebx);
+		break;
+	}
+	case 0x25: {																								// IntPtr IpcCreateResponsePort(Void)
+		regs->eax = ScIpcCreateResponsePort();
+		break;
+	}
+	case 0x26: {																								// Void IpcRemovePort(PWchar name)
+		ScIpcRemovePort((PWChar)regs->ebx);
+		break;
+	}
+	case 0x27: {																								// Void ScIpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntPtr rport)
+		ScIpcSendMessage((PWChar)regs->ebx, regs->ecx, regs->edx, (PUInt8)regs->esi, regs->edi);
+		break;
+	}
+	case 0x28: {																								// Void ScIpcSendResponse(IntPtr handle, UInt32 msg, UIntPtr size, PUInt8 buf)
+		ScIpcSendResponse(regs->ebx, regs->ecx, regs->edx, (PUInt8)regs->esi);
+		break;
+	}
+	case 0x29: {																								// PIpcMessage ScIpcReceiveMessage(PWChar name)
+		regs->eax = (UIntPtr)ScIpcReceiveMessage((PWChar)regs->ebx);
+		break;
+	}
+	case 0x2A: {																								// PIpcMessage ScIpcReceiveResponse(IntPtr handle)
+		regs->eax = (UIntPtr)ScIpcReceiveResponse(regs->ebx);
 		break;
 	}
 	default: {

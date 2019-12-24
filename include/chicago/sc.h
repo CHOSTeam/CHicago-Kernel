@@ -1,18 +1,20 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:04 BRT
-// Last edited on December 24 of 2019, at 12:59 BRT
+// Last edited on December 24 of 2019, at 16:22 BRT
 
 #ifndef __CHICAGO_SC_H__
 #define __CHICAGO_SC_H__
 
 #include <chicago/exec.h>
+#include <chicago/ipc.h>
 
 #define HANDLE_TYPE_FILE 0x00
 #define HANDLE_TYPE_THREAD 0x01
 #define HANDLE_TYPE_PROCESS 0x02
 #define HANDLE_TYPE_LOCK 0x03
 #define HANDLE_TYPE_LIBRARY 0x04
+#define HANDLE_TYPE_IPC_RESPONSE_PORT 0x05
 
 typedef struct {
 	PUInt32 major;
@@ -29,6 +31,7 @@ typedef struct {
 	Boolean used;
 } Handle, *PHandle;
 
+IntPtr ScAppendHandle(UInt8 type, PVoid data);
 Void ScFreeHandle(UInt8 type, PVoid data);
 Void ScSysGetVersion(PSystemVersion ver);
 Void ScSysCloseHandle(IntPtr handle);
@@ -66,5 +69,12 @@ Void ScFsSetPosition(IntPtr handle, UIntPtr base, UIntPtr off);
 IntPtr ScExecCreateProcess(PWChar path);
 IntPtr ScExecLoadLibrary(PWChar path, Boolean global);
 UIntPtr ScExecGetSymbol(IntPtr handle, PWChar name);
+Boolean ScIpcCreatePort(PWChar name);
+IntPtr ScIpcCreateResponsePort(Void);
+Void ScIpcRemovePort(PWChar name);
+Void ScIpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntPtr rport);
+Void ScIpcSendResponse(IntPtr handle, UInt32 msg, UIntPtr size, PUInt8 buf);
+PIpcMessage ScIpcReceiveMessage(PWChar name);
+PIpcMessage ScIpcReceiveResponse(IntPtr handle);
 
 #endif		// __CHICAGO_SC_H__

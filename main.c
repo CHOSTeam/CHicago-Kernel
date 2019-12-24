@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:14 BRT
-// Last edited on November 19 of 2019, at 13:49 BRT
+// Last edited on December 24 of 2019, at 14:45 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/arch.h>
@@ -12,6 +12,7 @@
 #include <chicago/display.h>
 #include <chicago/drv.h>
 #include <chicago/exec.h>
+#include <chicago/ipc.h>
 #include <chicago/nls.h>
 #include <chicago/panic.h>
 #include <chicago/process.h>
@@ -75,6 +76,10 @@ Void KernelMainLate(Void) {
 	DispIncrementProgessBar();																											// Alright, tasking is now initialized!
 	PsInitKillerThread();																												// Create and add the killer thread
 	DbgWriteFormated("[Kernel] Tasking initialized\r\n");
+	
+	IpcInit();																															// Init the IPC interface
+	DispIncrementProgessBar();
+	DbgWriteFormated("[Kernel] IPC initialized\r\n");
 	
 	PList conf = ConfLoad(L"System.conf");																								// Load the configuration file, let's set the system language!
 	
