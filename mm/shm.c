@@ -63,7 +63,7 @@ UIntPtr ShmCreateSection(UIntPtr size, PUIntPtr key) {
 	
 	for (UIntPtr i = msect->virt; i < msect->virt + size; i += MM_PAGE_SIZE) {									// Let's add everything to the physical regions map
 		if (!ListAdd(&msect->shm->pregions, (PVoid)MmGetPhys(i))) {
-			while (msect->shm->pregions.length != 0) {															// Failed, let's first remove everything from the physicial regions map
+			while (msect->shm->pregions.length != 0) {															// Failed, let's first remove everything from the physcial regions map
 				ListRemove(&msect->shm->pregions, 0);
 			}
 			
@@ -76,7 +76,7 @@ UIntPtr ShmCreateSection(UIntPtr size, PUIntPtr key) {
 	}
 	
 	if (!ListAdd(ShmSectionList, msect->shm)) {																	// Add the section to the global section list
-		while (msect->shm->pregions.length != 0) {																// Failed, let's first remove everything from the physicial regions map
+		while (msect->shm->pregions.length != 0) {																// Failed, let's first remove everything from the physical regions map
 			ListRemove(&msect->shm->pregions, 0);
 		}
 		
@@ -86,7 +86,7 @@ UIntPtr ShmCreateSection(UIntPtr size, PUIntPtr key) {
 		
 		return 0;
 	} else if (!ListAdd(PsCurrentProcess->shm_mapped_sections, msect)) {										// Now add it to the process mapped shm sections list
-		while (msect->shm->pregions.length != 0) {																// Failed, let's first remove everything from the physicial regions map
+		while (msect->shm->pregions.length != 0) {																// Failed, let's first remove everything from the physical regions map
 			ListRemove(&msect->shm->pregions, 0);
 		}
 		
@@ -207,7 +207,6 @@ Void ShmUnmapSection(UIntPtr key) {
 	VirtFreeAddress(msect->virt, msect->shm->pregions.length * MM_PAGE_SIZE);									// Now, free the virtual memory (and if this is the last reference, also free the physical memory)
 	
 	msect->shm->refs--;																							// Decrease the reference count
-	
 	
 	if (msect->shm->refs == 0) {																				// This is the last reference?
 		ShmRemoveFromList(ShmSectionList, msect->shm);															// Yes, first, let's remove it from the section list

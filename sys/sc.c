@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:14 BRT
-// Last edited on December 25 of 2019, at 17:37 BRT
+// Last edited on December 25 of 2019, at 18:43 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/sc.h>
@@ -543,9 +543,9 @@ Void ScIpcRemovePort(PWChar name) {
 	IpcRemovePort(name);
 }
 
-Void ScIpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntPtr rport) {
+PIpcMessage ScIpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntPtr rport) {
 	if (rport >= PsCurrentProcess->last_handle_id || !ScCheckPointer(port) || (buf != Null && !ScCheckPointer(buf))) {										// Sanity checks
-		return;
+		return Null;
 	}
 	
 	PIpcResponsePort rp = Null;
@@ -554,13 +554,13 @@ Void ScIpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntPtr 
 		PHandle hndl = ListGet(PsCurrentProcess->handles, rport);																							// Yes, get the handle data
 		
 		if (hndl == Null || hndl->type != HANDLE_TYPE_IPC_RESPONSE_PORT) {
-			return;
+			return Null;
 		}
 		
 		rp = (PIpcResponsePort)hndl->data;																													// And the response port struct
 	}
 	
-	IpcSendMessage(port, msg, size, buf, rp);																												// Now redirect!
+	return IpcSendMessage(port, msg, size, buf, rp);																										// Now redirect!
 }
 
 Void ScIpcSendResponse(IntPtr handle, UInt32 msg, UIntPtr size, PUInt8 buf) {

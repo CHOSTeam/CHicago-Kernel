@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 00:48 BRT
-// Last edited on December 25 of 2019, at 17:40 BRT
+// Last edited on December 25 of 2019, at 18:42 BRT
 
 #include <chicago/arch/idt.h>
 #include <chicago/sc.h>
@@ -164,8 +164,8 @@ static Void ArchScHandler(PRegisters regs) {
 		ScIpcRemovePort((PWChar)regs->ebx);
 		break;
 	}
-	case 0x27: {																								// Void IpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntPtr rport)
-		ScIpcSendMessage((PWChar)regs->ebx, regs->ecx, regs->edx, (PUInt8)regs->esi, regs->edi);
+	case 0x27: {																								// PIpcMessage IpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntPtr rport)
+		regs->eax = (UIntPtr)ScIpcSendMessage((PWChar)regs->ebx, regs->ecx, regs->edx, (PUInt8)regs->esi, regs->edi);
 		break;
 	}
 	case 0x28: {																								// Void IpcSendResponse(IntPtr handle, UInt32 msg, UIntPtr size, PUInt8 buf)
