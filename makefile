@@ -1,7 +1,7 @@
 # File author is Ítalo Lima Marconato Matias
 #
 # Created on May 11 of 2018, at 13:14 BRT
-# Last edited on December 24 of 2019, at 14:27 BRT
+# Last edited on December 25 of 2019, at 11:21 BRT
 
 ARCH ?= x86
 VERBOSE ?= false
@@ -54,8 +54,8 @@ OBJECTS += exec/drv.c.o exec/elf.c.o exec/exec.c.o exec/lib.c.o
 OBJECTS += io/console.c.o io/debug.c.o io/device.c.o io/file.c.o
 OBJECTS += io/dev/framebuffer.c.o io/dev/null.c.o io/dev/zero.c.o io/fs/devfs.c.o
 OBJECTS += io/fs/iso9660.c.o
-OBJECTS += mm/alloc.c.o mm/heap.c.o mm/pmm.c.o mm/ualloc.c.o
-OBJECTS += mm/virt.c.o
+OBJECTS += mm/alloc.c.o mm/heap.c.o mm/pmm.c.o mm/shm.c.o
+OBJECTS += mm/ualloc.c.o mm/virt.c.o
 OBJECTS += sys/config.c.o sys/ipc.c.o sys/panic.c.o sys/process.c.o
 OBJECTS += sys/rand.c.o sys/sc.c.o sys/string.c.o
 OBJECTS += vid/display.c.o vid/img.c.o

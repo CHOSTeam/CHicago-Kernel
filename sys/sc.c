@@ -1,14 +1,13 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:14 BRT
-// Last edited on December 24 of 2019, at 16:13 BRT
+// Last edited on December 25 of 2019, at 17:37 BRT
 
 #include <chicago/alloc.h>
-#include <chicago/mm.h>
 #include <chicago/sc.h>
+#include <chicago/shm.h>
 #include <chicago/string.h>
 #include <chicago/version.h>
-#include <chicago/virt.h>
 
 static Boolean ScCheckPointer(PVoid ptr) {
 #if (MM_USER_START == 0)																																	// Let's fix an compiler warning :)
@@ -598,4 +597,20 @@ PIpcMessage ScIpcReceiveResponse(IntPtr handle) {
 	}
 	
 	return IpcReceiveResponse((PIpcResponsePort)hndl->data);																								// And redirect
+}
+
+UIntPtr ScShmCreateSection(UIntPtr size, PUIntPtr key) {
+	if (!ScCheckPointer(key)) {																																// Sanity check
+		return 0;
+	}
+	
+	return ShmCreateSection(size, key);																														// And redirect
+}
+
+UIntPtr ScShmMapSection(UIntPtr key) {
+	return ShmMapSection(key);																																// Redirect
+}
+
+Void ScShmUnmapSection(UIntPtr key) {
+	return ShmUnmapSection(key);																															// Redirect
 }

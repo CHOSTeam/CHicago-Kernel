@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:14 BRT
-// Last edited on December 24 of 2019, at 14:45 BRT
+// Last edited on December 25 of 2019, at 17:30 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/arch.h>
@@ -16,6 +16,8 @@
 #include <chicago/nls.h>
 #include <chicago/panic.h>
 #include <chicago/process.h>
+#include <chicago/rand.h>
+#include <chicago/shm.h>
 #include <chicago/string.h>
 #include <chicago/version.h>
 
@@ -75,9 +77,11 @@ Void KernelMain(Void) {
 Void KernelMainLate(Void) {
 	DispIncrementProgessBar();																											// Alright, tasking is now initialized!
 	PsInitKillerThread();																												// Create and add the killer thread
+	RandSetSeed(RandGenerateSeed());																									// Set the random generator seed
 	DbgWriteFormated("[Kernel] Tasking initialized\r\n");
 	
-	IpcInit();																															// Init the IPC interface
+	IpcInit();																															// Init the IPC (message passing) interface
+	ShmInit();																															// And the SHM (shared memory) interface
 	DispIncrementProgessBar();
 	DbgWriteFormated("[Kernel] IPC initialized\r\n");
 	

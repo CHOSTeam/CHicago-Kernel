@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 27 of 2018, at 14:59 BRT
-// Last edited on December 24 of 2019, at 13:05 BRT
+// Last edited on December 25 of 2019, at 17:28 BRT
 
 #define __CHICAGO_PROCESS__
 
@@ -10,14 +10,13 @@
 #include <chicago/alloc.h>
 #include <chicago/arch.h>
 #include <chicago/debug.h>
-#include <chicago/mm.h>
 #include <chicago/panic.h>
 #include <chicago/process.h>
 #include <chicago/sc.h>
+#include <chicago/shm.h>
 #include <chicago/string.h>
 #include <chicago/timer.h>
 #include <chicago/list.h>
-#include <chicago/virt.h>
 
 extern Void KernelMainLate(Void);
 
@@ -92,12 +91,23 @@ PProcess PsCreateProcessInt(PWChar name, UIntPtr entry, UIntPtr dir) {
 	proc->mem_usage = 0;
 	proc->exec_handles = Null;
 	proc->global_exec_handles = Null;
+	proc->shm_mapped_sections = ListNew(False, False);																							// Init the mapped shm sections list for the process
+	
+	if (proc->shm_mapped_sections == Null) {
+		ListFree(proc->threads);																												// Failed...
+		MmFreeDirectory(proc->dir);
+		MemFree((UIntPtr)proc->name);
+		MemFree((UIntPtr)proc);
+		return Null;
+	}
+	
 	proc->handles = ListNew(False, False);																										// Init the handle list for the process
 	proc->last_handle_id = 0;
 	proc->exec_path = Null;
 	
 	if (proc->handles == Null) {
-		ListFree(proc->threads);																												// Failed...
+		ListFree(proc->shm_mapped_sections);																									// Failed...
+		ListFree(proc->threads);
 		MmFreeDirectory(proc->dir);
 		MemFree((UIntPtr)proc->name);
 		MemFree((UIntPtr)proc);
@@ -107,7 +117,8 @@ PProcess PsCreateProcessInt(PWChar name, UIntPtr entry, UIntPtr dir) {
 	PThread th = PsCreateThreadInt(entry, 0, False);																							// Create the first thread
 	
 	if (th == Null) {
-		ListFree(proc->handles);																													// Failed...
+		ListFree(proc->handles);																												// Failed...
+		ListFree(proc->shm_mapped_sections);
 		ListFree(proc->threads);
 		MmFreeDirectory(proc->dir);
 		MemFree((UIntPtr)proc->name);
@@ -122,6 +133,7 @@ PProcess PsCreateProcessInt(PWChar name, UIntPtr entry, UIntPtr dir) {
 		PsFreeContext(th->ctx);																													// Failed...
 		MemFree((UIntPtr)th);
 		ListFree(proc->handles);
+		ListFree(proc->shm_mapped_sections);
 		ListFree(proc->threads);
 		MmFreeDirectory(proc->dir);
 		MemFree((UIntPtr)proc->name);
@@ -394,6 +406,10 @@ Void PsExitProcess(UIntPtr ret) {
 	
 	PsLockTaskSwitch(old);																														// Lock
 	
+	ListForeach(PsCurrentProcess->shm_mapped_sections, i) {																						// Unmap and dereference all the mapped shm sections
+		ShmUnmapSection(((PShmMappedSection)i->data)->shm->key);
+	}
+	
 	ListForeach(PsCurrentProcess->handles, i) {																									// Close all the handles that this process used
 		PHandle handle = (PHandle)i->data;
 		
@@ -404,7 +420,8 @@ Void PsExitProcess(UIntPtr ret) {
 		MemFree((UIntPtr)handle);
 	}
 	
-	ListFree(PsCurrentProcess->handles);																										// And free the handle list itself
+	ListFree(PsCurrentProcess->shm_mapped_sections);																							// Free the mapped shm sections list
+	ListFree(PsCurrentProcess->handles);																										// And free the handle list
 	
 	ListForeach(PsCurrentProcess->threads, i) {																									// Let's free and remove all the threads
 		PThread th = (PThread)i->data;

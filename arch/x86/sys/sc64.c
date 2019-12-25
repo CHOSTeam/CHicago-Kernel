@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 29 of 2018, at 18:10 BRT
-// Last edited on December 24 of 2019, at 16:25 BRT
+// Last edited on December 25 of 2019, at 17:41 BRT
 
 #include <chicago/arch/idt.h>
 #include <chicago/sc.h>
@@ -178,6 +178,18 @@ static Void ArchScHandler(PRegisters regs) {
 	}
 	case 0x2A: {																								// PIpcMessage ScIpcReceiveResponse(IntPtr handle)
 		regs->rax = (UIntPtr)ScIpcReceiveResponse(regs->rbx);
+		break;
+	}
+	case 0x2B: {																								// UIntPtr ShmCreateSection(UIntPtr size, PUIntPtr key)
+		regs->rax = ScShmCreateSection(regs->rbx, (PUIntPtr)regs->rcx);
+		break;
+	}
+	case 0x2C: {																								// UIntPtr ShmMapSection(UIntPtr key)
+		regs->rax = ScShmMapSection(regs->rbx);
+		break;
+	}
+	case 0x2D: {																								// Void ShmUnmapSection(UIntPtr key)
+		ScShmUnmapSection(regs->rbx);
 		break;
 	}
 	default: {

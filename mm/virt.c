@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on September 15 of 2018, at 12:46 BRT
-// Last edited on November 03 of 2019, at 19:19 BRT
+// Last edited on December 25 of 2019, at 11:25 BRT
 
 #include <chicago/mm.h>
 #include <chicago/process.h>
@@ -9,7 +9,7 @@
 
 UInt32 VirtConvertFlags(UInt32 flags) {
 	if (flags == 0) {																	// Invalid?
-		return 0;																		// Yes, return 0
+		return MM_MAP_USER;																// Yes, just return MM_MAP_USER...
 	}
 	
 	UInt32 ret = MM_MAP_USER;															// Let's convert the flags!
