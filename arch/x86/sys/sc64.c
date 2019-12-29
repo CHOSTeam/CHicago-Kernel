@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 29 of 2018, at 18:10 BRT
-// Last edited on December 25 of 2019, at 18:42 BRT
+// Last edited on December 25 of 2019, at 22:17 BRT
 
 #include <chicago/arch/idt.h>
 #include <chicago/sc.h>
@@ -164,31 +164,35 @@ static Void ArchScHandler(PRegisters regs) {
 		ScIpcRemovePort((PWChar)regs->rbx);
 		break;
 	}
-	case 0x27: {																								// PIpcMessage ScIpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntPtr rport)
+	case 0x27: {																								// Boolean IpcCheckPort(PWChar name)
+		regs->rax = ScIpcCheckPort((PWChar)regs->rbx);
+		break;
+	}
+	case 0x28: {																								// PIpcMessage ScIpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntPtr rport)
 		regs->rax = (UIntPtr)ScIpcSendMessage((PWChar)regs->rbx, regs->rcx, regs->rdx, (PUInt8)regs->rsi, regs->rdi);
 		break;
 	}
-	case 0x28: {																								// Void ScIpcSendResponse(IntPtr handle, UInt32 msg, UIntPtr size, PUInt8 buf)
+	case 0x29: {																								// Void ScIpcSendResponse(IntPtr handle, UInt32 msg, UIntPtr size, PUInt8 buf)
 		ScIpcSendResponse(regs->rbx, regs->rcx, regs->rdx, (PUInt8)regs->rsi);
 		break;
 	}
-	case 0x29: {																								// PIpcMessage ScIpcReceiveMessage(PWChar name)
+	case 0x2A: {																								// PIpcMessage ScIpcReceiveMessage(PWChar name)
 		regs->rax = (UIntPtr)ScIpcReceiveMessage((PWChar)regs->rbx);
 		break;
 	}
-	case 0x2A: {																								// PIpcMessage ScIpcReceiveResponse(IntPtr handle)
+	case 0x2B: {																								// PIpcMessage ScIpcReceiveResponse(IntPtr handle)
 		regs->rax = (UIntPtr)ScIpcReceiveResponse(regs->rbx);
 		break;
 	}
-	case 0x2B: {																								// UIntPtr ShmCreateSection(UIntPtr size, PUIntPtr key)
+	case 0x2C: {																								// UIntPtr ShmCreateSection(UIntPtr size, PUIntPtr key)
 		regs->rax = ScShmCreateSection(regs->rbx, (PUIntPtr)regs->rcx);
 		break;
 	}
-	case 0x2C: {																								// UIntPtr ShmMapSection(UIntPtr key)
+	case 0x2D: {																								// UIntPtr ShmMapSection(UIntPtr key)
 		regs->rax = ScShmMapSection(regs->rbx);
 		break;
 	}
-	case 0x2D: {																								// Void ShmUnmapSection(UIntPtr key)
+	case 0x2E: {																								// Void ShmUnmapSection(UIntPtr key)
 		ScShmUnmapSection(regs->rbx);
 		break;
 	}

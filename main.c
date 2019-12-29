@@ -20,6 +20,7 @@
 #include <chicago/shm.h>
 #include <chicago/string.h>
 #include <chicago/version.h>
+#include <chicago/virt.h>
 
 Void KernelMain(Void) {
 	ArchInitDebug();																													// Init the architecture-dependent debugging method

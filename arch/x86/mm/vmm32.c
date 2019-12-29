@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 19:19 BRT
-// Last edited on December 24 of 2019, at 13:34 BRT
+// Last edited on December 29 of 2019, at 13:30 BRT
 
 #include <chicago/arch/vmm.h>
 
@@ -50,6 +50,10 @@ UInt32 MmQuery(UIntPtr virt) {
 	return ret;
 }
 
+static Boolean MmIsAllocated(UIntPtr page) {
+	return (page & PAGE_PRESENT) == PAGE_PRESENT || (page & PAGE_AOR) == PAGE_AOR;
+}
+
 UIntPtr MmFindFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count) {
 	if (start % MM_PAGE_SIZE != 0) {																								// Page align the start
 		start -= count % MM_PAGE_SIZE;
@@ -67,13 +71,13 @@ UIntPtr MmFindFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count) {
 	UIntPtr p = start;
 	
 	for (UIntPtr i = start; i < end; i += MM_PAGE_SIZE * 1024) {																	// Let's try to find the first free virtual address!
-		if ((MmGetPDE(i) & PAGE_PRESENT) == PAGE_PRESENT) {																			// This PDE is allocated?
+		if (MmIsAllocated(MmGetPDE(i))) {																							// This PDE is allocated?
 			if ((MmGetPDE(i) & PAGE_HUGE) == PAGE_HUGE) {																			// Yes! 4MiB page?
 				c = 0;																												// Yes :(
 				p = i + 0x400000;
 			} else {
 				for (UIntPtr j = 0; j < MM_PAGE_SIZE * 1024; j += MM_PAGE_SIZE) {													// Nope! Let's check the PTEs
-					if (((i == 0) && (j == 0)) || (MmGetPTE(i + j) & PAGE_PRESENT) == PAGE_PRESENT) {								// Allocated?
+					if (((i == 0) && (j == 0)) || MmIsAllocated(MmGetPTE(i + j))) {													// Allocated?
 						c = 0;																										// Yes :(
 						p = i + j + MM_PAGE_SIZE;
 					} else {
@@ -119,7 +123,7 @@ UIntPtr MmFindHighestFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count) {
 	UIntPtr p = end;
 	
 	for (UIntPtr i = end - (MM_PAGE_SIZE * 1024); i > start; i -= MM_PAGE_SIZE * 1024) {											// Let's try to find the highest free virtual address!
-		if ((MmGetPDE(i) & PAGE_PRESENT) == PAGE_PRESENT) {																			// This PDE is allocated?
+		if (MmIsAllocated(MmGetPDE(i))) {																							// This PDE is allocated?
 			if ((MmGetPDE(i) & PAGE_HUGE) == PAGE_HUGE) {																			// Yes! 4MiB page?
 				c = 0;																												// Yes :(
 				p = i - 0x400000;
@@ -127,11 +131,11 @@ UIntPtr MmFindHighestFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count) {
 				for (UIntPtr j = MM_PAGE_SIZE * 1024; j > 0; j -= MM_PAGE_SIZE) {													// Nope! Let's check the PTEs
 					UIntPtr rj = j - 1;
 
-					if ((i == start) && (rj == 0)) {																				// curr == start?
+					if ((i == start) && (j == 0)) {																					// curr == start?
 						return 0;																									// Yes, we failed :(
-					} else if ((MmGetPTE(i + rj) & PAGE_PRESENT) == PAGE_PRESENT) {													// Allocated?
+					} else if (MmIsAllocated(MmGetPTE(i + rj))) {																	// Allocated?
 						c = 0;																										// Yes :(
-						p = (i + rj + 1) - MM_PAGE_SIZE;
+						p = i + j - MM_PAGE_SIZE;
 					} else {
 						c += MM_PAGE_SIZE;																							// No! (+4KB)
 

@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:14 BRT
-// Last edited on December 25 of 2019, at 18:43 BRT
+// Last edited on December 28 of 2019, at 14:15 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/sc.h>
@@ -541,6 +541,14 @@ Void ScIpcRemovePort(PWChar name) {
 	}
 	
 	IpcRemovePort(name);
+}
+
+Boolean ScIpcCheckPort(PWChar name) {
+	if (!ScCheckPointer(name)) {																															// Sanity check
+		return False;
+	}
+	
+	return IpcCheckPort(name);
 }
 
 PIpcMessage ScIpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntPtr rport) {

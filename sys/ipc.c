@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 24 of 2019, at 14:18 BRT
-// Last edited on December 25 of 2019, at 18:53 BRT
+// Last edited on December 25 of 2019, at 22:14 BRT
 
 #define __CHICAGO_IPC__
 
@@ -111,6 +111,22 @@ Void IpcRemovePort(PWChar name) {
 	
 	MemFree((UIntPtr)port->name);																		// Free the name
 	MemFree((UIntPtr)port);																				// Free the struct itself
+}
+
+Boolean IpcCheckPort(PWChar name) {
+	if (PsCurrentProcess == Null || IpcPortList == Null || name == Null) {								// Sanity checks
+		return False;
+	}
+	
+	ListForeach(IpcPortList, i) {																		// Let's iterate the port list
+		if (StrGetLength(((PIpcPort)i->data)->name) != StrGetLength(name)) {							// Check if both names have the same length
+			continue;
+		} else if (StrCompare(((PIpcPort)i->data)->name, name)) {										// And compare them!
+			return True;
+		}
+	}
+	
+	return False;
 }
 
 Void IpcFreeResponsePort(PIpcResponsePort port) {

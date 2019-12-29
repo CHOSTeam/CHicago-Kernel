@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 24 of 2019, at 14:28 BRT
-// Last edited on December 24 of 2019, at 15:54 BRT
+// Last edited on December 25 of 2019, at 22:18 BRT
 
 #ifndef __CHICAGO_IPC_H__
 #define __CHICAGO_IPC_H__
@@ -35,6 +35,7 @@ extern PList IpcPortList;
 Boolean IpcCreatePort(PWChar name);
 IntPtr IpcCreateResponsePort(Void);
 Void IpcRemovePort(PWChar name);
+Boolean IpcCheckPort(PWChar name);
 Void IpcFreeResponsePort(PIpcResponsePort port);
 PIpcMessage IpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, PIpcResponsePort rport);
 Void IpcSendResponse(PIpcResponsePort port, UInt32 msg, UIntPtr size, PUInt8 buf);

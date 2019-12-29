@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 19:19 BRT
-// Last edited on November 06 of 2019, at 17:04 BRT
+// Last edited on December 29 of 2019, at 14:24 BRT
 
 #include <chicago/arch/vmm.h>
 
@@ -66,6 +66,10 @@ UInt32 MmQuery(UIntPtr virt) {
 	return ret;
 }
 
+static Boolean MmIsAvaliable(UIntPtr page) {
+	return ((page & PAGE_PRESENT) != PAGE_PRESENT) && ((page & PAGE_AOR) != PAGE_AOR);
+}
+
 UIntPtr MmFindFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count) {
 	if (start % MM_PAGE_SIZE != 0) {																							// Page align the start
 		start -= count % MM_PAGE_SIZE;
@@ -83,7 +87,7 @@ UIntPtr MmFindFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count) {
 	UIntPtr p = start;
 	
 	for (UIntPtr i = start; i < end; i += 0x8000000000) {																		// Let's try to find the first free virtual address!
-		if ((MmGetP4(i) & PAGE_PRESENT) != PAGE_PRESENT) {																		// This P4 is allocated?
+		if (MmIsAvaliable(MmGetP4(i))) {																						// This P4 is allocated?
 			c += 0x8000000000;																									// No!
 			
 			if (i < 0x8000000000) {																								// 0x00000000?
@@ -99,7 +103,7 @@ UIntPtr MmFindFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count) {
 		}
 		
 		for (UIntPtr j = 0; j < 0x8000000000; j += 0x40000000) {																// Let's check the P3s
-			if ((MmGetP3(i + j) & PAGE_PRESENT) != PAGE_PRESENT) {																// This P3 is allocated?
+			if (MmIsAvaliable(MmGetP3(i + j))) {																				// This P3 is allocated?
 				c += 0x40000000;																								// No!
 				
 				if ((i < 0x8000000000) && (j < 0x40000000)) {																	// 0x00000000?
@@ -119,7 +123,7 @@ UIntPtr MmFindFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count) {
 			}
 			
 			for (UIntPtr k = 0; k < 0x40000000; k += 0x200000) {																// Let's check the P2s
-				if ((MmGetP2(i + j + k) & PAGE_PRESENT) != PAGE_PRESENT) {														// This P2 is allocated?
+				if (MmIsAvaliable(MmGetP2(i + j + k))) {																		// This P2 is allocated?
 					c += 0x200000;																								// No!
 					
 					if ((i < 0x8000000000) && (j < 0x40000000) && (k < 0x200000)) {												// 0x00000000?
@@ -132,16 +136,14 @@ UIntPtr MmFindFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count) {
 					}
 
 					continue;
-				} else if ((MmGetP2(i + j + k) & PAGE_HUGE) == PAGE_HUGE) {														// 1GiB P3 instead of 2MiB P2 (or 4KiB P1)?
+				} else if ((MmGetP2(i + j + k) & PAGE_HUGE) == PAGE_HUGE) {														// 2MiB P2 instead of 4KiB P1?
 					c = 0;																										// Yes :(
 					p = i + j + k + 0x200000;
 					continue;
 				}
 				
 				for (UIntPtr l = 0; l < 0x200000; l += 0x1000) {																// Let's check the P1s
-					UIntPtr addr = i + j + k + l;
-					
-					if (((i == 0) && (j == 0) && (k == 0) && (l == 0)) || ((MmGetP1(addr) & PAGE_PRESENT) == PAGE_PRESENT)) {	// This P1 is allocated?
+					if (((i == 0) && (j == 0) && (k == 0) && (l == 0)) || !MmIsAvaliable(MmGetP1(i + j + k + l))) {				// This P1 is allocated?
 						c = 0;																									// Yes :(
 						p = i + j + k + l + 0x1000;
 						continue;
@@ -177,7 +179,7 @@ UIntPtr MmFindHighestFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count) {
 	UIntPtr p = end;
 	
 	for (UIntPtr i = end - 0x8000000000; i > start; i -= 0x8000000000) {														// Let's try to find the first free virtual address!
-		if ((MmGetP4(i) & PAGE_PRESENT) != PAGE_PRESENT) {																		// This P4 is allocated?
+		if (MmIsAvaliable(MmGetP4(i))) {																						// This P4 is allocated?
 			c += 0x8000000000;																									// No!
 			
 			if (i == 0) {																										// 0x00000000?
@@ -191,10 +193,8 @@ UIntPtr MmFindHighestFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count) {
 			continue;
 		}
 		
-		for (UIntPtr fj = 0x8000000000; fj > 0; fj -= 0x40000000) {																// Let's check the P3s
-			UIntPtr j = fj - 1;
-			
-			if ((MmGetP3(i + j) & PAGE_PRESENT) != PAGE_PRESENT) {																// This P3 is allocated?
+		for (UIntPtr j = 0x7FC0000000; j > 0; j -= 0x40000000) {																// Alright, so let's check the P3s!
+			if (MmIsAvaliable(MmGetP3(i + j))) {																				// This P3 is allocated?
 				c += 0x40000000;																								// No!
 				
 				if ((i == 0) && (j == 0)) {																						// 0x00000000?
@@ -209,13 +209,10 @@ UIntPtr MmFindHighestFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count) {
 			} else if ((MmGetP3(i + j) & PAGE_HUGE) == PAGE_HUGE) {																// 1GiB P3 instead of 2MiB P2 (or 4KiB P1)?
 				c = 0;																											// Yes :(
 				p = i + j - 0x40000000;
-				continue;
 			}
 			
-			for (UIntPtr fk = 0x40000000; fk > 0; fk -= 0x200000) {																// Let's check the P2s
-				UIntPtr k = fk - 1;
-				
-				if ((MmGetP2(i + j + k) & PAGE_PRESENT) != PAGE_PRESENT) {														// This P2 is allocated?
+			for (UIntPtr k = 0x3FE00000; k > 0; k -= 0x200000) {																// Let's check the P2s
+				if (MmIsAvaliable(MmGetP2(i + j + k))) {																		// This P2 is allocated?
 					c += 0x200000;																								// No!
 					
 					if ((i == 0) && (j == 0) && (k == 0)) {																		// 0x00000000?
@@ -225,22 +222,19 @@ UIntPtr MmFindHighestFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count) {
 					if (c >= count) {																							// We need more memory?
 						return p - count;																						// No, so return!
 					}
-
+					
 					continue;
-				} else if ((MmGetP2(i + j + k) & PAGE_HUGE) == PAGE_HUGE) {														// 1GiB P3 instead of 2MiB P2 (or 4KiB P1)?
+				} else if ((MmGetP2(i + j + k) & PAGE_HUGE) == PAGE_HUGE) {														// 2MiB P2 instead of 4KiB P1?
 					c = 0;																										// Yes :(
 					p = i + j + k - 0x200000;
-					continue;
 				}
 				
-				for (UIntPtr rl = 0x200000; rl > 0; rl -= 0x1000) {																// Let's check the P1s
-					UIntPtr l = rl - 1;
-					
-					if ((i == start) && (j == 0) && (k == 0) && (l == 0)) {														// We failed?
-						return 0;																								// Yes :(
-					} else if ((MmGetP1(i) & PAGE_PRESENT) != PAGE_PRESENT) {													// This P1 is allocated?
-						c += 0x1000;																							// It's free, so we can use it!
-
+				for (UIntPtr l = 0x200000; l > 0; l -= 0x1000) {																// Let's check the P1s
+					if ((i == start) && (j == 0) && (k == 0) && (l == 0)) {														// curr == start?
+						return 0;																								// Yes, we failed :(
+					} else if (MmIsAvaliable(MmGetP1(i + j + k + l - 1))) {														// This P1 is allocated?
+						c += 0x1000;																							// No!
+						
 						if (c >= count) {																						// We need more memory?
 							return p - count;																					// No, so return!
 						}
@@ -249,7 +243,7 @@ UIntPtr MmFindHighestFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count) {
 					}
 					
 					c = 0;																										// Yes :(
-					p = i + j + k + l + 0x1000;
+					p = i + j + k + l - 0x1000;
 				}
 			}
 		}

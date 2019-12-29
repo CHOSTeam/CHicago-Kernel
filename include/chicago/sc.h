@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:04 BRT
-// Last edited on December 25 of 2019, at 18:43 BRT
+// Last edited on December 25 of 2019, at 22:15 BRT
 
 #ifndef __CHICAGO_SC_H__
 #define __CHICAGO_SC_H__
@@ -72,6 +72,7 @@ UIntPtr ScExecGetSymbol(IntPtr handle, PWChar name);
 Boolean ScIpcCreatePort(PWChar name);
 IntPtr ScIpcCreateResponsePort(Void);
 Void ScIpcRemovePort(PWChar name);
+Boolean ScIpcCheckPort(PWChar name);
 PIpcMessage ScIpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntPtr rport);
 Void ScIpcSendResponse(IntPtr handle, UInt32 msg, UIntPtr size, PUInt8 buf);
 PIpcMessage ScIpcReceiveMessage(PWChar name);
