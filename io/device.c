@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 14 of 2018, at 22:35 BRT
-// Last edited on November 10 of 2019, at 13:26 BRT
+// Last edited on January 04 of 2020, at 18:00 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -14,19 +14,19 @@
 PList FsDeviceList = Null;
 PWChar FsBootDevice = Null;
 
-Boolean FsReadDevice(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) {
+UIntPtr FsReadDevice(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) {
 	if (dev->read != Null) {													// We can call the device's function?
 		return dev->read(dev, off, len, buf);									// Yes!
 	} else {
-		return False;															// Nope, so return False
+		return 0;																// Nope, so return 0
 	}
 }
 
-Boolean FsWriteDevice(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) {
+UIntPtr FsWriteDevice(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) {
 	if (dev->write != Null) {													// We can call the device's function?
 		return dev->write(dev, off, len, buf);									// Yes!
 	} else {
-		return False;															// Nope, so return False
+		return 0;																// Nope, so return 0
 	}
 }
 
@@ -38,7 +38,7 @@ Boolean FsControlDevice(PDevice dev, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf) {
 	}
 }
 
-Boolean FsAddDevice(PWChar name, PVoid priv, Boolean (*read)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*write)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*control)(PDevice, UIntPtr, PUInt8, PUInt8)) {
+Boolean FsAddDevice(PWChar name, PVoid priv, UIntPtr (*read)(PDevice, UIntPtr, UIntPtr, PUInt8), UIntPtr (*write)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*control)(PDevice, UIntPtr, PUInt8, PUInt8)) {
 	if (FsDeviceList == Null) {													// Device list was initialized?
 		return False;															// No...
 	}
@@ -63,7 +63,7 @@ Boolean FsAddDevice(PWChar name, PVoid priv, Boolean (*read)(PDevice, UIntPtr, U
 	return True;
 }
 
-Boolean FsAddHardDisk(PVoid priv, Boolean (*read)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*write)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*control)(PDevice, UIntPtr, PUInt8, PUInt8)) {
+Boolean FsAddHardDisk(PVoid priv, UIntPtr (*read)(PDevice, UIntPtr, UIntPtr, PUInt8), UIntPtr (*write)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*control)(PDevice, UIntPtr, PUInt8, PUInt8)) {
 	if (FsDeviceList == Null) {													// Device list was initialized?
 		return False;															// No...
 	}
@@ -86,7 +86,7 @@ Boolean FsAddHardDisk(PVoid priv, Boolean (*read)(PDevice, UIntPtr, UIntPtr, PUI
 	return True;
 }
 
-Boolean FsAddCdRom(PVoid priv, Boolean (*read)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*write)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*control)(PDevice, UIntPtr, PUInt8, PUInt8)) {
+Boolean FsAddCdRom(PVoid priv, UIntPtr (*read)(PDevice, UIntPtr, UIntPtr, PUInt8), UIntPtr (*write)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*control)(PDevice, UIntPtr, PUInt8, PUInt8)) {
 	if (FsDeviceList == Null) {													// Device list was initialized?
 		return False;															// No...
 	}

@@ -1,15 +1,15 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 15 of 2018, at 13:16 BRT
-// Last edited on December 09 of 2018, at 17:34 BRT
+// Last edited on January 04 of 2020, at 18:05 BRT
 
 #include <chicago/debug.h>
 #include <chicago/device.h>
 #include <chicago/panic.h>
 
-Boolean NullDeviceWrite(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) {
+UIntPtr NullDeviceWrite(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) {
 	(Void)dev; (Void)off; (Void)len; (Void)buf;									// Avoid compiler's unused parameter warning
-	return True;																// Always return True
+	return len;
 }
 
 Void NullDeviceInit(Void) {

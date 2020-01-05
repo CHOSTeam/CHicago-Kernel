@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 16 of 2018, at 18:28 BRT
-// Last edited on November 17 of 2019, at 12:34 BRT
+// Last edited on January 04 of 2020, at 17:51 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -188,27 +188,27 @@ PWChar FsGetRandomPath(PWChar prefix) {
 	return Null;
 }
 
-Boolean FsReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf) {
+UIntPtr FsReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf) {
 	if (file == Null) {																													// File is Null pointer?
-		return False;																													// Yes, so we can't do anything...
+		return 0;																														// Yes, so we can't do anything...
 	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {																			// We're trying to read an file?
-		return False;																													// ... Why are you trying to read raw bytes from an directory?
+		return 0;																														// ... Why are you trying to read raw bytes from an directory?
 	} else if (file->read != Null) {																									// Implementation?
 		return file->read(file, off, len, buf);																							// Yes, so call it!
 	} else {
-		return False;
+		return 0;
 	}
 }
 
-Boolean FsWriteFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf) {
+UIntPtr FsWriteFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf) {
 	if (file == Null) {																													// File is Null pointer?
-		return False;																													// Yes, so we can't do anything...
+		return 0;																														// Yes, so we can't do anything...
 	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {																			// We're trying to read an file?
-		return False;																													// ... Why are you trying to read raw bytes from an directory?
+		return 0;																														// ... Why are you trying to read raw bytes from an directory?
 	} else if (file->write != Null) {																									// Implementation?
 		return file->write(file, off, len, buf);																						// Yes, so call it!
 	} else {
-		return False;
+		return 0;
 	}
 }
 

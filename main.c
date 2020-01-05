@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:14 BRT
-// Last edited on December 25 of 2019, at 17:30 BRT
+// Last edited on December 31 of 2019, at 16:17 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/arch.h>
@@ -146,8 +146,9 @@ Void KernelMainLate(Void) {
 	}
 	
 	ConSetSurface(DispBackBuffer, True, False, 0, 0);																					// Init the console in fullscreen mode
+	ConClearScreen();
 	
-	PProcess proc = ExecCreateProcess(L"/System/Programs/osmngr.che");																	// Let's create the initial process
+	PProcess proc = ExecCreateProcess(L"/System/Programs/osmngr.che", 0, Null);															// Let's create the initial process
 	
 	if (proc == Null) {
 		DbgWriteFormated("PANIC! Couldn't start the /System/Programs/osmngr.che program\r\n");											// Failed, so let's panic

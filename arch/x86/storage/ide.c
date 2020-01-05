@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 14 of 2018, at 23:40 BRT
-// Last edited on November 09 of 2019, at 10:28 BRT
+// Last edited on January 04 of 2020, at 17:56 BRT
 
 #include <chicago/arch/ide.h>
 #include <chicago/arch/idt.h>
@@ -213,7 +213,7 @@ static Boolean IDEWriteSectors(UInt16 base, Boolean slave, Boolean addr48, Boole
 	return ret;
 }
 
-static Boolean IDEDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) {
+static UIntPtr IDEDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) {
 	PIDEDevice idev = (PIDEDevice)dev->priv;
 	UIntPtr bsize = idev->atapi ? 2048 : 512;																	// Get the block size
 	UIntPtr cur = off / bsize;
@@ -222,13 +222,13 @@ static Boolean IDEDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) 
 	PUInt8 buff = (PUInt8)MemAAllocate(bsize, 0x10000);															// Alloc memory for reading the disk
 	
 	if (buf == Null) {
-		return False;
+		return 0;
 	}
 	
 	if ((off % bsize) != 0) {																					// "Align" the start
 		if (!IDEReadSectors(idev->base, idev->slave, idev->addr48, idev->atapi, 1, cur, buff)) {				// Read this block
 			MemAFree((UIntPtr)buff);																			// Failed...
-			return False;
+			return 0;
 		}
 		
 		StrCopyMemory(buf, buff + (off % bsize), bsize - (off % bsize));										// Copy it into the user buffer
@@ -239,7 +239,7 @@ static Boolean IDEDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) 
 	if (((off + len) % bsize) != 0) {																			// "Align" the end
 		if (!IDEReadSectors(idev->base, idev->slave, idev->addr48, idev->atapi, 1, end, buff)) {				// Read this block
 			MemAFree((UIntPtr)buff);																			// Failed...
-			return False;
+			return 0;
 		}
 		
 		StrCopyMemory(buf + len - ((off + len) % bsize), buff, (off + len) % bsize);							// Copy it into the user buffer
@@ -259,7 +259,7 @@ static Boolean IDEDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) 
 		}
 		
 		if (!IDEReadSectors(idev->base, idev->slave, idev->addr48, idev->atapi, sects, cur, buff)) {
-			return False;																						// Failed...
+			return 0;																						// Failed...
 		}
 		
 		StrCopyMemory(buf + start, buff, size);																	// Copy it into the user buffer
@@ -270,10 +270,10 @@ static Boolean IDEDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) 
 	
 	MemAFree((UIntPtr)buff);																					// Free the buffer
 	
-	return True;
+	return len;
 }
 
-static Boolean IDEDeviceWrite(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) {
+static UIntPtr IDEDeviceWrite(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) {
 	PIDEDevice idev = (PIDEDevice)dev->priv;
 	UIntPtr bsize = idev->atapi ? 2048 : 512;																	// Get the block size
 	UIntPtr cur = off / bsize;
@@ -282,20 +282,20 @@ static Boolean IDEDeviceWrite(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf)
 	PUInt8 buff = (PUInt8)MemAAllocate(bsize, 0x10000);															// Alloc memory for reading the disk
 	
 	if (buf == Null) {
-		return False;
+		return 0;
 	}
 	
 	if ((off % bsize) != 0) {																					// "Align" the start
 		if (!IDEReadSectors(idev->base, idev->slave, idev->addr48, idev->atapi, 1, cur, buff)) {				// Read this block
 			MemAFree((UIntPtr)buff);																			// Failed...
-			return False;
+			return 0;
 		}
 		
 		StrCopyMemory(buff + (off % bsize), buf + (off % bsize), bsize - (off % bsize));						// Write back to the buffer
 		
 		if (!IDEWriteSectors(idev->base, idev->slave, idev->addr48, idev->atapi, 1, cur, buff)) {				// Write this block back
 			MemAFree((UIntPtr)buff);																			// Failed...
-			return False;
+			return 0;
 		}
 		
 		cur++;
@@ -305,14 +305,14 @@ static Boolean IDEDeviceWrite(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf)
 	if (((off + len) % bsize) != 0) {																			// "Align" the end
 		if (!IDEReadSectors(idev->base, idev->slave, idev->addr48, idev->atapi, 1, end, buff)) {				// Read this block
 			MemAFree((UIntPtr)buff);																			// Failed...
-			return False;
+			return 0;
 		}
 		
 		StrCopyMemory(buff + ((off + len) % bsize), buf + len - ((off + len) % bsize), (off + len) % bsize);	// Write back to the buffer
 		
 		if (!IDEWriteSectors(idev->base, idev->slave, idev->addr48, idev->atapi, 1, end, buff)) {				// Write this block back
 			MemAFree((UIntPtr)buff);																			// Failed...
-			return False;
+			return 0;
 		}
 		
 		if (end != 0) {																							// Only decrease the end if it isn't 0
@@ -332,7 +332,7 @@ static Boolean IDEDeviceWrite(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf)
 		StrCopyMemory(buff, buf + start, size);																	// Copy from the user buffer
 		
 		if (!IDEWriteSectors(idev->base, idev->slave, idev->addr48, idev->atapi, sects, cur, buff)) {
-			return False;																						// Failed...
+			return 0;																							// Failed...
 		}
 		
 		cur += sects;
@@ -341,7 +341,7 @@ static Boolean IDEDeviceWrite(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf)
 	
 	MemAFree((UIntPtr)buff);																					// Free the buffer
 	
-	return True;
+	return len;
 }
 
 static UInt8 IDEInitInt2(UInt16 base, Boolean slave, PBoolean addr48) {

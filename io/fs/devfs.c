@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 16 of 2018, at 18:29 BRT
-// Last edited on November 11 of 2019, at 14:13 BRT
+// Last edited on January 04 of 2020, at 17:54 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -12,33 +12,33 @@
 
 Boolean DevFsControlFile(PFsNode file, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf);
 
-Boolean DevFsReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf) {
+UIntPtr DevFsReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf) {
 	if (file == Null) {																			// Any null pointer?
-		return False;																			// Yes, so we can't continue
+		return 0;																				// Yes, so we can't continue
 	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {									// We're trying to read raw bytes in an... Directory?
-		return False;																			// Yes (Why?)
+		return 0;																				// Yes (Why?)
 	}
 	
 	PDevice dev = FsGetDevice(file->name);														// Get the device using the name
 	
 	if (dev == Null) {																			// Failed for some unknown reason?
-		return False;																			// Yes
+		return 0;																				// Yes
 	}
 	
 	return FsReadDevice(dev, off, len, buf);													// Redirect to the FsReadDevice function
 }
 
-Boolean DevFsWriteFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf) {
+UIntPtr DevFsWriteFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf) {
 	if (file == Null) {																			// Any null pointer?
-		return False;																			// Yes, so we can't continue
+		return 0;																				// Yes, so we can't continue
 	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {									// We're trying to write raw bytes in an... Directory?
-		return False;																			// Yes (Why?)
+		return 0;																				// Yes (Why?)
 	}
 	
 	PDevice dev = FsGetDevice(file->name);														// Get the device using the name
 	
 	if (dev == Null) {																			// Failed for some unknown reason?
-		return False;																			// Yes
+		return 0;																				// Yes
 	}
 	
 	return FsWriteDevice(dev, off, len, buf);													// Redirect to the FsWriteDevice function

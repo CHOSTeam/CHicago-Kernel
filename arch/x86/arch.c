@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:21 BRT
-// Last edited on November 10 of 2019, at 11:07 BRT
+// Last edited on December 30 of 2019, at 12:10 BRT
 
 #include <chicago/arch/ahci.h>
 #include <chicago/arch/bootmgr.h>
@@ -54,7 +54,7 @@ Void ArchInitPMM(Void) {
 	PMMInit();																									// Init the PMM
 }
 
-#ifdef ARCH_64
+#if __INTPTR_WIDTH__ == 64
 Void ArchInitVMM(Void) {
 	UIntPtr phys = MmReferencePage(0);																			// Try to alloc a physical page
 	

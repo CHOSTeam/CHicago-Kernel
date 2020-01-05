@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 27 of 2018, at 14:42 BRT
-// Last edited on December 25 of 2019, at 11:39 BRT
+// Last edited on January 01 of 2020, at 18:50 BRT
 
 #ifndef __CHICAGO_PROCESS_H__
 #define __CHICAGO_PROCESS_H__
@@ -20,6 +20,7 @@
 struct ThreadStruct;
 
 typedef struct {
+	UIntPtr count;
 	Volatile Boolean locked;
 	struct ThreadStruct *owner;
 } Lock, *PLock;
@@ -38,6 +39,9 @@ typedef struct {
 	PList handles;
 	IntPtr last_handle_id;
 	PWChar exec_path;
+	UIntPtr exec_argc;
+	PWChar *exec_argv;
+	PChar *exec_cargv;
 } Process, *PProcess;
 
 typedef struct ThreadStruct {
@@ -50,6 +54,7 @@ typedef struct ThreadStruct {
 	PLock waitl;
 	PProcess waitp;
 	Boolean killp;
+	PInt errno;
 	struct ThreadStruct *waitt;
 } Thread, *PThread;
 
@@ -83,6 +88,7 @@ Void PsSleep(UIntPtr ms);
 UIntPtr PsWaitThread(UIntPtr id);
 UIntPtr PsWaitProcess(UIntPtr id);
 Void PsLock(PLock lock);
+Boolean PsTryLock(PLock lock);
 Void PsUnlock(PLock lock);
 Void PsWakeup(PList list, PThread th);
 Void PsWakeup2(PList list, PThread th);

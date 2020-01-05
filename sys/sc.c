@@ -1,9 +1,10 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:14 BRT
-// Last edited on December 28 of 2019, at 14:15 BRT
+// Last edited on January 04 of 2020, at 18:05 BRT
 
 #include <chicago/alloc.h>
+#include <chicago/console.h>
 #include <chicago/sc.h>
 #include <chicago/shm.h>
 #include <chicago/string.h>
@@ -41,6 +42,7 @@ IntPtr ScAppendHandle(UInt8 type, PVoid data) {
 		if (!hndl->used) {																																	// Found?
 			hndl->type = type;																																// Yes :)
 			hndl->data = data;
+			hndl->used = True;
 			return hndl->num;
 		}
 	}
@@ -90,6 +92,18 @@ Void ScSysGetVersion(PSystemVersion ver) {
 	if (ScCheckPointer(ver->arch)) {
 		StrCopy(ver->arch, CHICAGO_ARCH);
 	}
+}
+
+PInt ScSysGetErrno(Void) {
+	while (PsCurrentThread->errno == Null) {																												// Let's init the errno pointer first
+		PsCurrentThread->errno = (PInt)MmAllocUserMemory(sizeof(Int));
+		
+		if (PsCurrentThread->errno != Null) {
+			*PsCurrentThread->errno = 0;																													// And set the errno to zero
+		}
+	}
+	
+	return PsCurrentThread->errno;																															// Return the errno pointer
 }
 
 Void ScSysCloseHandle(IntPtr handle) {
@@ -208,7 +222,8 @@ IntPtr ScPsCreateLock(Void) {
 		return -1;
 	}
 	
-	lock->locked = False;																																	// Clean it
+	lock->count = 0;																																		// Clean it
+	lock->locked = False;
 	lock->owner = Null;
 	
 	return ScAppendHandle(HANDLE_TYPE_LOCK, lock);																											// And create the handle!
@@ -226,6 +241,20 @@ Void ScPsLock(IntPtr handle) {
 	}
 	
 	PsLock((PLock)hndl->data);																																// Now we just need to redirect
+}
+
+Boolean ScPsTryLock(IntPtr handle) {
+	if (handle >= PsCurrentProcess->last_handle_id) {																										// Check if the handle is valid
+		return False;
+	}
+	
+	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Try to get the handle data
+	
+	if (hndl == Null || hndl->type != HANDLE_TYPE_LOCK) {
+		return False;
+	}
+	
+	return PsTryLock((PLock)hndl->data);																													// Now we just need to redirect
 }
 
 Void ScPsUnlock(IntPtr handle) {
@@ -264,48 +293,54 @@ IntPtr ScFsOpenFile(PWChar path) {
 	return ScAppendHandle(HANDLE_TYPE_FILE, file);																											// Create the handle
 }
 
-Boolean ScFsReadFile(IntPtr handle, UIntPtr len, PUInt8 buf) {
+UIntPtr ScFsReadFile(IntPtr handle, UIntPtr len, PUInt8 buf) {
 	if ((handle >= PsCurrentProcess->last_handle_id) || (!ScCheckPointer(buf))) {																			// Sanity checks
-		return False;
+		return 0;
 	}
 	
 	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_FILE) {
-		return False;
+		return 0;
 	}
 	
 	PFsNode pfile = (PFsNode)hndl->data;																													// Get the real file
+	UIntPtr read = FsReadFile(pfile, pfile->offset, len, buf);																								// Redirect...
 	
-	if (!FsReadFile(pfile, pfile->offset, len, buf)) {																										// Redirect
-		return False;
-	}
+	pfile->offset += read;																																	// And increase the offset
 	
-	pfile->offset += len;																																	// And increase the offset
-	
-	return True;
+	return read;
 }
 
-Boolean ScFsWriteFile(IntPtr handle, UIntPtr len, PUInt8 buf) {
+UIntPtr ScFsWriteFile(IntPtr handle, UIntPtr len, PUInt8 buf) {
 	if ((handle >= PsCurrentProcess->last_handle_id) || (!ScCheckPointer(buf))) {																			// Sanity checks
-		return False;
+		return 0;
+	} else if (handle == -1) {																																// Temporary stdout/Console device
+		PChar cbuf = (PChar)buf;																															// Convert the buffer into a char buffer
+		
+		for (UIntPtr i = 0; i < len; i++) {																													// And write everything!
+			if (cbuf[i] == '\n') {
+				ConWriteCharacter('\r');
+			}
+			
+			ConWriteCharacter(cbuf[i]);
+		}
+		
+		return len;
 	}
 	
 	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_FILE) {
-		return False;
+		return 0;
 	}
 	
 	PFsNode pfile = (PFsNode)hndl->data;																													// Get the real file
+	UIntPtr written = FsWriteFile(pfile, pfile->offset, len, buf);																							// Redirect...
 	
-	if (!FsWriteFile(pfile, pfile->offset, len, buf)) {																										// Redirect
-		return False;
-	}
+	pfile->offset += written;																																// And increase the offset
 	
-	pfile->offset += len;																																	// And increase the offset
-	
-	return True;
+	return written;
 }
 
 Boolean ScFsMountFile(PWChar path, PWChar file, PWChar type) {
@@ -461,12 +496,12 @@ Void ScFsSetPosition(IntPtr handle, UIntPtr base, UIntPtr off) {
 	}
 }
 	
-IntPtr ScExecCreateProcess(PWChar path) {
-	if (!ScCheckPointer(path)) {																															// Sanity check
+IntPtr ScExecCreateProcess(PWChar path, UIntPtr argc, PWChar *argv) {
+	if (!ScCheckPointer(path) || (argv != Null && !ScCheckPointer(argv))) {																					// Sanity check
 		return 0;
 	}
 	
-	PProcess proc = ExecCreateProcess(path);																												// Try to create the process
+	PProcess proc = ExecCreateProcess(path, argc, argv);																									// Try to create the process
 	
 	if (proc == Null) {
 		return 0;

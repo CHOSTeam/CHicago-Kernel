@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 24 of 2019, at 14:18 BRT
-// Last edited on December 25 of 2019, at 22:14 BRT
+// Last edited on December 30 of 2019, at 11:53 BRT
 
 #define __CHICAGO_IPC__
 
@@ -189,22 +189,16 @@ PIpcMessage IpcSendMessage(PWChar name, UInt32 msg, UIntPtr size, PUInt8 buf, PI
 	
 	PsLockTaskSwitch(old);																				// Lock
 	
-	PAllocBlock oldab = PsCurrentProcess->alloc_base;													// Save some stuff
-	PList oldh = PsCurrentProcess->handles;
-	IntPtr oldlhi = PsCurrentProcess->last_handle_id;
+	PProcess oldp = PsCurrentProcess;																	// Save the current process
 	
 	MmSwitchDirectory(port->proc->dir);																	// Switch to the dir of the owner of this port
-	PsCurrentProcess->alloc_base = port->proc->alloc_base;												// And switch some of the proc structs
-	PsCurrentProcess->handles = port->proc->handles;
-	PsCurrentProcess->last_handle_id = port->proc->last_handle_id;
+	PsCurrentProcess = port->proc;																		// And switch the current process struct
 	
 	PUInt8 new = buf == Null ? Null : (PUInt8)MmAllocUserMemory(size);									// Alloc the new buffer in the target process userspace
 	
 	if (buf != Null && new == Null) {
-		MmSwitchDirectory(PsCurrentProcess->dir);														// Failed
-		PsCurrentProcess->alloc_base = oldab;
-		PsCurrentProcess->handles = oldh;
-		PsCurrentProcess->last_handle_id = oldlhi;
+		MmSwitchDirectory(oldp->dir);																	// Failed
+		PsCurrentProcess = oldp;
 		PsUnlockTaskSwitch(old);
 		return Null;
 	} else if (buf != Null) {
@@ -215,10 +209,8 @@ PIpcMessage IpcSendMessage(PWChar name, UInt32 msg, UIntPtr size, PUInt8 buf, PI
 	
 	if (mes == Null) {
 		MmFreeUserMemory((UIntPtr)new);																	// Failed
-		MmSwitchDirectory(PsCurrentProcess->dir);
-		PsCurrentProcess->alloc_base = oldab;
-		PsCurrentProcess->handles = oldh;
-		PsCurrentProcess->last_handle_id = oldlhi;
+		MmSwitchDirectory(oldp->dir);
+		PsCurrentProcess = oldp;
 		PsUnlockTaskSwitch(old);
 		return Null;
 	}
@@ -229,10 +221,8 @@ PIpcMessage IpcSendMessage(PWChar name, UInt32 msg, UIntPtr size, PUInt8 buf, PI
 	if (mes->src == -1) {
 		MmFreeUserMemory((UIntPtr)mes);																	// Failed
 		MmFreeUserMemory((UIntPtr)new);
-		MmSwitchDirectory(PsCurrentProcess->dir);
-		PsCurrentProcess->alloc_base = oldab;
-		PsCurrentProcess->handles = oldh;
-		PsCurrentProcess->last_handle_id = oldlhi;
+		MmSwitchDirectory(oldp->dir);
+		PsCurrentProcess = oldp;
 		PsUnlockTaskSwitch(old);
 		return Null;
 	}
@@ -244,10 +234,8 @@ PIpcMessage IpcSendMessage(PWChar name, UInt32 msg, UIntPtr size, PUInt8 buf, PI
 			ScSysCloseHandle(mes->src);
 			MmFreeUserMemory((UIntPtr)mes);																// Failed
 			MmFreeUserMemory((UIntPtr)new);
-			MmSwitchDirectory(PsCurrentProcess->dir);
-			PsCurrentProcess->alloc_base = oldab;
-			PsCurrentProcess->handles = oldh;
-			PsCurrentProcess->last_handle_id = oldlhi;
+			MmSwitchDirectory(oldp->dir);
+			PsCurrentProcess = oldp;
 			PsUnlockTaskSwitch(old);
 			return Null;
 		}
@@ -259,11 +247,8 @@ PIpcMessage IpcSendMessage(PWChar name, UInt32 msg, UIntPtr size, PUInt8 buf, PI
 	mes->buffer = new;
 	
 	QueueAdd(&port->queue, mes);																		// Add to the msg queue
-	MmSwitchDirectory(PsCurrentProcess->dir);															// Switch back to the old dir
-	port->proc->last_handle_id = PsCurrentProcess->last_handle_id;										// Save any change in the handle count
-	PsCurrentProcess->alloc_base = oldab;																// Switch back to the old proc structs
-	PsCurrentProcess->handles = oldh;
-	PsCurrentProcess->last_handle_id = oldlhi;
+	MmSwitchDirectory(oldp->dir);																		// Switch back to the old dir
+	PsCurrentProcess = oldp;																			// Switch back the old proc struct
 	PsUnlockTaskSwitch(old);																			// Unlock
 	
 	if (rport != Null) {																				// Receive the response?

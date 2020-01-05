@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 16 of 2018, at 18:18 BRT
-// Last edited on January 18 of 2019, at 18:24 BRT
+// Last edited on January 04 of 2020, at 17:58 BRT
 
 #ifndef __CHICAGO_FILE_H__
 #define __CHICAGO_FILE_H__
@@ -19,8 +19,8 @@ typedef struct FsNodeStruct {
 	UIntPtr inode;
 	UIntPtr length;
 	UIntPtr offset;
-	Boolean (*read)(struct FsNodeStruct *, UIntPtr, UIntPtr, PUInt8);
-	Boolean (*write)(struct FsNodeStruct *, UIntPtr, UIntPtr, PUInt8);
+	UIntPtr (*read)(struct FsNodeStruct *, UIntPtr, UIntPtr, PUInt8);
+	UIntPtr (*write)(struct FsNodeStruct *, UIntPtr, UIntPtr, PUInt8);
 	Boolean (*open)(struct FsNodeStruct *);
 	Void (*close)(struct FsNodeStruct *);
 	PWChar (*readdir)(struct FsNodeStruct *, UIntPtr);
@@ -49,8 +49,8 @@ PList FsTokenizePath(PWChar path);
 PWChar FsCanonicalizePath(PWChar path);
 PWChar FsJoinPath(PWChar src, PWChar incr);
 PWChar FsGetRandomPath(PWChar prefix);
-Boolean FsReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf);
-Boolean FsWriteFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf);
+UIntPtr FsReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf);
+UIntPtr FsWriteFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf);
 PFsNode FsOpenFile(PWChar path);
 Void FsCloseFile(PFsNode node);
 Boolean FsMountFile(PWChar path, PWChar file, PWChar type);

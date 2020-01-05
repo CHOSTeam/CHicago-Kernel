@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on January 17 of 2019, at 21:06 BRT
-// Last edited on November 11 of 2019, at 14:22 BRT
+// Last edited on January 04 of 2020, at 18:04 BRT
 
 #include <chicago/arch/ahci.h>
 #include <chicago/arch/ide.h>
@@ -323,7 +323,7 @@ static Boolean AHCIWriteSectors(PHBAPort port, UIntPtr virt, UIntPtr bsize, UInt
 	}
 }
 
-static Boolean AHCIDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) {
+static UIntPtr AHCIDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) {
 	UIntPtr bsize = dev->name[0] == 'C' ? 2048 : 512;
 	PAHCIDevice adev = (PAHCIDevice)dev->priv;
 	
@@ -333,13 +333,13 @@ static Boolean AHCIDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf)
 	PUInt8 buff = (PUInt8)MemAAllocate(bsize, 0x10000);																	// Alloc memory for reading the disk
 	
 	if (buf == Null) {
-		return False;
+		return 0;
 	}
 	
 	if ((off % bsize) != 0) {																							// "Align" the start
 		if (!AHCIReadSectors(adev->port, adev->virt, bsize, cur, 1, buff)) {											// Read this block
 			MemAFree((UIntPtr)buff);																					// Failed...
-			return False;
+			return 0;
 		}
 		
 		StrCopyMemory(buf, buff + (off % bsize), bsize - (off % bsize));												// Copy it into the user buffer
@@ -350,7 +350,7 @@ static Boolean AHCIDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf)
 	if (((off + len) % bsize) != 0) {																					// "Align" the end
 		if (!AHCIReadSectors(adev->port, adev->virt, bsize, end, 1, buff)) {											// Read this block
 			MemAFree((UIntPtr)buff);																					// Failed...
-			return False;
+			return 0;
 		}
 		
 		StrCopyMemory(buf + len - ((off + len) % bsize), buff, (off + len) % bsize);									// Copy it into the user buffer
@@ -371,7 +371,7 @@ static Boolean AHCIDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf)
 		
 		if (!AHCIReadSectors(adev->port, adev->virt, bsize, cur, sects, buff)) {
 			MemAFree((UIntPtr)buff);																					// Failed...
-			return False;
+			return 0;
 		}
 		
 		StrCopyMemory(buf + start, buff, size);																			// Copy it into the user buffer
@@ -382,15 +382,15 @@ static Boolean AHCIDeviceRead(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf)
 	
 	MemAFree((UIntPtr)buff);																							// Free the buffer
 	
-	return True;
+	return len;
 }
 
-static Boolean AHCIDeviceWrite(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) {
+static UIntPtr AHCIDeviceWrite(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf) {
 	UIntPtr bsize = dev->name[0] == 'C' ? 2048 : 512;
 	PAHCIDevice adev = (PAHCIDevice)dev->priv;
 	
 	if (bsize != 512) {																									// CDROM?
-		return False;																									// Yes, we don't support write in SATAPI drives
+		return 0;																										// Yes, we don't support write in SATAPI drives
 	}
 	
 	UIntPtr cur = off / bsize;
@@ -399,20 +399,20 @@ static Boolean AHCIDeviceWrite(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf
 	PUInt8 buff = (PUInt8)MemAAllocate(bsize, 0x10000);																	// Alloc memory for reading the disk
 	
 	if (buf == Null) {
-		return False;
+		return 0;
 	}
 	
 	if ((off % bsize) != 0) {																							// "Align" the start
 		if (!AHCIReadSectors(adev->port, adev->virt, bsize, cur, 1, buff)) {											// Read this block
 			MemAFree((UIntPtr)buff);																					// Failed...
-			return False;
+			return 0;
 		}
 		
 		StrCopyMemory(buff + (off % bsize), buf + (off % bsize), bsize - (off % bsize));								// Write back to the buffer
 		
 		if (!AHCIWriteSectors(adev->port, adev->virt, bsize, cur, 1, buff)) {											// Write this block back
 			MemAFree((UIntPtr)buff);																					// Failed...
-			return False;
+			return 0;
 		}
 		
 		cur++;
@@ -422,14 +422,14 @@ static Boolean AHCIDeviceWrite(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf
 	if (((off + len) % bsize) != 0) {																					// "Align" the end
 		if (!AHCIReadSectors(adev->port, adev->virt, bsize, end, 1, buff)) {											// Read this block
 			MemAFree((UIntPtr)buff);																					// Failed...
-			return False;
+			return 0;
 		}
 		
 		StrCopyMemory(buff + ((off + len) % bsize), buf + len - ((off + len) % bsize), (off + len) % bsize);			// Write back to the buffer
 		
 		if (!AHCIWriteSectors(adev->port, adev->virt, bsize, end, 1, buff)) {											// Write this block back
 			MemAFree((UIntPtr)buff);																					// Failed...
-			return False;
+			return 0;
 		}
 		
 		if (end != 0) {																									// Only decrease the end if it isn't 0
@@ -449,7 +449,7 @@ static Boolean AHCIDeviceWrite(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf
 		StrCopyMemory(buff, buf + start, size);																			// Copy from the user buffer
 		
 		if (!AHCIWriteSectors(adev->port, adev->virt, bsize, cur, sects, buff)) {
-			return False;																								// Failed...
+			return 0;																									// Failed...
 		}
 		
 		cur += sects;
@@ -458,7 +458,7 @@ static Boolean AHCIDeviceWrite(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf
 	
 	MemAFree((UIntPtr)buff);																							// Free the buffer
 	
-	return True;
+	return len;
 }
 
 static Boolean AHCIDeviceControl(PDevice dev, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf) {

@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 13 of 2018, at 00:44 BRT
-// Last edited on November 08 of 2019, at 20:52 BRT
+// Last edited on December 31 of 2019, at 13:59 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/alloc-int.h>
@@ -163,6 +163,10 @@ Void MemFree(UIntPtr block) {
 	}
 	
 	PAllocBlock blk = (PAllocBlock)(block - sizeof(AllocBlock));																// Let's get the block struct
+	
+	if (blk->free) {																											// Make sure that we haven't freed it before
+		return;
+	}
 	
 	blk->free = True;
 	

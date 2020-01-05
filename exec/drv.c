@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 15 of 2019, at 20:07 BRT
-// Last edited on December 24 of 2019, at 13:03 BRT
+// Last edited on January 04 of 2020, at 17:49 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/arch.h>
@@ -291,7 +291,7 @@ PDrvHandle DrvLoad(PWChar path) {
 		FsCloseFile(file);
 		MmFreeUserMemory((UIntPtr)name);
 		return Null;
-	} else if (!FsReadFile(file, 0, file->length, buf)) {
+	} else if (FsReadFile(file, 0, file->length, buf) != file->length) {
 		MemFree((UIntPtr)buf);
 		FsCloseFile(file);
 		MmFreeUserMemory((UIntPtr)name);

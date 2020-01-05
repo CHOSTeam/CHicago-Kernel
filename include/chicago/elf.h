@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 25 of 2018, at 20:11 BRT
-// Last edited on November 16 of 2019, at 11:23 BRT
+// Last edited on November 30 of 2019, at 12:12 BRT
 
 #ifndef __CHICAGO_ELF_H__
 #define __CHICAGO_ELF_H__
@@ -16,7 +16,7 @@
 #define ELF_PH_GET(h, i) ((PELFPHdr)((UIntPtr)((h)) + (h)->ph_off + ((h)->ph_ent_size * (i))))
 #define ELF_SHPH_CONTENT(h, i) ((PVoid)((UIntPtr)((h)) + (i)->offset))
 
-#ifdef ARCH_64
+#if __INTPTR_WIDTH__ == 64
 typedef struct {
 	UInt8 ident[16];
 	UInt16 type;

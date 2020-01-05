@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on September 21 of 2018, at 20:40 BRT
-// Last edited on September 09 of 2019, at 16:14 BRT
+// Last edited on December 31 of 2019, at 13:59 BRT
 
 #include <chicago/alloc-int.h>
 #include <chicago/mm.h>
@@ -93,7 +93,7 @@ UIntPtr MmAllocUserMemory(UIntPtr size) {
 		return 0;
 	}
 	
-	PAllocBlock block = Null;
+	PAllocBlock block = PsCurrentProcess->alloc_base;																			// Let's fix any corrupted blocks (HACKHACKHACK, we should just find the source of this bug and fix it...)
 	
 	if ((size % sizeof(UIntPtr)) != 0) {																						// Align size to UIntPtr
 		size += sizeof(UIntPtr) - (size % sizeof(UIntPtr));
@@ -165,6 +165,10 @@ Void MmFreeUserMemory(UIntPtr addr) {
 	}
 	
 	PAllocBlock blk = (PAllocBlock)(addr - sizeof(AllocBlock));																	// Let's get the block struct
+	
+	if (blk->free) {																											// Make sure that we haven't freed it before
+		return;
+	}
 	
 	blk->free = True;
 	

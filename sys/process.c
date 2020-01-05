@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 27 of 2018, at 14:59 BRT
-// Last edited on December 25 of 2019, at 17:28 BRT
+// Last edited on January 01 of 2020, at 18:58 BRT
 
 #define __CHICAGO_PROCESS__
 
@@ -54,6 +54,7 @@ PThread PsCreateThreadInt(UIntPtr entry, UIntPtr userstack, Boolean user) {
 	th->waitp = Null;
 	th->waitt = Null;
 	th->killp = False;
+	th->errno = Null;																															// We're going to init errno later...
 	
 	return th;
 }
@@ -104,6 +105,9 @@ PProcess PsCreateProcessInt(PWChar name, UIntPtr entry, UIntPtr dir) {
 	proc->handles = ListNew(False, False);																										// Init the handle list for the process
 	proc->last_handle_id = 0;
 	proc->exec_path = Null;
+	proc->exec_argc = 0;
+	proc->exec_argv = Null;
+	proc->exec_cargv = Null;
 	
 	if (proc->handles == Null) {
 		ListFree(proc->shm_mapped_sections);																									// Failed...
@@ -289,14 +293,15 @@ Void PsLock(PLock lock) {
 		return;
 	}
 	
-	while (lock->locked && (PsThreadQueue->length == 0)) {																						// Let's wait for having other threads in the queue
+	while (lock->locked && lock->owner != PsCurrentThread && (PsThreadQueue->length == 0)) {													// Let's wait for having other threads in the queue
 		PsSwitchTask(Null);
 	}
 	
 	PsLockTaskSwitch(old);																														// Lock (the task switching)
 	
-	if ((PsThreadQueue->length == 0) || (!lock->locked)) {																						// We need to add it to the waitl list?
-		lock->locked = True;																													// Nope, set it as locked and return!
+	if (!lock->locked || lock->owner == PsCurrentThread) {																						// We need to add it to the waitl list?
+		lock->count++;																															// Nope, increase the counter, set it as locked and return!
+		lock->locked = True;
 		lock->owner = PsCurrentThread;
 		PsUnlockTaskSwitch(old);
 		return;
@@ -314,6 +319,27 @@ Void PsLock(PLock lock) {
 	PsSwitchTask(PsDontRequeue);																												// Remove it from the queue and go to the next thread
 }
 
+Boolean PsTryLock(PLock lock) {
+	if ((lock == Null) || (PsWaitlList == Null) || (PsCurrentThread == Null)) {																	// Sanity checks
+		return False;
+	}
+	
+	Boolean ret = False;
+	
+	PsLockTaskSwitch(old);																														// Lock (the task switching)
+	
+	if (!lock->locked || lock->owner == PsCurrentThread) {																						// We can lock?
+		lock->count++;																															// Yes!
+		lock->locked = True;
+		lock->owner = PsCurrentThread;
+		ret = True;
+	}
+	
+	PsUnlockTaskSwitch(old);																													// Unlock (the task switch)
+	
+	return ret;
+}
+
 Void PsUnlock(PLock lock) {
 	if ((lock == Null) || (PsWaitlList == Null) || (PsCurrentThread == Null)) {																	// Sanity checks
 		return;
@@ -322,6 +348,12 @@ Void PsUnlock(PLock lock) {
 	}
 	
 	PsLockTaskSwitch(old);																														// Lock (the task switching)
+	
+	lock->count--;																																// Decrease the counter
+	
+	if (lock->count > 0) {																														// We can fully unlock it for other threads?
+		return;																																	// Nope...
+	}
 	
 	lock->locked = False;																														// Unlock it and remove the owner (set it to Null)
 	lock->owner = Null;
@@ -332,7 +364,8 @@ Void PsUnlock(PLock lock) {
 		if (th->waitl == lock) {
 			PsWakeup(PsWaitlList, th);																											// Found one!
 			
-			lock->locked = True;																												// Let's lock, set the lock owner, and force switch to it!
+			lock->count++;																														// Let's lock, set the counter, set the lock owner, and force switch to it!
+			lock->locked = True;
 			lock->owner = th;
 			
 			PsUnlockTaskSwitch(old);

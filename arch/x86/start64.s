@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:21 BRT
-// Last edited on November 15 of 2019, at 22:08 BRT
+// Last edited on December 31 of 2019, at 16:02 BRT
 
 .section .text
 
@@ -96,6 +96,10 @@ ArchUserJump:
 	pushfq																												// Push the RFLAGS
 	push $0x1B																											// CS should be 0x1B (user mode code segment)
 	pushq %rdi																											// This is the user code entry
+	
+	mov %rdx, %rdi																										// Setup the arguments
+	mov %rcx, %rsi
+	mov %r8, %rdx
 	
 	iretq																												// GO!
 

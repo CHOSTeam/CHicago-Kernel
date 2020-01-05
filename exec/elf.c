@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 31 of 2019, at 18:57 BRT
-// Last edited on December 24 of 2019, at 13:04 BRT
+// Last edited on December 30 of 2019, at 23:22 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/elf.h>
@@ -185,6 +185,8 @@ static Boolean ELFGetSymbol(PELFSym sym, PWChar name, PLibHandle handle, PUIntPt
 			return True;
 		}
 		
+		while (True) ;
+		
 		return False;
 	}
 	
@@ -299,7 +301,7 @@ Boolean ELFLoadDeps(PELFHdr hdr, PLibHandle handle) {
 			continue;																										// Nope, skip this entry
 		}
 		
-		PWChar name = ELFGetWName((PChar)((UIntPtr)strtab + dyn->val_ptr), False);											// Get the lib name
+		PWChar name = ELFGetWName((PChar)((UIntPtr)strtab + cur->val_ptr), False);											// Get the lib name
 		
 		if (name == Null) {
 			if (handle != Null) {																							// Failed :(
@@ -346,7 +348,7 @@ static Boolean ELFRelocateInt(PELFHdr hdr, PLibHandle handle, UIntPtr base, PCha
 	
 	for (PChar end = rel + limit; rel < end; rel += entsize) {																// Let's iterate!
 		PELFRel cur = (PELFRel)rel;																							// Get the ELFRel
-#ifdef ARCH_64																												// Get the symbol that it may need
+#if __INTPTR_WIDTH__ == 64																									// Get the symbol that it may need
 		PELFSym sym = (PELFSym)(symtab + ((cur->info >> 32) * syment));
 #else
 		PELFSym sym = (PELFSym)(symtab + ((cur->info >> 8) * syment));

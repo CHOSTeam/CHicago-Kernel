@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 18:48 BRT
-// Last edited on November 03 of 2019, at 20:05 BRT
+// Last edited on December 30 of 2019, at 12:12 BRT
 
 #ifndef __CHICAGO_MM_H__
 #define __CHICAGO_MM_H__
@@ -17,7 +17,7 @@
 #endif
 
 #ifndef MM_USER_END
-#ifdef ARCH_64
+#if __INTPTR_WIDTH__ == 64
 #define MM_USER_END 0x800000000000
 #else
 #define MM_USER_END 0xC0000000

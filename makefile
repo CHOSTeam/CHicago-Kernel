@@ -1,7 +1,7 @@
 # File author is Ítalo Lima Marconato Matias
 #
 # Created on May 11 of 2018, at 13:14 BRT
-# Last edited on December 26 of 2019, at 11:10 BRT
+# Last edited on January 04 of 2020, at 11:03 BRT
 
 ARCH ?= x86
 VERBOSE ?= false
@@ -21,13 +21,13 @@ ifeq ($(ARCH),x86)
 	
 	ifeq ($(SUBARCH),32)
 		TARGET ?= i686-chicago
-		ARCH_CFLAGS += -DELF_MACHINE=3 -msse2
-		ARCH_LIB_CFLAGS += -DELF_MACHINE=3 -msse2
+		ARCH_CFLAGS += -DELF_MACHINE=3 -msse -msse2 -mfpmath=sse
+		ARCH_LIB_CFLAGS += -DELF_MACHINE=3 -msse -msse2 -mfpmath=sse
 		OBJCOPY_FORMAT := elf32-i386
 	else ifeq ($(SUBARCH),64)
 		TARGET ?= x86_64-chicago
-		ARCH_CFLAGS += -DARCH_64 -DELF_MACHINE=62 -mcmodel=large -mno-red-zone
-		ARCH_LIB_CFLAGS += -DARCH_64 -DELF_MACHINE=62 -mcmodel=large -mno-red-zone
+		ARCH_CFLAGS += -DELF_MACHINE=62 -mcmodel=large -mno-red-zone
+		ARCH_LIB_CFLAGS += -DELF_MACHINE=62 -mcmodel=large -mno-red-zone
 		OBJCOPY_FORMAT := elf64-x86-64
 	else
 		UNSUPPORTED_ARCH := true

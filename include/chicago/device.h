@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 14 of 2018, at 22:38 BRT
-// Last edited on November 10 of 2019, at 13:26 BRT
+// Last edited on January 04 of 2020, at 17:58 BRT
 
 #ifndef __CHICAGO_DEVICE_H__
 #define __CHICAGO_DEVICE_H__
@@ -11,8 +11,8 @@
 typedef struct DeviceStruct {
 	PWChar name;
 	PVoid priv;
-	Boolean (*read)(struct DeviceStruct *, UIntPtr, UIntPtr, PUInt8);
-	Boolean (*write)(struct DeviceStruct *, UIntPtr, UIntPtr, PUInt8);
+	UIntPtr (*read)(struct DeviceStruct *, UIntPtr, UIntPtr, PUInt8);
+	UIntPtr (*write)(struct DeviceStruct *, UIntPtr, UIntPtr, PUInt8);
 	Boolean (*control)(struct DeviceStruct *, UIntPtr, PUInt8, PUInt8);
 } Device, *PDevice;
 
@@ -20,12 +20,12 @@ Void NullDeviceInit(Void);
 Void ZeroDeviceInit(Void);
 Void FrameBufferDeviceInit(Void);
 
-Boolean FsReadDevice(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf);
-Boolean FsWriteDevice(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf);
+UIntPtr FsReadDevice(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf);
+UIntPtr FsWriteDevice(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf);
 Boolean FsControlDevice(PDevice dev, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf);
-Boolean FsAddDevice(PWChar name, PVoid priv, Boolean (*read)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*write)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*control)(PDevice, UIntPtr, PUInt8, PUInt8));
-Boolean FsAddHardDisk(PVoid priv, Boolean (*read)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*write)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*control)(PDevice, UIntPtr, PUInt8, PUInt8));
-Boolean FsAddCdRom(PVoid priv, Boolean (*read)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*write)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*control)(PDevice, UIntPtr, PUInt8, PUInt8));
+Boolean FsAddDevice(PWChar name, PVoid priv, UIntPtr (*read)(PDevice, UIntPtr, UIntPtr, PUInt8), UIntPtr (*write)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*control)(PDevice, UIntPtr, PUInt8, PUInt8));
+Boolean FsAddHardDisk(PVoid priv, UIntPtr (*read)(PDevice, UIntPtr, UIntPtr, PUInt8), UIntPtr (*write)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*control)(PDevice, UIntPtr, PUInt8, PUInt8));
+Boolean FsAddCdRom(PVoid priv, UIntPtr (*read)(PDevice, UIntPtr, UIntPtr, PUInt8), UIntPtr (*write)(PDevice, UIntPtr, UIntPtr, PUInt8), Boolean (*control)(PDevice, UIntPtr, PUInt8, PUInt8));
 Boolean FsRemoveDevice(PWChar name);
 PDevice FsGetDevice(PWChar name);
 PDevice FsGetDeviceByID(UIntPtr id);

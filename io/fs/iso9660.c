@@ -1,32 +1,32 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 17 of 2018, at 16:10 BRT
-// Last edited on November 03 of 2019, at 12:01 BRT
+// Last edited on January 04 of 2020, at 18:01 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/file.h>
 #include <chicago/iso9660.h>
 #include <chicago/string.h>
 
-Boolean Iso9660ReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf) {
+UIntPtr Iso9660ReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf) {
 	if (file == Null) {																								// Let's do some null pointer checks first!
-		return False;
+		return 0;
 	} else if ((file->priv == Null) || (file->inode == 0)) {
-		return False;
+		return 0;
 	} else if (file->read == Null) {
-		return False;
+		return 0;
 	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {														// We're trying to read raw bytes from an directory?
-		return False;																								// Why?
+		return 0;																									// Why?
 	} else if (off >= file->length) {																				// For byte per byte read
-		return False;
+		return 0;
 	}
 	
 	PFsNode dev = file->priv;																						// Let's get our base device (it's inside of the priv)
 	
 	if (dev->read == Null) {																						// We have the read function... right?
-		return False;																								// Nope (how you initialized this device WITHOUT THE READ FUNCTION????????????)
+		return 0;																									// Nope (how you initialized this device WITHOUT THE READ FUNCTION????????????)
 	} if ((dev->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {															// It's a file?
-		return False;																								// Nope (again, how?)
+		return 0;																									// Nope (again, how?)
 	}
 	
 	PIso9660DirEntry entry = (PIso9660DirEntry)file->inode;															// Let's get our dir entry (it's inside of the inode)

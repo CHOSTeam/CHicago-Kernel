@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on April 23 of 2019, at 18:08 BRT
-// Last edited on November 17 of 2019, at 12:34 BRT
+// Last edited on January 04 of 2020, at 17:51 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/config.h>
@@ -405,7 +405,7 @@ PList ConfLoad(PWChar name) {
 		FsCloseFile(file);																																// We're probably out of memory
 		ListFree(conf);
 		return Null;
-	} else if (!FsReadFile(file, 0, file->length, (PUInt8)bufa)) {																						// Read the file!
+	} else if (FsReadFile(file, 0, file->length, (PUInt8)bufa) != file->length) {																		// Read the file!
 		FsCloseFile(file);																																// Failed...?
 		ListFree(conf);
 		return Null;

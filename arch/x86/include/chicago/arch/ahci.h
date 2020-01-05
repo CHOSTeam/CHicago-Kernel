@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on January 17 of 2019, at 21:07 BRT
-// Last edited on October 29 of 2019, at 17:06 BRT
+// Last edited on December 30 of 2019, at 12:11 BRT
 
 #ifndef __CHICAGO_ARCH_AHCI_H__
 #define __CHICAGO_ARCH_AHCI_H__
@@ -11,13 +11,13 @@
 #define FIS_TYPE_REG_H2D 0x27
 
 typedef volatile struct {
-#ifdef ARCH_64
+#if __INTPTR_WIDTH__ == 64
 	UInt64 clb;
 #else
 	UInt32 clb;
 	UInt32 clbu;
 #endif
-#ifdef ARCH_64
+#if __INTPTR_WIDTH__ == 64
 	UInt64 fb;
 #else
 	UInt32 fb;
@@ -69,7 +69,7 @@ typedef struct {
 	UInt8 pmp : 4;
 	UInt16 prdtl;
 	Volatile UInt32 prdbc;
-#ifdef ARCH_64
+#if __INTPTR_WIDTH__ == 64
 	UInt64 ctba;
 #else
 	UInt32 ctba;
@@ -79,7 +79,7 @@ typedef struct {
 } HBACmd, *PHBACmd;
 
 typedef struct {
-#ifdef ARCH_64
+#if __INTPTR_WIDTH__ == 64
 	UInt64 dba;
 #else
 	UInt32 dba;

@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:21 BRT
-// Last edited on November 15 of 2019, at 22:08 BRT
+// Last edited on December 31 of 2019, at 16:28 BRT
 
 .section .text
 
@@ -85,11 +85,24 @@ ArchUserJump:
 	mov %ax, %fs
 	mov %ax, %gs
 	
+	mov 8(%ebp), %eax																									// Get the stack address, we're going to put the arguments into the stack!
+	
+	mov 20(%ebp), %ebx																									// Push the C argv
+	mov %ebx, -4(%eax)
+	
+	mov 16(%ebp), %ebx																									// Push the unicode argv
+	mov %ebx, -8(%eax)
+	
+	mov 12(%ebp), %ebx																									// Push the argc
+	mov %ebx, -12(%eax)
+	
+	sub $16, %eax																										// Fix EAX
+	
 	push $0x23																											// SS should be 0x23
-	pushl 8(%ebp)																										// This is the user stack
+	push %eax																											// Push the user stack
 	pushf																												// Push the EFLAGS
 	push $0x1B																											// CS should be 0x1B (user mode code segment)
-	pushl 4(%ebp)																										// This is the user code entry
+	pushl 4(%ebp)																										// Push the user code entry
 	
 	iret																												// GO!
 

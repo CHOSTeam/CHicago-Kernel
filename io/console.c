@@ -1,14 +1,14 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 20 of 2018, at 15:20 BRT
-// Last edited on April 20 of 2019, at 10:27 BRT
+// Last edited on January 01 of 2020, at 18:59 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/display.h>
 #include <chicago/process.h>
 #include <chicago/string.h>
 
-Lock ConLock = { False, Null };
+Lock ConLock = { 0, False, Null };
 UIntPtr ConCursorX = 0;
 UIntPtr ConCursorY = 0;
 UIntPtr ConSurfaceX = 0;

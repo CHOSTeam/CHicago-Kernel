@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 02 of 2019, at 12:12 BRT
-// Last edited on December 24 of 2019, at 13:04 BRT
+// Last edited on January 04 of 2020, at 17:50 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/drv.h>
@@ -170,7 +170,7 @@ PLibHandle ExecLoadLibrary(PWChar path, Boolean global) {
 		FsCloseFile(file);																										// Failed
 		MemFree((UIntPtr)name);
 		return Null;
-	} else if (!FsReadFile(file, 0, file->length, buf)) {																		// Try to read it!
+	} else if (FsReadFile(file, 0, file->length, buf) != file->length) {														// Try to read it!
 		MemFree((UIntPtr)buf);																									// Failed
 		FsCloseFile(file);
 		MemFree((UIntPtr)name);

@@ -1,13 +1,13 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 27 of 2018, at 14:19 BRT
-// Last edited on October 27 of 2019, at 22:19 BRT
+// Last edited on January 01 of 2020, at 18:59 BRT
 
 #include <chicago/console.h>
 #include <chicago/debug.h>
 #include <chicago/process.h>
 
-Lock DbgLock = { False, Null };
+Lock DbgLock = { 0, False, Null };
 Boolean DbgRedirect = False;
 
 Void DbgSetRedirect(Boolean red) {

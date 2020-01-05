@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:15 BRT
-// Last edited on November 15 of 2019, at 21:38 BRT
+// Last edited on December 31 of 2019, at 16:06 BRT
 
 #ifndef __CHICAGO_ARCH_H__
 #define __CHICAGO_ARCH_H__
@@ -25,6 +25,6 @@ Void ArchInitDebug(Void);
 Void ArchInitDisplay(Void);
 UIntPtr ArchGetSeconds(Void);
 Void ArchPanic(UInt32 err, PVoid priv);
-Void ArchUserJump(UIntPtr addr, UIntPtr stack);
+Void ArchUserJump(UIntPtr addr, UIntPtr stack, UIntPtr argc, PWChar *argv, PChar *cargv);
 
 #endif		// __CHICAGO_ARCH_H__

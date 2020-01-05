@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 31 of 2018, at 18:45 BRT
-// Last edited on November 15 of 2018, at 21:46 BRT
+// Last edited on December 30 of 2019, at 12:12 BRT
 
 #define __CHICAGO_PMM__
 
@@ -66,7 +66,7 @@ Void PMMInit(Void) {
 	
 	PBootmgrMemoryMap mmap = BootmgrMemMap;
 	UIntPtr mmapi = 0;
-#ifdef ARCH_64
+#if __INTPTR_WIDTH__ == 64
 	UIntPtr kstart = ((UIntPtr)(&KernelStart)) - 0xFFFF800000000000;
 	UIntPtr kend = KernelRealEnd - 0xFFFF800000000000;
 #else

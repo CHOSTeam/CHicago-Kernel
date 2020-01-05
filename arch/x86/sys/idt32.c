@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 26 of 2018, at 22:00 BRT
-// Last edited on November 01 of 2019, at 16:30 BRT
+// Last edited on December 31 of 2019, at 12:30 BRT
 
 #include <chicago/arch/idt-int.h>
 #include <chicago/arch/port.h>
@@ -17,39 +17,39 @@
 UInt8 IDTEntries[256][8];
 PInterruptHandler InterruptHandlers[256];
 
-PWChar ExceptionStrings[32] = {
-	L"Divide by zero",
-	L"Debug",
-	L"Non-maskable interrupt",
-	L"Breakpoint",
-	L"Overflow",
-	L"Bound range exceeded",
-	L"Invalid opcode",
-	L"Device not avaliable",
-	L"Double fault",
-	L"Coprocessor segment overrun",
-	L"Invalid tss",
-	L"Segment not present",
-	L"Stack-segment fault",
-	L"General protection fault",
-	L"Page fault",
-	L"Reserved",
-	L"X87 floating-point",
-	L"Alignment check",
-	L"Machine check",
-	L"SIMD floating-point",
-	L"Virtualization",
-	L"Reserved",
-	L"Reserved",
-	L"Reserved",
-	L"Reserved",
-	L"Reserved",
-	L"Reserved",
-	L"Reserved",
-	L"Reserved",
-	L"Reserved",
-	L"Security",
-	L"Reserved"
+PChar ExceptionStrings[32] = {
+	"Divide by zero",
+	"Debug",
+	"Non-maskable interrupt",
+	"Breakpoint",
+	"Overflow",
+	"Bound range exceeded",
+	"Invalid opcode",
+	"Device not avaliable",
+	"Double fault",
+	"Coprocessor segment overrun",
+	"Invalid tss",
+	"Segment not present",
+	"Stack-segment fault",
+	"General protection fault",
+	"Page fault",
+	"Reserved",
+	"X87 floating-point",
+	"Alignment check",
+	"Machine check",
+	"SIMD floating-point",
+	"Virtualization",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+	"Security",
+	"Reserved"
 };
 
 Void ISRDefaultHandler(PRegisters regs) {
