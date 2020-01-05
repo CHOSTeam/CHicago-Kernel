@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 02 of 2018, at 14:02 BRT
-// Last edited on December 24 of 2019, at 13:02 BRT
+// Last edited on January 05 of 2020, at 20:15 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/elf.h>
@@ -121,9 +121,9 @@ Boolean ArchELFRelocateA(PELFHdr hdr, PLibHandle handle, UIntPtr base, PELFRelA 
 	} else if (type == 0x02) {																								// 386/AMD64_PC32
 		*ref32 += symaddr + rel->addend - (UIntPtr)addr;	
 	} else if (type == 0x06 || type == 0x07) {																				// 386/AMD64_GLOB/JMP_SLOT
-		*ref = symaddr + rel->addend;
+		*ref = symaddr;
 	} else if (type == 0x08) {																								// 386/AMD64_RELATIVE
-		*ref += base + rel->addend;
+		*ref = base + rel->addend;
 	} else {
 		return False;
 	}

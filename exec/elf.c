@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 31 of 2019, at 18:57 BRT
-// Last edited on December 30 of 2019, at 23:22 BRT
+// Last edited on January 05 of 2020, at 14:09 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/elf.h>
@@ -184,8 +184,6 @@ static Boolean ELFGetSymbol(PELFSym sym, PWChar name, PLibHandle handle, PUIntPt
 			*out = 1;																										// Yeah, just set the location to one (if we set to zero, it's not going to work)
 			return True;
 		}
-		
-		while (True) ;
 		
 		return False;
 	}
