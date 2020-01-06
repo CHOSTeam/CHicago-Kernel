@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on September 21 of 2018, at 20:40 BRT
-// Last edited on December 31 of 2019, at 13:59 BRT
+// Last edited on January 05 of 2020, at 21:01 BRT
 
 #include <chicago/alloc-int.h>
 #include <chicago/mm.h>
@@ -93,7 +93,7 @@ UIntPtr MmAllocUserMemory(UIntPtr size) {
 		return 0;
 	}
 	
-	PAllocBlock block = PsCurrentProcess->alloc_base;																			// Let's fix any corrupted blocks (HACKHACKHACK, we should just find the source of this bug and fix it...)
+	PAllocBlock block = PsCurrentProcess->alloc_base;
 	
 	if ((size % sizeof(UIntPtr)) != 0) {																						// Align size to UIntPtr
 		size += sizeof(UIntPtr) - (size % sizeof(UIntPtr));

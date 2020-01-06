@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:14 BRT
-// Last edited on January 04 of 2020, at 18:05 BRT
+// Last edited on January 05 of 2020, at 21:55 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/console.h>
@@ -120,22 +120,6 @@ Void ScSysCloseHandle(IntPtr handle) {
 	ScFreeHandle(hndl->type, hndl->data);																													// Free the data (if required)
 	
 	hndl->used = False;																																		// "Free" this entry
-}
-
-UIntPtr ScMmAllocMemory(UIntPtr size) {
-	return MmAllocUserMemory(size);																															// Just redirect
-}
-
-Void ScMmFreeMemory(UIntPtr block) {
-	return MmFreeUserMemory(block);																															// Just redirect
-}
-
-UIntPtr ScMmReallocMemory(UIntPtr block, UIntPtr size) {
-	return MmReallocUserMemory(block, size);																												// Just redirect
-}
-
-UIntPtr ScMmGetUsage(Void) {
-	return MmGetUsage();																																	// Just redirect
 }
 
 UIntPtr ScVirtAllocAddress(UIntPtr addr, UIntPtr size, UInt32 flags) {

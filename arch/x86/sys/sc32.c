@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 00:48 BRT
-// Last edited on January 04 of 2020, at 17:48 BRT
+// Last edited on January 05 of 2020, at 21:58 BRT
 
 #include <chicago/arch/idt.h>
 #include <chicago/sc.h>
@@ -20,187 +20,171 @@ static Void ArchScHandler(PRegisters regs) {
 		ScSysCloseHandle(regs->ebx);
 		break;
 	}
-	case 0x03: {																								// UIntPtr MmAllocMemory(UIntPtr size)
-		regs->eax = ScMmAllocMemory(regs->ebx);
-		break;
-	}
-	case 0x04: {																								// Void MmFreeMemory(UIntPtr block)
-		ScMmFreeMemory(regs->ebx);
-		break;
-	}
-	case 0x05: {																								// UIntPtr MmReallocMemory(UIntPtr block, UIntPtr size)
-		regs->eax = ScMmReallocMemory(regs->ebx, regs->ecx);
-		break;
-	}
-	case 0x06: {																								// UIntPtr MmGetUsage(Void)
-		regs->eax = ScMmGetUsage();
-		break;
-	}
-	case 0x07: {																								// UIntPtr VirtAllocAddress(UIntPtr addr, UIntPtr size, UInt32 flags)
+	case 0x03: {																								// UIntPtr VirtAllocAddress(UIntPtr addr, UIntPtr size, UInt32 flags)
 		regs->eax = ScVirtAllocAddress(regs->ebx, regs->ecx, regs->edx);
 		break;
 	}
-	case 0x08: {																								// Boolean VirtFreeAddress(UIntPtr addr, UIntPtr size)
+	case 0x04: {																								// Boolean VirtFreeAddress(UIntPtr addr, UIntPtr size)
 		regs->eax = ScVirtFreeAddress(regs->ebx, regs->ecx);
 		break;
 	}
-	case 0x09: {																								// UInt32 VirtQueryProtection(UIntPtr addr)
+	case 0x05: {																								// UInt32 VirtQueryProtection(UIntPtr addr)
 		regs->eax = ScVirtQueryProtection(regs->ebx);
 		break;
 	}
-	case 0x0A: {																								// Boolean VirtChangeProtection(UIntPtr addr, UIntPtr size, UInt32 flags)
+	case 0x06: {																								// Boolean VirtChangeProtection(UIntPtr addr, UIntPtr size, UInt32 flags)
 		regs->eax = ScVirtChangeProtection(regs->ebx, regs->ecx, regs->edx);
 		break;
 	}
-	case 0x0B: {																								// UIntPtr VirtGetUsage(Void)
+	case 0x07: {																								// UIntPtr VirtGetUsage(Void)
 		regs->eax = ScVirtGetUsage();
 		break;
 	}
-	case 0x0C: {																								// IntPtr PsCreateThread(UIntPtr entry)
+	case 0x08: {																								// IntPtr PsCreateThread(UIntPtr entry)
 		regs->eax = ScPsCreateThread(regs->ebx);
 		break;
 	}
-	case 0x0D: {																								// IntPtr PsGetCurrentThread(Void)
+	case 0x09: {																								// IntPtr PsGetCurrentThread(Void)
 		regs->eax = ScPsGetCurrentThread();
 		break;
 	}
-	case 0x0E: {																								// IntPtr PsGetCurrentProcess(Void)
+	case 0x0A: {																								// IntPtr PsGetCurrentProcess(Void)
 		regs->eax = ScPsGetCurrentProcess();
 		break;
 	}
-	case 0x0F: {																								// Void PsSleep(UIntPtr ms)
+	case 0x0B: {																								// Void PsSleep(UIntPtr ms)
 		ScPsSleep(regs->ebx);
 		break;
 	}
-	case 0x10: {																								// UIntPtr PsWait(IntPtr handle)
+	case 0x0C: {																								// UIntPtr PsWait(IntPtr handle)
 		regs->eax = ScPsWait(regs->ebx);
 		break;
 	}
-	case 0x11: {																								// IntPtr PsCreateLock(Void)
+	case 0x0D: {																								// IntPtr PsCreateLock(Void)
 		regs->eax = ScPsCreateLock();
 		break;
 	}
-	case 0x12: {																								// Void PsLock(IntPtr handle)
+	case 0x0E: {																								// Void PsLock(IntPtr handle)
 		ScPsLock(regs->ebx);
 		break;
 	}
-	case 0x13: {																								// Boolean PsTryLock(IntPtr handle)
+	case 0x0F: {																								// Boolean PsTryLock(IntPtr handle)
 		regs->eax = ScPsTryLock(regs->ebx);
 		break;
 	}
-	case 0x14: {																								// Void PsUnlock(IntPtr handle)
+	case 0x10: {																								// Void PsUnlock(IntPtr handle)
 		ScPsUnlock(regs->ebx);
 		break;
 	}
-	case 0x15: {																								// Void PsExitThread(UIntPtr ret)
+	case 0x11: {																								// Void PsExitThread(UIntPtr ret)
 		ScPsExitThread(regs->ebx);
 		break;
 	}
-	case 0x16: {																								// Void PsExitProcess(UIntPtr ret)
+	case 0x12: {																								// Void PsExitProcess(UIntPtr ret)
 		ScPsExitProcess(regs->ebx);
 		break;
 	}
-	case 0x17: {																								// IntPtr FsOpenFile(PWChar path)
+	case 0x13: {																								// IntPtr FsOpenFile(PWChar path)
 		regs->eax = ScFsOpenFile((PWChar)regs->ebx);
 		break;
 	}
-	case 0x18: {																								// UIntPtr FsReadFile(IntPtr handle, UIntPtr size, PUInt8 buf)
+	case 0x14: {																								// UIntPtr FsReadFile(IntPtr handle, UIntPtr size, PUInt8 buf)
 		regs->eax = ScFsReadFile(regs->ebx, regs->ecx, (PUInt8)regs->edx);
 		break;
 	}
-	case 0x19: {																								// UIntPtr FsWriteFile(IntPtr handle, UIntPtr size, PUInt8 buf)
+	case 0x15: {																								// UIntPtr FsWriteFile(IntPtr handle, UIntPtr size, PUInt8 buf)
 		regs->eax = ScFsWriteFile(regs->ebx, regs->ecx, (PUInt8)regs->edx);
 		break;
 	}
-	case 0x1A: {																								// Boolean FsMountFile(PWChar path, PWChar file, PWChar type)
+	case 0x16: {																								// Boolean FsMountFile(PWChar path, PWChar file, PWChar type)
 		regs->eax = ScFsMountFile((PWChar)regs->ebx, (PWChar)regs->ecx, (PWChar)regs->edx);
 		break;
 	}
-	case 0x1B: {																								// Boolean FsUmountFile(PWChar path)
+	case 0x17: {																								// Boolean FsUmountFile(PWChar path)
 		regs->eax = ScFsUmountFile((PWChar)regs->ebx);
 		break;
 	}
-	case 0x1C: {																								// Boolean FsReadDirectoryEntry(IntPtr handle, UIntPtr entry, PWChar out)
+	case 0x18: {																								// Boolean FsReadDirectoryEntry(IntPtr handle, UIntPtr entry, PWChar out)
 		regs->eax = ScFsReadDirectoryEntry(regs->ebx, regs->ecx, (PWChar)regs->edx);
 		break;
 	}
-	case 0x1D: {																								// IntPtr FsFindInDirectory(IntPtr handle, PWChar name)
+	case 0x19: {																								// IntPtr FsFindInDirectory(IntPtr handle, PWChar name)
 		regs->eax = ScFsFindInDirectory(regs->ebx, (PWChar)regs->ecx);
 		break;
 	}
-	case 0x1E: {																								// Boolean FsCreateFile(IntPtr handle, PWChar name, UIntPtr type)
+	case 0x1A: {																								// Boolean FsCreateFile(IntPtr handle, PWChar name, UIntPtr type)
 		regs->eax = ScFsCreateFile(regs->ebx, (PWChar)regs->ecx, regs->edx);
 		break;
 	}
-	case 0x1F: {																								// Boolean FsControlFile(IntPtr handle, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf)
+	case 0x1B: {																								// Boolean FsControlFile(IntPtr handle, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf)
 		regs->eax = ScFsControlFile(regs->ebx, regs->ecx, (PUInt8)regs->edx, (PUInt8)regs->esi);
 		break;
 	}
-	case 0x20: {																								// UIntPtr FsGetSize(IntPtr handle)
+	case 0x1C: {																								// UIntPtr FsGetSize(IntPtr handle)
 		regs->eax = ScFsGetFileSize(regs->ebx);
 		break;
 	}
-	case 0x21: {																								// UIntPtr FsGetPosition(IntPtr handle)
+	case 0x1D: {																								// UIntPtr FsGetPosition(IntPtr handle)
 		regs->eax = ScFsGetPosition(regs->ebx);
 		break;
 	}
-	case 0x22: {																								// Boolean FsSetPosition(IntPtr handle, IntPtr base, UIntPtr off)
+	case 0x1E: {																								// Boolean FsSetPosition(IntPtr handle, IntPtr base, UIntPtr off)
 		ScFsSetPosition(regs->ebx, regs->ecx, regs->edx);
 		break;
 	}
-	case 0x23: {																								// IntPtr ExecCreateProcess(PWChar path, UIntPtr argc, PWChar *argv)
+	case 0x1F: {																								// IntPtr ExecCreateProcess(PWChar path, UIntPtr argc, PWChar *argv)
 		regs->eax = ScExecCreateProcess((PWChar)regs->ebx, regs->ecx, (PWChar*)regs->edx);
 		break;
 	}
-	case 0x24: {																								// IntPtr ExecLoadLibrary(PWChar path, Boolean global)
+	case 0x20: {																								// IntPtr ExecLoadLibrary(PWChar path, Boolean global)
 		regs->eax = ScExecLoadLibrary((PWChar)regs->ebx, regs->ecx);
 		break;
 	}
-	case 0x25: {																								// UIntPtr ExecGetSymbol(IntPtr handle, PWChar name)
+	case 0x21: {																								// UIntPtr ExecGetSymbol(IntPtr handle, PWChar name)
 		regs->eax = ScExecGetSymbol(regs->ebx, (PWChar)regs->ecx);
 		break;
 	}
-	case 0x26: {																								// Boolean IpcCreatePort(PWChar name)
+	case 0x22: {																								// Boolean IpcCreatePort(PWChar name)
 		regs->eax = ScIpcCreatePort((PWChar)regs->ebx);
 		break;
 	}
-	case 0x27: {																								// IntPtr IpcCreateResponsePort(Void)
+	case 0x23: {																								// IntPtr IpcCreateResponsePort(Void)
 		regs->eax = ScIpcCreateResponsePort();
 		break;
 	}
-	case 0x28: {																								// Void IpcRemovePort(PWchar name)
+	case 0x24: {																								// Void IpcRemovePort(PWchar name)
 		ScIpcRemovePort((PWChar)regs->ebx);
 		break;
 	}
-	case 0x29: {																								// Boolean IpcCheckPort(PWChar name)
+	case 0x25: {																								// Boolean IpcCheckPort(PWChar name)
 		regs->eax = ScIpcCheckPort((PWChar)regs->ebx);
 		break;
 	}
-	case 0x2A: {																								// PIpcMessage IpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntPtr rport)
+	case 0x26: {																								// PIpcMessage IpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntPtr rport)
 		regs->eax = (UIntPtr)ScIpcSendMessage((PWChar)regs->ebx, regs->ecx, regs->edx, (PUInt8)regs->esi, regs->edi);
 		break;
 	}
-	case 0x2B: {																								// Void IpcSendResponse(IntPtr handle, UInt32 msg, UIntPtr size, PUInt8 buf)
+	case 0x27: {																								// Void IpcSendResponse(IntPtr handle, UInt32 msg, UIntPtr size, PUInt8 buf)
 		ScIpcSendResponse(regs->ebx, regs->ecx, regs->edx, (PUInt8)regs->esi);
 		break;
 	}
-	case 0x2C: {																								// PIpcMessage IpcReceiveMessage(PWChar name)
+	case 0x28: {																								// PIpcMessage IpcReceiveMessage(PWChar name)
 		regs->eax = (UIntPtr)ScIpcReceiveMessage((PWChar)regs->ebx);
 		break;
 	}
-	case 0x2D: {																								// PIpcMessage IpcReceiveResponse(IntPtr handle)
+	case 0x29: {																								// PIpcMessage IpcReceiveResponse(IntPtr handle)
 		regs->eax = (UIntPtr)ScIpcReceiveResponse(regs->ebx);
 		break;
 	}
-	case 0x2E: {																								// UIntPtr ShmCreateSection(UIntPtr size, PUIntPtr key)
+	case 0x2A: {																								// UIntPtr ShmCreateSection(UIntPtr size, PUIntPtr key)
 		regs->eax = ScShmCreateSection(regs->ebx, (PUIntPtr)regs->ecx);
 		break;
 	}
-	case 0x2F: {																								// UIntPtr ShmMapSection(UIntPtr key)
+	case 0x2B: {																								// UIntPtr ShmMapSection(UIntPtr key)
 		regs->eax = ScShmMapSection(regs->ebx);
 		break;
 	}
-	case 0x30: {																								// Void ShmUnmapSection(UIntPtr key)
+	case 0x2C: {																								// Void ShmUnmapSection(UIntPtr key)
 		ScShmUnmapSection(regs->ebx);
 		break;
 	}

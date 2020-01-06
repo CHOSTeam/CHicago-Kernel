@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:04 BRT
-// Last edited on January 04 of 2020, at 17:50 BRT
+// Last edited on January 05 of 2020, at 21:59 BRT
 
 #ifndef __CHICAGO_SC_H__
 #define __CHICAGO_SC_H__
@@ -36,10 +36,6 @@ Void ScFreeHandle(UInt8 type, PVoid data);
 Void ScSysGetVersion(PSystemVersion ver);
 PInt ScSysGetErrno(Void);
 Void ScSysCloseHandle(IntPtr handle);
-UIntPtr ScMmAllocMemory(UIntPtr size);
-Void ScMmFreeMemory(UIntPtr block);
-UIntPtr ScMmReallocMemory(UIntPtr block, UIntPtr size);
-UIntPtr ScMmGetUsage(Void);
 UIntPtr ScVirtAllocAddress(UIntPtr addr, UIntPtr size, UInt32 flags);
 Boolean ScVirtFreeAddress(UIntPtr addr, UIntPtr size);
 UInt32 ScVirtQueryProtection(UIntPtr addr);
