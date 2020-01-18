@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:14 BRT
-// Last edited on January 05 of 2020, at 21:55 BRT
+// Last edited on January 18 of 2020, at 11:27 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/console.h>
@@ -28,8 +28,6 @@ Void ScFreeHandle(UInt8 type, PVoid data) {
 	} else if (type == HANDLE_TYPE_LOCK) {																													// If it's a lock, we just need to unlock and free it
 		PsUnlock((PLock)data);
 		MemFree((UIntPtr)data);
-	} else if (type == HANDLE_TYPE_LIBRARY) {																												// If it's a library, we also just need to close it
-		ExecCloseLibrary((PLibHandle)data);
 	} else if (type == HANDLE_TYPE_IPC_RESPONSE_PORT) {																										// If it's a IPC response port, we just need to free it
 		IpcFreeResponsePort((PIpcResponsePort)data);
 	}
@@ -95,15 +93,7 @@ Void ScSysGetVersion(PSystemVersion ver) {
 }
 
 PInt ScSysGetErrno(Void) {
-	while (PsCurrentThread->errno == Null) {																												// Let's init the errno pointer first
-		PsCurrentThread->errno = (PInt)MmAllocUserMemory(sizeof(Int));
-		
-		if (PsCurrentThread->errno != Null) {
-			*PsCurrentThread->errno = 0;																													// And set the errno to zero
-		}
-	}
-	
-	return PsCurrentThread->errno;																															// Return the errno pointer
+	return (PInt)PsCurrentThread->tls;																														// Return the errno pointer (first entry on the TLS)
 }
 
 Void ScSysCloseHandle(IntPtr handle) {
@@ -149,7 +139,7 @@ IntPtr ScPsCreateThread(UIntPtr entry) {
 		return -1;
 	}
 	
-	PThread th = PsCreateThread(entry, stack + 0x100000 - sizeof(UIntPtr), True);																			// Create a new user thread
+	PThread th = PsCreateThread(PS_PRIORITY_NORMAL, entry, stack + 0x100000 - sizeof(UIntPtr), True);														// Create a new user thread
 	
 	if (th == Null) {
 		VirtFreeAddress(stack, 0x100000);																													// Failed
@@ -479,68 +469,6 @@ Void ScFsSetPosition(IntPtr handle, UIntPtr base, UIntPtr off) {
 		node->offset = node->length + off;
 	}
 }
-	
-IntPtr ScExecCreateProcess(PWChar path, UIntPtr argc, PWChar *argv) {
-	if (!ScCheckPointer(path) || (argv != Null && !ScCheckPointer(argv))) {																					// Sanity check
-		return 0;
-	}
-	
-	PProcess proc = ExecCreateProcess(path, argc, argv);																									// Try to create the process
-	
-	if (proc == Null) {
-		return 0;
-	}
-	
-	IntPtr handle = ScAppendHandle(HANDLE_TYPE_PROCESS, proc);																								// Create the handle
-	
-	if (handle == -1) {
-		while (proc->threads->length != 0) {																												// Failed... let's start by freeing all the threads
-			PThread th = ListRemove(proc->threads, 0);
-			PsFreeContext(th->ctx);
-			MemFree((UIntPtr)th);
-		}
-		
-		ListFree(proc->handles);																															// Now free the rest of the process struct
-		ListFree(proc->threads);
-		MmFreeDirectory(proc->dir);
-		MemFree((UIntPtr)proc->name);
-		MemFree((UIntPtr)proc);
-		
-		return 0;
-	}
-	
-	PsAddProcess(proc);																																		// Run the process and return the handle
-	
-	return handle;
-}
-
-IntPtr ScExecLoadLibrary(PWChar path, Boolean global) {
-	if (!ScCheckPointer(path)) {																															// Sanity check
-		return -1;
-	}
-	
-	PLibHandle lib = ExecLoadLibrary(path, global);																											// Try to load the library
-	
-	if (lib == Null) {
-		return -1;
-	}
-	
-	return ScAppendHandle(HANDLE_TYPE_LIBRARY, lib);																										// And create the handle
-}
-
-UIntPtr ScExecGetSymbol(IntPtr handle, PWChar name) {
-	if (handle >= PsCurrentProcess->last_handle_id || !ScCheckPointer(name)) {																				// Sanity check
-		return 0;
-	}
-	
-	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
-	
-	if (hndl == Null || hndl->type != HANDLE_TYPE_LIBRARY) {
-		return 0;
-	}
-	
-	return ExecGetSymbol((PLibHandle)hndl->data, name);																										// And redirect
-}
 
 Boolean ScIpcCreatePort(PWChar name) {
 	if (!ScCheckPointer(name)) {																															// Sanity check
@@ -570,9 +498,9 @@ Boolean ScIpcCheckPort(PWChar name) {
 	return IpcCheckPort(name);
 }
 
-PIpcMessage ScIpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntPtr rport) {
+Boolean ScIpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntPtr rport) {
 	if (rport >= PsCurrentProcess->last_handle_id || !ScCheckPointer(port) || (buf != Null && !ScCheckPointer(buf))) {										// Sanity checks
-		return Null;
+		return False;
 	}
 	
 	PIpcResponsePort rp = Null;
@@ -581,7 +509,7 @@ PIpcMessage ScIpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, 
 		PHandle hndl = ListGet(PsCurrentProcess->handles, rport);																							// Yes, get the handle data
 		
 		if (hndl == Null || hndl->type != HANDLE_TYPE_IPC_RESPONSE_PORT) {
-			return Null;
+			return False;
 		}
 		
 		rp = (PIpcResponsePort)hndl->data;																													// And the response port struct
@@ -590,40 +518,40 @@ PIpcMessage ScIpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, 
 	return IpcSendMessage(port, msg, size, buf, rp);																										// Now redirect!
 }
 
-Void ScIpcSendResponse(IntPtr handle, UInt32 msg, UIntPtr size, PUInt8 buf) {
+Boolean ScIpcSendResponse(IntPtr handle, UInt32 msg, UIntPtr size, PUInt8 buf) {
 	if (handle >= PsCurrentProcess->last_handle_id || (buf != Null && !ScCheckPointer(buf))) {																// Sanity checks
-		return;
+		return False;
 	}
 	
 	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_IPC_RESPONSE_PORT) {
-		return;
+		return False;
 	}
 	
-	IpcSendResponse((PIpcResponsePort)hndl->data, msg, size, buf);																							// And redirect
+	return IpcSendResponse((PIpcResponsePort)hndl->data, msg, size, buf);																					// And redirect
 }
 
-PIpcMessage ScIpcReceiveMessage(PWChar name) {
-	if (!ScCheckPointer(name)) {																															// Sanity check
-		return Null;
+Boolean ScIpcReceiveMessage(PWChar name, PUInt32 msg, UIntPtr size, PUInt8 buf) {
+	if (!ScCheckPointer(name) || !ScCheckPointer(name) || !ScCheckPointer(msg) || (buf != Null && !ScCheckPointer(buf))) {									// Sanity check
+		return False;
 	}
 	
-	return IpcReceiveMessage(name);																															// And redirect
+	return IpcReceiveMessage(name, msg, size, buf);																											// And redirect
 }
 
-PIpcMessage ScIpcReceiveResponse(IntPtr handle) {
-	if (handle >= PsCurrentProcess->last_handle_id) {																										// Sanity check
-		return Null;
+Boolean ScIpcReceiveResponse(IntPtr handle, PUInt32 msg, UIntPtr size, PUInt8 buf) {
+	if (handle >= PsCurrentProcess->last_handle_id || !ScCheckPointer(msg) || (buf != Null && !ScCheckPointer(buf))) {										// Sanity check
+		return False;
 	}
 	
 	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_IPC_RESPONSE_PORT) {
-		return Null;
+		return False;
 	}
 	
-	return IpcReceiveResponse((PIpcResponsePort)hndl->data);																								// And redirect
+	return IpcReceiveResponse((PIpcResponsePort)hndl->data, msg, size, buf);																				// And redirect
 }
 
 UIntPtr ScShmCreateSection(UIntPtr size, PUIntPtr key) {

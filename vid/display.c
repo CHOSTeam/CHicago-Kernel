@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on April 18 of 2019, at 19:03 BRT
-// Last edited on September 06 of 2019, at 18:27 BRT
+// Last edited on January 07 of 2020, at 10:41 BRT
 
 #define __CHICAGO_DISPLAY__
 
@@ -105,7 +105,7 @@ Void DispFillProgressBar(Void) {
 
 #ifndef VERBOSE_BOOT
 static Void DispDrawBitmap(PUInt8 bmp, UIntPtr x, UIntPtr y) {
-	PImage img = ImgLoadBMPBuf(bmp, False, False);																										// Load the bmp into a Image struct
+	PImage img = ImgLoadBMPBuf(bmp, False);																												// Load the bmp into a Image struct
 	
 	if (img != Null) {																																	// Failed?
 		DispBitBlit(img, 0, 0, x, y, img->width, img->height, BITBLIT_MODE_COPY);																		// Nope, so copy it into the screen
@@ -135,7 +135,7 @@ Void DispInit(UIntPtr w, UIntPtr h, UIntPtr bpp, UIntPtr fb) {
 	}
 	
 	DispFrameBuffer = MemAAllocate(w * h * bpp, MM_PAGE_SIZE);																							// Alloc some virt space for the frame buffer
-	DispBackBuffer = ImgCreate(w, h, bpp, False, False);
+	DispBackBuffer = ImgCreate(w, h, bpp, False);
 	
 	if (DispFrameBuffer == 0 || DispBackBuffer == Null) {
 		DbgWriteFormated("PANIC! Couldn't init the display\r\n");																						// Failed...

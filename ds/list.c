@@ -1,30 +1,14 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 14 of 2018, at 22:08 BRT
-// Last edited on January 21 of 2019, at 16:39 BRT
+// Last edited on December 07 of 2020, at 11:44 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/list.h>
 #include <chicago/mm.h>
 
-static PVoid ListAllocMemory(UIntPtr size, Boolean user) {
-	if (user) {
-		return (PVoid)MmAllocUserMemory(size);
-	} else {
-		return (PVoid)MemAllocate(size);
-	}
-}
-
-static Void ListFreeMemory(PVoid data, Boolean user) {
-	if (user) {
-		MmFreeUserMemory((UIntPtr)data);
-	} else {
-		MemFree((UIntPtr)data);
-	}
-}
-
-PList ListNew(Boolean free, Boolean user) {
-	PList out = ListAllocMemory(sizeof(List), user);								// Let's allocate the space for the initial list (without any entry)
+PList ListNew(Boolean free) {
+	PList out = (PList)MemAllocate(sizeof(List));									// Let's allocate the space for the initial list (without any entry)
 	
 	if (out == Null) {																// Failed?
 		return Null;																// Yes...
@@ -34,7 +18,6 @@ PList ListNew(Boolean free, Boolean user) {
 	out->tail = Null;
 	out->length = 0;
 	out->free = free;																// Except the "free", set it to what the user defined
-	out->user = user;																// And except the "user"...
 	
 	return out;
 }
@@ -47,17 +30,17 @@ Void ListFree(PList list) {
 		list->head = cur->next;														// Move to the next
 		
 		if (list->free) {															// We need to free this pointer?
-			ListFreeMemory(cur->data, list->user);									// Yes
+			MemFree((UIntPtr)cur->data);											// Yes
 		}
 		
-		ListFreeMemory(cur, list->user);											// Free the list node
+		MemFree((UIntPtr)cur);														// Free the list node
 	}
 	
-	ListFreeMemory(list, list->user);												// Free the list itself
+	MemFree((UIntPtr)list);															// Free the list itself
 }
 
 Boolean ListAddStart(PList list, PVoid data) {
-	PListNode node = ListAllocMemory(sizeof(ListNode), list->user);					// Let's allocate a new list node!
+	PListNode node = (PListNode)MemAllocate(sizeof(ListNode));						// Let's allocate a new list node!
 	
 	if (node == Null) {																// Failed?
 		return False;																// Yes, so return False...
@@ -80,7 +63,7 @@ Boolean ListAddStart(PList list, PVoid data) {
 }
 
 Boolean ListAdd(PList list, PVoid data) {
-	PListNode node = ListAllocMemory(sizeof(ListNode), list->user);					// Let's allocate a new list node!
+	PListNode node = (PListNode)MemAllocate(sizeof(ListNode));						// Let's allocate a new list node!
 	
 	if (node == Null) {																// Failed?
 		return False;																// Yes, so return False...
@@ -133,7 +116,7 @@ PVoid ListRemove(PList list, UIntPtr idx) {
 		cur->next->prev = cur->prev;												// Yes, so fix it
 	}
 	
-	ListFreeMemory(cur, list->user);												// Free the node
+	MemFree((UIntPtr)cur);															// Free the node
 	
 	list->length--;																	// Decrease the length
 	

@@ -1,12 +1,12 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 27 of 2018, at 18:28 BRT
-// Last edited on October 27 of 2018, at 18:38 BRT
+// Last edited on December 07 of 2020, at 11:46 BRT
 
 #include <chicago/queue.h>
 
-PQueue QueueNew(Boolean user) {
-	return ListNew(False, user);						// Redirect to ListNew
+PQueue QueueNew(Void) {
+	return ListNew(False);								// Redirect to ListNew
 }
 
 Void QueueFree(PQueue queue) {

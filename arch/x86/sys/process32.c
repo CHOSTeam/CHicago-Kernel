@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 28 of 2018, at 01:09 BRT
-// Last edited on November 08 of 2019, at 21:28 BRT
+// Last edited on January 18 of 2020, at 12:08 BRT
 
 #define __CHICAGO_ARCH_PROCESS__
 
@@ -65,27 +65,27 @@ Void PsFreeContext(PContext ctx) {
 }
 
 Void PsSwitchTaskForce(PRegisters regs) {
-	if ((PsThreadQueue == Null) || (PsThreadQueue->length == 0) || (!PsTaskSwitchEnabled)) {						// We can switch?
+	if (!PsTaskSwitchEnabled) {																						// We can switch?
 		return;																										// Nope
 	}
 	
 	PThread old = PsCurrentThread;																					// Save the old thread
 	
-	PsCurrentThread = QueueRemove(PsThreadQueue);																	// Get the next thread
-	
 	if (old != Null) {																								// Save the old thread info?
-		PsCurrentThread->time += old->time;																			// Yes, give the quantum of the old process to the new one!
-		old->time = PS_DEFAULT_QUANTUM - 1;																			// And set the default quantum to the old thread
+		old->cprio = old->cprio == PS_PRIORITY_VERYLOW ? old->prio : old->cprio + 1;								// Yeah, set the new priority
+		old->time = (old->cprio + 1) * 5 - 1;																		// Set the quantum to the old thread
 		old->ctx->esp = (UIntPtr)regs;																				// Save the old context
 		Asm Volatile("fxsave (%0)" :: "r"(PsFPUStateSave));															// And the old fpu state
 		StrCopyMemory(old->ctx->fpu_state, PsFPUStateSave, 512);
 		
 		if (PsRequeue) {																							// Add the old process to the queue again?
-			QueueAdd(PsThreadQueue, old);																			// Yes :)
+			PsAddToQueue(old, old->cprio);																			// Yes :)
 		} else {
 			PsRequeue = True;																						// No
 		}
 	}
+	
+	PsCurrentThread = PsGetNext();																					// Get the next thread
 	
 	GDTSetKernelStack((UInt32)(PsCurrentThread->ctx->kstack) + PS_STACK_SIZE - 8);									// Switch the kernel stack in the tss
 	StrCopyMemory(PsFPUStateSave, PsCurrentThread->ctx->fpu_state, 512);											// And load the new fpu state
@@ -106,7 +106,7 @@ Void PsSwitchTaskForce(PRegisters regs) {
 }
 
 Void PsSwitchTaskTimer(PRegisters regs) {
-	if ((PsThreadQueue == Null) || (PsThreadQueue->length == 0) || (!PsTaskSwitchEnabled)) {						// We can switch?
+	if (!PsTaskSwitchEnabled) {																						// We can switch?
 		return;																										// Nope
 	} else if (PsCurrentThread->time != 0) {																		// This process still have time to run?
 		PsCurrentThread->time--;																					// Yes!
@@ -115,11 +115,13 @@ Void PsSwitchTaskTimer(PRegisters regs) {
 	
 	PThread old = PsCurrentThread;																					// Save the old thread
 	
-	PsCurrentThread = QueueRemove(PsThreadQueue);																	// Get the next thread
-	old->time = PS_DEFAULT_QUANTUM - 1;																				// Set the default quantum to the old thread
+	old->cprio = old->cprio == PS_PRIORITY_VERYLOW ? old->prio : old->cprio + 1;									// Set the new priority (old thread)
+	old->time = (old->cprio + 1) * 5 - 1;																			// Set the quantum to the old thread
 	old->ctx->esp = (UIntPtr)regs;																					// Save the old context
+	PsAddToQueue(old, old->cprio);																					// Add the old thread to the queue again
 	
-	QueueAdd(PsThreadQueue, old);																					// Add the old thread to the queue again
+	PsCurrentThread = PsGetNext();																					// Get the next thread
+	
 	GDTSetKernelStack((UInt32)(PsCurrentThread->ctx->kstack) + PS_STACK_SIZE - 8);									// Switch the kernel stack in the tss
 	Asm Volatile("fxsave (%0)" :: "r"(PsFPUStateSave));																// Save the old fpu state
 	StrCopyMemory(old->ctx->fpu_state, PsFPUStateSave, 512);
@@ -142,12 +144,12 @@ Void PsSwitchTaskTimer(PRegisters regs) {
 }
 
 Void PsSwitchTask(PVoid priv) {
-	if (priv != Null && priv != PsDontRequeue && PsSleepList != Null) {												// Timer?
-start:	ListForeach(PsSleepList, i) {																				// Yes
+	if (priv != Null && priv != PsDontRequeue) {																	// Timer?
+start:	ListForeach(&PsSleepList, i) {																				// Yes
 			PThread th = (PThread)i->data;
 			
 			if (th->wtime == 0) {																					// Wakeup?
-				PsWakeup(PsSleepList, th);																			// Yes :)
+				PsWakeup(&PsSleepList, th);																			// Yes :)
 				goto start;																							// Go back to the start!
 			} else {
 				th->wtime--;																						// Nope, just decrese the wtime counter
@@ -155,7 +157,7 @@ start:	ListForeach(PsSleepList, i) {																				// Yes
 		}
 	}
 	
-	if ((PsThreadQueue == Null) || (PsThreadQueue->length == 0) || (!PsTaskSwitchEnabled)) {						// We can switch?
+	if (!PsTaskSwitchEnabled) {																						// We can switch?
 		return;																										// Nope
 	} else if (priv != Null && priv != PsDontRequeue) {																// Use timer?
 		PsSwitchTaskTimer((PRegisters)priv);																		// Yes!

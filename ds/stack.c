@@ -1,12 +1,12 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 12 of 2018, at 15:35 BRT
-// Last edited on October 19 of 2018, at 18:24 BRT
+// Last edited on December 07 of 2020, at 11:46 BRT
 
 #include <chicago/stack.h>
 
-PStack StackNew(Boolean user) {
-	return ListNew(False, user);								// Redirect to ListNew
+PStack StackNew(Void) {
+	return ListNew(False);										// Redirect to ListNew
 }
 
 Void StackFree(PStack stack) {

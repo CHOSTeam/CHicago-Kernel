@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 29 of 2018, at 18:10 BRT
-// Last edited on January 05 of 2020, at 21:58 BRT
+// Last edited on January 18 of 2020, at 10:12 BRT
 
 #include <chicago/arch/idt.h>
 #include <chicago/sc.h>
@@ -132,59 +132,47 @@ static Void ArchScHandler(PRegisters regs) {
 		ScFsSetPosition(regs->rbx, regs->rcx, regs->rdx);
 		break;
 	}
-	case 0x1F: {																								// IntPtr ExecCreateProcess(PWChar path, UIntPtr argc, PWChar *argv)
-		regs->rax = ScExecCreateProcess((PWChar)regs->rbx, regs->rcx, (PWChar*)regs->rdx);
-		break;
-	}
-	case 0x20: {																								// IntPtr ExecLoadLibrary(PWChar path, Boolean global)
-		regs->rax = ScExecLoadLibrary((PWChar)regs->rbx, regs->rcx);
-		break;
-	}
-	case 0x21: {																								// UIntPtr ExecGetSymbol(IntPtr handle, PWChar name)
-		regs->rax = ScExecGetSymbol(regs->rbx, (PWChar)regs->rcx);
-		break;
-	}
-	case 0x22: {																								// Boolean IpcCreatePort(PWChar name)
+	case 0x1F: {																								// Boolean IpcCreatePort(PWChar name)
 		regs->rax = ScIpcCreatePort((PWChar)regs->rbx);
 		break;
 	}
-	case 0x23: {																								// IntPtr IpcCreateResponsePort(Void)
+	case 0x20: {																								// IntPtr IpcCreateResponsePort(Void)
 		regs->rax = ScIpcCreateResponsePort();
 		break;
 	}
-	case 0x24: {																								// Void IpcRemovePort(PWchar name)
+	case 0x21: {																								// Void IpcRemovePort(PWchar name)
 		ScIpcRemovePort((PWChar)regs->rbx);
 		break;
 	}
-	case 0x25: {																								// Boolean IpcCheckPort(PWChar name)
+	case 0x22: {																								// Boolean IpcCheckPort(PWChar name)
 		regs->rax = ScIpcCheckPort((PWChar)regs->rbx);
 		break;
 	}
-	case 0x26: {																								// PIpcMessage IpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntPtr rport)
-		regs->rax = (UIntPtr)ScIpcSendMessage((PWChar)regs->rbx, regs->rcx, regs->rdx, (PUInt8)regs->rsi, regs->rdi);
+	case 0x23: {																								// Boolean IpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntPtr rport)
+		regs->rax = ScIpcSendMessage((PWChar)regs->rbx, regs->rcx, regs->rdx, (PUInt8)regs->rsi, regs->rdi);
 		break;
 	}
-	case 0x27: {																								// Void IpcSendResponse(IntPtr handle, UInt32 msg, UIntPtr size, PUInt8 buf)
-		ScIpcSendResponse(regs->rbx, regs->rcx, regs->rdx, (PUInt8)regs->rsi);
+	case 0x24: {																								// Boolean IpcSendResponse(IntPtr handle, UInt32 msg, UIntPtr size, PUInt8 buf)
+		regs->rax = ScIpcSendResponse(regs->rbx, regs->rcx, regs->rdx, (PUInt8)regs->rsi);
 		break;
 	}
-	case 0x28: {																								// PIpcMessage IpcReceiveMessage(PWChar name)
-		regs->rax = (UIntPtr)ScIpcReceiveMessage((PWChar)regs->rbx);
+	case 0x25: {																								// Boolean IpcReceiveMessage(PWChar name, PUInt32 msg, UIntPtr size, PUInt8 buf)
+		regs->rax = ScIpcReceiveMessage((PWChar)regs->rbx, (PUInt32)regs->rcx, regs->rdx, (PUInt8)regs->rsi);
 		break;
 	}
-	case 0x29: {																								// PIpcMessage IpcReceiveResponse(IntPtr handle)
-		regs->rax = (UIntPtr)ScIpcReceiveResponse(regs->rbx);
+	case 0x26: {																								// PIpcMessage IpcReceiveResponse(IntPtr handle, PUInt32 msg, UIntPtr size, PUInt8 buf)
+		regs->rax = ScIpcReceiveResponse(regs->rbx, (PUInt32)regs->rcx, regs->rdx, (PUInt8)regs->rsi);
 		break;
 	}
-	case 0x2A: {																								// UIntPtr ShmCreateSection(UIntPtr size, PUIntPtr key)
+	case 0x27: {																								// UIntPtr ShmCreateSection(UIntPtr size, PUIntPtr key)
 		regs->rax = ScShmCreateSection(regs->rbx, (PUIntPtr)regs->rcx);
 		break;
 	}
-	case 0x2B: {																								// UIntPtr ShmMapSection(UIntPtr key)
+	case 0x28: {																								// UIntPtr ShmMapSection(UIntPtr key)
 		regs->rax = ScShmMapSection(regs->rbx);
 		break;
 	}
-	case 0x2C: {																								// Void ShmUnmapSection(UIntPtr key)
+	case 0x29: {																								// Void ShmUnmapSection(UIntPtr key)
 		ScShmUnmapSection(regs->rbx);
 		break;
 	}

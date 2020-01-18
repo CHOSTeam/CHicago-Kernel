@@ -1,24 +1,20 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:14 BRT
-// Last edited on December 31 of 2019, at 16:17 BRT
+// Last edited on January 18 of 2020, at 12:13 BRT
 
-#include <chicago/alloc.h>
 #include <chicago/arch.h>
-#include <chicago/config.h>
 #include <chicago/console.h>
 #include <chicago/debug.h>
 #include <chicago/device.h>
 #include <chicago/display.h>
-#include <chicago/drv.h>
-#include <chicago/exec.h>
 #include <chicago/ipc.h>
-#include <chicago/nls.h>
 #include <chicago/panic.h>
 #include <chicago/process.h>
 #include <chicago/rand.h>
 #include <chicago/shm.h>
 #include <chicago/string.h>
+#include <chicago/timer.h>
 #include <chicago/version.h>
 #include <chicago/virt.h>
 
@@ -40,7 +36,7 @@ Void KernelMain(Void) {
 	ArchInitDisplay();																													// Init the display
 	
 	if ((ArchBootOptions & BOOT_OPTIONS_VERBOSE) == BOOT_OPTIONS_VERBOSE) {																// Verbose boot?
-		PImage con = ImgCreateBuf(DispGetWidth(), DispGetHeight() - 40, DispBackBuffer->bpp, DispBackBuffer->buf, False, False);		// Yes, try to create the console surface
+		PImage con = ImgCreateBuf(DispGetWidth(), DispGetHeight() - 40, DispBackBuffer->bpp, DispBackBuffer->buf, False);				// Yes, try to create the console surface
 
 		if (con != Null) {																												// Failed?
 			ConSetSurface(con, True, True, 0, 0);																						// No, set the console surface
@@ -77,6 +73,7 @@ Void KernelMain(Void) {
 
 Void KernelMainLate(Void) {
 	DispIncrementProgessBar();																											// Alright, tasking is now initialized!
+	PsInitIdleProcess();																												// Create and add the idle process
 	PsInitKillerThread();																												// Create and add the killer thread
 	RandSetSeed(RandGenerateSeed());																									// Set the random generator seed
 	DbgWriteFormated("[Kernel] Tasking initialized\r\n");
@@ -85,52 +82,6 @@ Void KernelMainLate(Void) {
 	ShmInit();																															// And the SHM (shared memory) interface
 	DispIncrementProgessBar();
 	DbgWriteFormated("[Kernel] IPC initialized\r\n");
-	
-	PList conf = ConfLoad(L"System.conf");																								// Load the configuration file, let's set the system language!
-	
-	if (conf != Null) {																													// Failed?
-		PConfField lang = ConfGetField(conf, L"Language");																				// No! Let's get the system language
-		
-		if (lang != Null) {
-			NlsSetLanguage(NlsGetLanguage(lang->value));
-		}
-		
-		ConfFree(conf);																													// Now free the loaded conf file
-	}
-	
-	if (DrvLoadLibCHKrnl() == Null) {																									// Load the kernel symbols into a handle, so the drivers can use it
-		DbgWriteFormated("PANIC! Couldn't create the handle for libchkrnl.elf\r\n");
-		Panic(PANIC_KERNEL_INIT_FAILED);
-	}
-	
-	conf = ConfLoad(L"Drivers.conf");																									// Now, let's load the driver configuration file (contain all the driver that we need to load)
-
-	if (conf != Null) {																													// Failed?
-		ListForeach(conf, i) {																											// No! Let's load all the drivers!
-			PConfField drv = (PConfField)i->data;
-			Boolean success = DrvLoad(drv->value) != Null;																				// Load the driver
-			PChar name = (PChar)MemAllocate(StrGetLength(drv->name) + 1);																// Alloc space for converting the name to ASCII (for the Dbg* functions)
-
-			if (name == Null) {
-				continue;
-			}
-
-			PChar path = (PChar)MemAllocate(StrGetLength(drv->value) + 1);																// Alloc space for converting the path to ASCII (for the Dbg* functions)
-
-			if (path == Null) {
-				MemFree((UIntPtr)name);
-				continue;
-			}
-
-			StrCFromUnicode(name, drv->name, StrGetLength(drv->name));																	// Convert the name
-			StrCFromUnicode(path, drv->value, StrGetLength(drv->value));																// And the path!
-			DbgWriteFormated("[Kernel] %s driver '%s' (%s)\r\n", success ? "Loaded the" : "Couldn't load the", name, path);				// Print some info about the driver (name and path) and if the driver loaded with success
-			MemFree((UIntPtr)name);																										// Free the name
-			MemFree((UIntPtr)path);																										// Free the path
-		}
-
-		ConfFree(conf);																													// Now free the loaded conf file
-	}
 	
 	DispFillProgressBar();																												// Ok, the kernel boot process is now finished!
 	DbgWriteFormated("[Kernel] Kernel initialized\r\n\r\n");
@@ -148,16 +99,5 @@ Void KernelMainLate(Void) {
 	ConSetSurface(DispBackBuffer, True, False, 0, 0);																					// Init the console in fullscreen mode
 	ConClearScreen();
 	
-	PProcess proc = ExecCreateProcess(L"/System/Programs/osmngr.che", 0, Null);															// Let's create the initial process
-	
-	if (proc == Null) {
-		DbgWriteFormated("PANIC! Couldn't start the /System/Programs/osmngr.che program\r\n");											// Failed, so let's panic
-		Panic(PANIC_OSMNGR_START_FAILED);
-	}
-	
-	PsAddProcess(proc);																													// Add it
-	PsWaitProcess(proc->id);																											// And it is never supposed to exit, so this should halt us
-	DbgWriteFormated("PANIC! The /System/Programs/osmngr.che program closed\r\n");														// ... Panic
-	Panic(PANIC_OSMNGR_PROCESS_CLOSED);
-	ArchHalt();
+	PsSwitchTask(PsDontRequeue);																										// And now, remove us from the queue
 }

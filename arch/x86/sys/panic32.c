@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 27 of 2018, at 21:48 BRT
-// Last edited on December 25 of 2019, at 22:08 BRT
+// Last edited on January 18 of 2020, at 10:10 BRT
 
 #include <chicago/arch/registers.h>
 
@@ -9,7 +9,6 @@
 #include <chicago/console.h>
 #include <chicago/debug.h>
 #include <chicago/display.h>
-#include <chicago/nls.h>
 #include <chicago/panic.h>
 #include <chicago/process.h>
 

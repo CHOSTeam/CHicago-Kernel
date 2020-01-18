@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on April 17 of 2019, at 21:57 BRT
-// Last edited on September 06 of 2019, at 18:27 BRT
+// Last edited on December 07 of 2020, at 10:32 BRT
 
 #ifndef __CHICAGO_IMG_H__
 #define __CHICAGO_IMG_H__
@@ -51,16 +51,15 @@ typedef struct {
 	UIntPtr height;
 	UInt8 bpp;
 	UIntPtr buf;
-	Boolean user;
 	Boolean align;
 } Image, *PImage;
 
 extern Char _binary_font_psf_start;
 extern Char _binary_font_psf_end;
 
-PImage ImgCreate(UIntPtr width, UIntPtr height, UInt8 bpp, Boolean user, Boolean align);
-PImage ImgCreateBuf(UIntPtr width, UIntPtr height, UInt8 bpp, UIntPtr buf, Boolean user, Boolean align);
-PImage ImgLoadBMPBuf(PUInt8 buf, Boolean user, Boolean align);
+PImage ImgCreate(UIntPtr width, UIntPtr height, UInt8 bpp, Boolean align);
+PImage ImgCreateBuf(UIntPtr width, UIntPtr height, UInt8 bpp, UIntPtr buf, Boolean align);
+PImage ImgLoadBMPBuf(PUInt8 buf, Boolean align);
 PImage ImgRescale(PImage src, UIntPtr width, UIntPtr height);
 Void ImgExtractRGB(UIntPtr c, PUInt8 r, PUInt8 g, PUInt8 b);
 Void ImgExtractARGB(UIntPtr c, PUInt8 a, PUInt8 r, PUInt8 g, PUInt8 b);

@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 16 of 2018, at 18:28 BRT
-// Last edited on January 04 of 2020, at 17:51 BRT
+// Last edited on January 07 of 2020, at 12:05 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -29,11 +29,11 @@ PList FsTokenizePath(PWChar path) {
 	if (path == Null) {																													// Path is Null?
 		return Null;																													// Yes...
 	} else if ((StrGetLength(path) == 0) || ((StrGetLength(path) == 1) && (path[0] == '/'))) {											// Root directory?
-		return ListNew(True, False);																									// Yes, so just return an empty list
+		return ListNew(True);																											// Yes, so just return an empty list
 	}
 	
 	PWChar clone = StrDuplicate(path);
-	PList list = ListNew(True, False);																									// Create the tok list
+	PList list = ListNew(True);																											// Create the tok list
 	
 	if (list == Null || clone == Null) {																								// Failed to alloc it?
 		return Null;																													// Yes, so we can't do anything :(
@@ -68,7 +68,7 @@ PWChar FsCanonicalizePath(PWChar path) {
 		return Null;																													// No, but we don't support relative paths in this function :(
 	}
 	
-	PList list = ListNew(True, False);																									// Create the tok list
+	PList list = ListNew(True);																											// Create the tok list
 	
 	if (list == Null) {																													// Failed to alloc space for it?
 		return Null;																													// :(
@@ -687,8 +687,8 @@ Void FsInitTypes(Void) {
 }
 
 Void FsInit(Void) {
-	FsMountPointList = ListNew(True, False);																							// Let's init our mount point list
-	FsTypeList = ListNew(True, False);																									// And our filesystem type list
+	FsMountPointList = ListNew(True);																									// Let's init our mount point list
+	FsTypeList = ListNew(True);																											// And our filesystem type list
 	
 	if ((FsMountPointList == Null) || (FsTypeList == Null)) {																			// Failed?
 		DbgWriteFormated("PANIC! Couldn't init mount point or filesystem type list\r\n");

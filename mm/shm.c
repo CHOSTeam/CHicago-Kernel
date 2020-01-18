@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 25 of 2019, at 10:55 BRT
-// Last edited on December 25 of 2019, at 22:21 BRT
+// Last edited on January 07 of 2020, at 12:05 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -51,7 +51,6 @@ UIntPtr ShmCreateSection(UIntPtr size, PUIntPtr key) {
 	msect->shm->pregions.tail = Null;
 	msect->shm->pregions.length = 0;
 	msect->shm->pregions.free = False;
-	msect->shm->pregions.user = False;
 	
 	msect->virt = VirtAllocAddress(0, size, SHM_NEW_FLAGS);														// Alloc the virtual address
 	
@@ -222,7 +221,7 @@ Void ShmUnmapSection(UIntPtr key) {
 }
 
 Void ShmInit(Void) {
-	ShmSectionList = ListNew(True, False);																		// Try to init the port list
+	ShmSectionList = ListNew(True);																				// Try to init the port list
 	
 	if (ShmSectionList == Null) {
 		DbgWriteFormated("PANIC! Failed to init IPC\r\n");														// Failed... but it's a critical component, so HALT

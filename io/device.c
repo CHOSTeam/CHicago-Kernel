@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 14 of 2018, at 22:35 BRT
-// Last edited on January 04 of 2020, at 18:00 BRT
+// Last edited on January 07 of 2020, at 12:04 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -208,7 +208,7 @@ PWChar FsGetBootDevice(Void) {
 }
 
 Void FsInitDeviceList(Void) {
-	FsDeviceList = ListNew(True, False);											// Try to init the device list
+	FsDeviceList = ListNew(True);													// Try to init the device list
 	
 	if (FsDeviceList == Null) {														// Failed?
 		DbgWriteFormated("PANIC! Couldn't init the device list\r\n");				// Yes, so halt
