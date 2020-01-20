@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 19:19 BRT
-// Last edited on December 29 of 2019, at 13:30 BRT
+// Last edited on January 20 of 2020, at 11:22 BRT
 
 #include <chicago/arch/vmm.h>
 
@@ -164,7 +164,7 @@ UIntPtr MmFindHighestFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count) {
 UIntPtr MmMapTemp(UIntPtr phys, UInt32 flags) {
 	for (UIntPtr i = 0xFF800000; i < 0xFFC00000; i += MM_PAGE_SIZE) {																// Let's try to find an free temp address
 		if (MmQuery(i) == 0) {																										// Free?
-			if (MmMap(i, phys, flags)) {																							// Yes, so try to map it
+			if (MmMap(i, phys, flags) == STATUS_SUCCESS) {																			// Yes, so try to map it
 				return i;																											// Mapped! Now we only need to return it
 			}
 		}
@@ -173,7 +173,7 @@ UIntPtr MmMapTemp(UIntPtr phys, UInt32 flags) {
 	return 0;																														// Failed...
 }
 
-Boolean MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags) {
+Status MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags) {
 	if ((virt % MM_PAGE_SIZE) != 0) {																								// Align to page size
 		virt -= virt % MM_PAGE_SIZE;
 	}
@@ -196,7 +196,7 @@ Boolean MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags) {
 		UIntPtr block = MmReferencePage(0);																							// No, so let's alloc it
 		
 		if (block == 0) {																											// Failed?
-			return False;																											// Then just return
+			return STATUS_OUT_OF_MEMORY;																							// Then just return
 		}
 		
 		if (virt >= 0xC0000000) {																									// Kernel-only page directory?
@@ -208,26 +208,26 @@ Boolean MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags) {
 		MmInvlpg(MmGetPTELoc(virt));																								// Refresh the TLB
 		StrSetMemory((PUInt8)(MmGetPTELoc(virt)), 0, 0x1000);																		// And clean the PTE entries
 	} else if ((MmGetPDE(virt) & PAGE_HUGE) == PAGE_HUGE) {																			// 4MiB page?
-		return False;																												// Yes, but sorry, we don't support mapping it YET
+		return STATUS_MAP_ERROR;																									// Yes, but sorry, we don't support mapping it YET
 	}
 	
 	MmSetPTE(virt, phys, flags2);																									// Map the phys addr to the virt addr
 	MmInvlpg(virt);																													// Refresh the TLB
 	
-	return True;
+	return STATUS_SUCCESS;
 }
 
-Boolean MmUnmap(UIntPtr virt) {
+Status MmUnmap(UIntPtr virt) {
 	if ((MmGetPDE(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																			// This page table exists?
-		return False;																												// No, so return False
+		return STATUS_NOT_MAPPED;																									// No, so return False
 	} else if ((MmGetPDE(virt) & PAGE_HUGE) == PAGE_HUGE) {																			// 4MiB page?
-		return False;																												// Yes, but sorry, we don't support mapping it YET
+		return STATUS_UNMAP_ERROR;																									// Yes, but sorry, we don't support mapping it YET
 	} else if ((MmGetPTE(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																	// Same as above
-		return False;																												// No, so return False
+		return STATUS_NOT_MAPPED;																									// No, so return False
 	} else {
 		MmSetPTE(virt, 0, 0);																										// Yes, so unmap the virt addr
 		MmInvlpg(virt);																												// Refresh the TLB
-		return True;
+		return STATUS_SUCCESS;
 	}
 }
 

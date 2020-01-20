@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 27 of 2018, at 14:42 BRT
-// Last edited on January 18 of 2020, at 12:13 BRT
+// Last edited on January 20 of 2020, at 11:02 BRT
 
 #ifndef __CHICAGO_PROCESS_H__
 #define __CHICAGO_PROCESS_H__
@@ -74,10 +74,10 @@ extern List PsWaitpList;
 extern List PsWaitlList;
 #endif
 
-PThread PsCreateThreadInt(UInt8 prio, UIntPtr entry, UIntPtr userstack, Boolean user);
-PProcess PsCreateProcessInt(PWChar name, UInt8 prio, UIntPtr entry, UIntPtr dir);
-PThread PsCreateThread(UInt8 prio, UIntPtr entry, UIntPtr userstack, Boolean user);
-PProcess PsCreateProcess(PWChar name, UInt8 prio, UIntPtr entry);
+Status PsCreateThreadInt(UInt8 prio, UIntPtr entry, UIntPtr userstack, Boolean user, PThread *ret);
+Status PsCreateProcessInt(PWChar name, UInt8 prio, UIntPtr entry, UIntPtr dir, PProcess *ret);
+Status PsCreateThread(UInt8 prio, UIntPtr entry, UIntPtr userstack, Boolean user, PThread *ret);
+Status PsCreateProcess(PWChar name, UInt8 prio, UIntPtr entry, PProcess *ret);
 Void PsAddToQueue(PThread th, UInt8 priority);
 PThread PsGetNext(Void);
 Void PsAddThread(PThread th);
@@ -87,11 +87,11 @@ PProcess PsGetProcess(UIntPtr id);
 Void PsExitThread(UIntPtr ret);
 Void PsExitProcess(UIntPtr ret);
 Void PsSleep(UIntPtr ms);
-UIntPtr PsWaitThread(UIntPtr id);
-UIntPtr PsWaitProcess(UIntPtr id);
-Void PsLock(PLock lock);
-Boolean PsTryLock(PLock lock);
-Void PsUnlock(PLock lock);
+Status PsWaitThread(UIntPtr id, PUIntPtr ret);
+Status PsWaitProcess(UIntPtr id, PUIntPtr ret);
+Status PsLock(PLock lock);
+Status PsTryLock(PLock lock);
+Status PsUnlock(PLock lock);
 Void PsWakeup(PList list, PThread th);
 Void PsWakeup2(PList list, PThread th);
 PContext PsCreateContext(UIntPtr entry, UIntPtr userstack, Boolean user);

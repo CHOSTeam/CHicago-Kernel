@@ -1,12 +1,12 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 18:48 BRT
-// Last edited on December 30 of 2019, at 12:12 BRT
+// Last edited on January 18 of 2020, at 13:12 BRT
 
 #ifndef __CHICAGO_MM_H__
 #define __CHICAGO_MM_H__
 
-#include <chicago/types.h>
+#include <chicago/status.h>
 
 #ifndef MM_PAGE_SIZE
 #define MM_PAGE_SIZE 0x1000
@@ -53,18 +53,11 @@ UInt32 MmQuery(UIntPtr virt);
 UIntPtr MmFindFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count);
 UIntPtr MmFindHighestFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count);
 UIntPtr MmMapTemp(UIntPtr phys, UInt32 flags);
-Boolean MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags);
-Boolean MmUnmap(UIntPtr virt);
+Status MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags);
+Status MmUnmap(UIntPtr virt);
 UIntPtr MmCreateDirectory(Void);
 Void MmFreeDirectory(UIntPtr dir);
 UIntPtr MmGetCurrentDirectory(Void);
 Void MmSwitchDirectory(UIntPtr dir);
-
-UIntPtr MmAllocUserMemory(UIntPtr size);
-UIntPtr MmAllocAlignedUserMemory(UIntPtr size, UIntPtr align);
-Void MmFreeUserMemory(UIntPtr block);
-Void MmFreeAlignedUserMemory(UIntPtr block);
-UIntPtr MmReallocUserMemory(UIntPtr block, UIntPtr size);
-UIntPtr MmGetUserAllocSize(UIntPtr block);
 
 #endif		// __CHICAGO_MM_H__

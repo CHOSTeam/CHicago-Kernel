@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 16 of 2018, at 18:29 BRT
-// Last edited on January 04 of 2020, at 17:54 BRT
+// Last edited on January 18 of 2020, at 16:06 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -10,38 +10,38 @@
 #include <chicago/panic.h>
 #include <chicago/string.h>
 
-Boolean DevFsControlFile(PFsNode file, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf);
+Status DevFsControlFile(PFsNode file, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf);
 
-UIntPtr DevFsReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf) {
-	if (file == Null) {																			// Any null pointer?
-		return 0;																				// Yes, so we can't continue
+Status DevFsReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf, PUIntPtr read) {
+	if (file == Null || len == 0 || buf == Null || read == Null) {								// Any null pointer?
+		return STATUS_INVALID_ARG;																// Yes, so we can't continue
 	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {									// We're trying to read raw bytes in an... Directory?
-		return 0;																				// Yes (Why?)
+		return STATUS_NOT_FILE;																	// Yes (Why?)
 	}
 	
 	PDevice dev = FsGetDevice(file->name);														// Get the device using the name
 	
 	if (dev == Null) {																			// Failed for some unknown reason?
-		return 0;																				// Yes
+		return STATUS_READ_FAILED;																// Yes
 	}
 	
-	return FsReadDevice(dev, off, len, buf);													// Redirect to the FsReadDevice function
+	return FsReadDevice(dev, off, len, buf, read);												// Redirect to the FsReadDevice function
 }
 
-UIntPtr DevFsWriteFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf) {
-	if (file == Null) {																			// Any null pointer?
-		return 0;																				// Yes, so we can't continue
-	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {									// We're trying to write raw bytes in an... Directory?
-		return 0;																				// Yes (Why?)
+Status DevFsWriteFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf, PUIntPtr write) {
+	if (file == Null || len == 0 || buf == Null || write == Null) {								// Any null pointer?
+		return STATUS_INVALID_ARG;																// Yes, so we can't continue
+	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {									// We're trying to write raw bytes to an... Directory?
+		return STATUS_NOT_FILE;																	// Yes (Why?)
 	}
 	
 	PDevice dev = FsGetDevice(file->name);														// Get the device using the name
 	
 	if (dev == Null) {																			// Failed for some unknown reason?
-		return 0;																				// Yes
+		return STATUS_WRITE_FAILED;																// Yes
 	}
 	
-	return FsWriteDevice(dev, off, len, buf);													// Redirect to the FsWriteDevice function
+	return FsWriteDevice(dev, off, len, buf, write);											// Redirect to the FsWriteDevice function
 }
 
 Boolean DevFsOpenFile(PFsNode node) {
@@ -63,56 +63,60 @@ Void DevFsCloseFile(PFsNode node) {
 	MemFree((UIntPtr)node);
 }
 
-PWChar DevFsReadDirectoryEntry(PFsNode dir, UIntPtr entry) {
-	if (dir == Null) {																			// Any null pointer?
-		return Null;																			// Yes, so we can't continue
+Status DevFsReadDirectoryEntry(PFsNode dir, UIntPtr entry, PWChar *ret) {
+	if (dir == Null || ret == Null) {															// Any null pointer?
+		return STATUS_INVALID_ARG;																// Yes, so we can't continue
 	} else if ((dir->flags & FS_FLAG_DIR) != FS_FLAG_DIR) {										// We're trying to do ReadDirectoryEntry in an... File?
-		return Null;																			// Yes (Why?)
+		return STATUS_NOT_DIR;																	// Yes (Why?)
 	} else if (entry == 0) {																	// Current directory?
-		return StrDuplicate(L".");
+		*ret = StrDuplicate(L".");
+		return *ret == Null ? STATUS_OUT_OF_MEMORY : STATUS_SUCCESS;
 	} else if (entry == 1) {																	// Parent directory?
-		return StrDuplicate(L"..");
+		*ret = StrDuplicate(L"..");
+		return *ret == Null ? STATUS_OUT_OF_MEMORY : STATUS_SUCCESS;
 	} else {
 		PDevice dev = FsGetDeviceByID(entry - 2);												// Get the device by ID (using the entry)
 		
 		if (dev == Null) {																		// Found?
-			return Null;																		// Nope
+			return STATUS_FILE_DOESNT_EXISTS;													// Nope
 		}
 		
-		return StrDuplicate(dev->name);															// Return the device's name
+		*ret = StrDuplicate(dev->name);															// Return the device name
+		
+		return *ret == Null ? STATUS_OUT_OF_MEMORY : STATUS_SUCCESS;
 	}
 }
 
-PFsNode DevFsFindInDirectory(PFsNode dir, PWChar name) {
-	if ((dir == Null) || (name == Null)) {														// Any null pointer?
-		return Null;																			// Yes, so we can't continue
+Status DevFsFindInDirectory(PFsNode dir, PWChar name, PFsNode *ret) {
+	if ((dir == Null) || (name == Null) || (ret == Null)) {										// Any null pointer?
+		return STATUS_INVALID_ARG;																// Yes, so we can't continue
 	} else if ((dir->flags & FS_FLAG_DIR) != FS_FLAG_DIR) {										// We're trying to do FindInDirectory in an... File?
-		return Null;																			// Yes (Why?)
+		return STATUS_NOT_DIR;																	// Yes (Why?)
 	}
 	
 	UIntPtr inode = FsGetDeviceID(name);														// Try to get the device by the name
 	
 	if (inode == (UIntPtr)-1) {																	// Failed?
-		return Null;																			// Yes
+		return STATUS_FILE_DOESNT_EXISTS;														// Yes
 	}
 	
 	PDevice dev = FsGetDeviceByID(inode);														// Get the dev struct
 	
 	if (dev == Null) {
-		return Null;																			// Failed :(
+		return STATUS_READ_FAILED;																// Failed :(
 	}
 	
 	PFsNode node = (PFsNode)MemAllocate(sizeof(FsNode));										// Alloc the fs node struct
 	
 	if (node == Null) {																			// Failed?
-		return Null;																			// Yes
+		return STATUS_OUT_OF_MEMORY;															// Yes
 	}
 	
 	node->name = StrDuplicate(dev->name);														// Duplicate the name
 	
 	if (node->name == Null) {																	// Failed?
 		MemFree((UIntPtr)node);																	// Yes, so free everything
-		return Null;																			// And return
+		return STATUS_OUT_OF_MEMORY;															// And return
 	}
 	
 	node->priv = Null;
@@ -129,20 +133,22 @@ PFsNode DevFsFindInDirectory(PFsNode dir, PWChar name) {
 	node->create = Null;
 	node->control = DevFsControlFile;
 	
-	return node;
+	*ret = node;
+	
+	return STATUS_SUCCESS;
 }
 
-Boolean DevFsControlFile(PFsNode file, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf) {
+Status DevFsControlFile(PFsNode file, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf) {
 	if (file == Null) {																			// Any null pointer?
-		return False;																			// Yes, so we can't continue
+		return STATUS_INVALID_ARG;																// Yes, so we can't continue
 	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {									// ... We're trying to use the control in an directory?
-		return False;																			// Yes (Why?)
+		return STATUS_NOT_FILE;																	// Yes (Why?)
 	}
 	
 	PDevice dev = FsGetDevice(file->name);														// Get the device using the name
 	
 	if (dev == Null) {																			// Failed for some unknown reason?
-		return False;																			// Yes
+		return STATUS_CONTROL_FAILED;															// Yes
 	}
 	
 	return FsControlDevice(dev, cmd, ibuf, obuf);												// Redirect to the FsControlDevice function

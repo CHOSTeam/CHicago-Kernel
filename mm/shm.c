@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 25 of 2019, at 10:55 BRT
-// Last edited on January 07 of 2020, at 12:05 BRT
+// Last edited on January 18 of 2020, at 17:01 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -22,22 +22,22 @@ static PShmSection ShmGetSection(UIntPtr key) {
 	return Null;
 }
 
-UIntPtr ShmCreateSection(UIntPtr size, PUIntPtr key) {
+Status ShmCreateSection(UIntPtr size, PUIntPtr key, PUIntPtr ret) {
 	if (PsCurrentProcess == Null || ShmSectionList == Null || size == 0 || key == Null) {						// Sanity checks
-		return 0;
+		return STATUS_INVALID_ARG;
 	}
 	
 	PShmMappedSection msect = (PShmMappedSection)MemAllocate(sizeof(ShmMappedSection));							// Create the struct that we're going to add to the process shm list
 	
 	if (msect == Null) {
-		return 0;																								// Failed...
+		return STATUS_OUT_OF_MEMORY;																			// Failed...
 	}
 	
 	msect->shm = (PShmSection)MemAllocate(sizeof(ShmSection));													// Create the shm section struct
 	
 	if (msect->shm == Null) {
 		MemFree((UIntPtr)msect);																				// Failed...
-		return 0;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	msect->shm->key = RandGenerate();																			// Set the key
@@ -52,12 +52,12 @@ UIntPtr ShmCreateSection(UIntPtr size, PUIntPtr key) {
 	msect->shm->pregions.length = 0;
 	msect->shm->pregions.free = False;
 	
-	msect->virt = VirtAllocAddress(0, size, SHM_NEW_FLAGS);														// Alloc the virtual address
+	Status status = VirtAllocAddress(0, size, SHM_NEW_FLAGS, &msect->virt);										// Alloc the virtual address
 	
-	if (msect->virt == 0) {
+	if (status != STATUS_SUCCESS) {
 		MemFree((UIntPtr)msect->shm);																			// Failed...
 		MemFree((UIntPtr)msect);
-		return 0;
+		return status;
 	}
 	
 	for (UIntPtr i = msect->virt; i < msect->virt + size; i += MM_PAGE_SIZE) {									// Let's add everything to the physical regions map
@@ -70,7 +70,7 @@ UIntPtr ShmCreateSection(UIntPtr size, PUIntPtr key) {
 			MemFree((UIntPtr)msect->shm);
 			MemFree((UIntPtr)msect);
 			
-			return 0;
+			return STATUS_OUT_OF_MEMORY;
 		}
 	}
 	
@@ -83,7 +83,7 @@ UIntPtr ShmCreateSection(UIntPtr size, PUIntPtr key) {
 		MemFree((UIntPtr)msect->shm);
 		MemFree((UIntPtr)msect);
 		
-		return 0;
+		return STATUS_OUT_OF_MEMORY;
 	} else if (!ListAdd(PsCurrentProcess->shm_mapped_sections, msect)) {										// Now add it to the process mapped shm sections list
 		while (msect->shm->pregions.length != 0) {																// Failed, let's first remove everything from the physical regions map
 			ListRemove(&msect->shm->pregions, 0);
@@ -94,12 +94,13 @@ UIntPtr ShmCreateSection(UIntPtr size, PUIntPtr key) {
 		MemFree((UIntPtr)msect->shm);
 		MemFree((UIntPtr)msect);
 		
-		return 0;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	*key = msect->shm->key;																						// Save the key
+	*ret = msect->virt;																							// And the virt address
 	
-	return msect->virt;
+	return STATUS_SUCCESS;
 }
 
 static PShmMappedSection ShmGetMappedSection(UIntPtr key) {
@@ -122,42 +123,45 @@ static UIntPtr ShmGetMappedSectionVirt(PShmSection shm) {
 	return 0;
 }
 
-UIntPtr ShmMapSection(UIntPtr key) {
+Status ShmMapSection(UIntPtr key, PUIntPtr ret) {
 	if (PsCurrentProcess == Null || ShmSectionList == Null) {													// Sanity checks
-		return 0;
+		return STATUS_SHM_DOESNT_EXISTS;
 	}
 	
 	PShmSection shm = ShmGetSection(key);																		// Try to get the section
 	
 	if (shm == Null) {
-		return 0;																								// Failed...
+		return STATUS_SHM_DOESNT_EXISTS;																		// Failed...
 	}
 	
 	UIntPtr virt = ShmGetMappedSectionVirt(shm);																// Let's see if this section is already mapped
 	
 	if (virt != 0) {
-		return virt;																							// Yes, it is!
+		*ret = virt;																							// Yes, it is!
+		return STATUS_SUCCESS;
 	}
 	
 	PShmMappedSection msect = (PShmMappedSection)MemAllocate(sizeof(ShmMappedSection));							// Create the struct that we're going to add to the process shm list
 	
 	if (msect == Null) {
-		return 0;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	msect->shm = shm;																							// Set the shm
-	msect->virt = VirtAllocAddress(0, shm->pregions.length * MM_PAGE_SIZE, SHM_EXIST_FLAGS);					// Alloc the virtual address
 	
-	if (msect->virt == 0) {
+	Status status = VirtAllocAddress(0, shm->pregions.length * MM_PAGE_SIZE, SHM_EXIST_FLAGS, &msect->virt);	// Alloc the virtual address
+	
+	if (status != STATUS_SUCCESS) {
 		MemFree((UIntPtr)msect);																				// Failed...
-		return 0;
+		return status;
 	}
 	
 	for (UIntPtr i = 0; i < shm->pregions.length; i++) {														// Let's map everything!
-		if (!MmMap(msect->virt + i * MM_PAGE_SIZE, (UIntPtr)ListGet(&shm->pregions, i), SHM_MM_FLAGS)) {
+		status = MmMap(msect->virt + i * MM_PAGE_SIZE, (UIntPtr)ListGet(&shm->pregions, i), SHM_MM_FLAGS);
+		if (status != STATUS_SUCCESS) {
 			VirtFreeAddress(msect->virt, shm->pregions.length * MM_PAGE_SIZE);									// ...
 			MemFree((UIntPtr)msect);
-			return 0;
+			return status;
 		}
 	}
 	
@@ -165,12 +169,13 @@ UIntPtr ShmMapSection(UIntPtr key) {
 		VirtFreeAddress(msect->virt, shm->pregions.length * MM_PAGE_SIZE);										// Failed...
 		MemFree((UIntPtr)msect);
 		
-		return 0;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	msect->shm->refs++;																							// Increase the reference counter
+	*ret = msect->virt;																							// Save the virt address
 	
-	return msect->virt;
+	return STATUS_SUCCESS;
 }
 
 static Void ShmRemoveFromList(PList list, PVoid item) {
@@ -191,15 +196,15 @@ static Void ShmRemoveFromList(PList list, PVoid item) {
 	}
 }
 
-Void ShmUnmapSection(UIntPtr key) {
+Status ShmUnmapSection(UIntPtr key) {
 	if (PsCurrentProcess == Null || ShmSectionList == Null) {													// Sanity checks
-		return;
+		return STATUS_SHM_DOESNT_EXISTS;
 	}
 	
 	PShmMappedSection msect = ShmGetMappedSection(key);															// Try to get the mapped shm
 	
 	if (msect == Null) {
-		return;																									// It's not mapped...
+		return STATUS_SHM_DOESNT_EXISTS;																		// It's not mapped...
 	}
 	
 	ShmRemoveFromList(PsCurrentProcess->shm_mapped_sections, msect);											// Ok! First, let's remove it from the mapped shm sections list
@@ -218,6 +223,8 @@ Void ShmUnmapSection(UIntPtr key) {
 	}
 	
 	MemFree((UIntPtr)msect);																					// Free the msect strct
+	
+	return STATUS_SUCCESS;
 }
 
 Void ShmInit(Void) {

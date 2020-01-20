@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 24 of 2019, at 14:18 BRT
-// Last edited on January 08 of 2020, at 09:38 BRT
+// Last edited on January 20 of 2020, at 10:29 BRT
 
 #define __CHICAGO_IPC__
 
@@ -15,22 +15,22 @@
 
 PList IpcPortList = Null;
 
-Boolean IpcCreatePort(PWChar name) {
+Status IpcCreatePort(PWChar name) {
 	if (PsCurrentProcess == Null || IpcPortList == Null || name == Null) {								// Sanity checks
-		return False;																					// Nope...
+		return STATUS_INVALID_ARG;																		// Nope...
 	}
 	
 	PIpcPort port = (PIpcPort)MemAllocate(sizeof(IpcPort));												// Alloc the struct space
 	
 	if (port == Null) {
-		return False;																					// Failed
+		return STATUS_OUT_OF_MEMORY;																	// Failed
 	}
 	
 	port->name = StrDuplicate(name);																	// Duplicate the name
 	
 	if (port->name == Null) {
 		MemFree((UIntPtr)port);																			// Failed
-		return False;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	port->queue.head = Null;																			// Init the msg queue
@@ -42,17 +42,21 @@ Boolean IpcCreatePort(PWChar name) {
 	if (!ListAdd(IpcPortList, port)) {																	// Add this port to the port list
 		MemFree((UIntPtr)port->name);
 		MemFree((UIntPtr)port);
-		return False;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
-	return True;
+	return STATUS_SUCCESS;
 }
 
-IntPtr IpcCreateResponsePort(Void) {
+Status IpcCreateResponsePort(PIntPtr ret) {
+	if (ret == Null) {																					// Sanity check
+		return STATUS_INVALID_ARG;
+	}
+	
 	PIpcResponsePort port = (PIpcResponsePort)MemAllocate(sizeof(IpcResponsePort));						// Alloc the struct space
 	
 	if (port == Null) {
-		return -1;																						// Failed
+		return STATUS_OUT_OF_MEMORY;																	// Failed
 	}
 	
 	port->queue.head = Null;																			// Init the msg queue
@@ -61,18 +65,19 @@ IntPtr IpcCreateResponsePort(Void) {
 	port->queue.free = False;
 	port->proc = PsCurrentProcess;																		// Save the port owner
 	
-	IntPtr handle = ScAppendHandle(HANDLE_TYPE_IPC_RESPONSE_PORT, port);								// Create the handle
+	*ret = ScAppendHandle(HANDLE_TYPE_IPC_RESPONSE_PORT, port);											// Create the handle
 	
-	if (handle == -1) {
+	if (*ret == -1) {
 		MemFree((UIntPtr)port);																			// Failed...
+		return STATUS_OUT_OF_MEMORY;																	// Maybe we should add a different error here later...
 	}
 	
-	return handle;
+	return STATUS_SUCCESS;
 }
 
-Void IpcRemovePort(PWChar name) {
+Status IpcRemovePort(PWChar name) {
 	if (PsCurrentProcess == Null || IpcPortList == Null || name == Null) {								// Sanity checks
-		return;
+		return STATUS_INVALID_ARG;
 	}
 	
 	UIntPtr idx = 0;
@@ -90,9 +95,9 @@ Void IpcRemovePort(PWChar name) {
 	}
 	
 	if (!found) {
-		return;																							// Port not found...
+		return STATUS_PORT_DOESNT_EXISTS;																// Port not found...
 	} else if (port->proc != PsCurrentProcess) {
-		return;																							// Only the owner of this port can remove it
+		return STATUS_NOT_OWNER;																		// Only the owner of this port can remove it
 	}
 	
 	ListRemove(IpcPortList, idx);																		// Remove this port from the list
@@ -106,22 +111,24 @@ Void IpcRemovePort(PWChar name) {
 	
 	MemFree((UIntPtr)port->name);																		// Free the name
 	MemFree((UIntPtr)port);																				// Free the struct itself
+	
+	return STATUS_SUCCESS;
 }
 
-Boolean IpcCheckPort(PWChar name) {
+Status IpcCheckPort(PWChar name) {
 	if (PsCurrentProcess == Null || IpcPortList == Null || name == Null) {								// Sanity checks
-		return False;
+		return STATUS_INVALID_ARG;
 	}
 	
 	ListForeach(IpcPortList, i) {																		// Let's iterate the port list
 		if (StrGetLength(((PIpcPort)i->data)->name) != StrGetLength(name)) {							// Check if both names have the same length
 			continue;
 		} else if (StrCompare(((PIpcPort)i->data)->name, name)) {										// And compare them!
-			return True;
+			return STATUS_PORT_ALREADY_EXISTS;
 		}
 	}
 	
-	return False;
+	return STATUS_PORT_DOESNT_EXISTS;
 }
 
 Void IpcFreeResponsePort(PIpcResponsePort port) {
@@ -141,9 +148,9 @@ Void IpcFreeResponsePort(PIpcResponsePort port) {
 	MemFree((UIntPtr)port);																				// Free the struct itself
 }
 
-Boolean IpcSendMessage(PWChar name, UInt32 msg, UIntPtr size, PUInt8 buf, PIpcResponsePort rport) {
+Status IpcSendMessage(PWChar name, UInt32 msg, UIntPtr size, PUInt8 buf, PIpcResponsePort rport) {
 	if (PsCurrentProcess == Null || IpcPortList == Null || name == Null) {								// Sanity checks
-		return False;
+		return STATUS_INVALID_ARG;
 	}
 	
 	UIntPtr idx = 0;
@@ -161,13 +168,13 @@ Boolean IpcSendMessage(PWChar name, UInt32 msg, UIntPtr size, PUInt8 buf, PIpcRe
 	}
 	
 	if (!found) {
-		return False;																					// Port not found...
+		return STATUS_PORT_DOESNT_EXISTS;																// Port not found...
 	}
 	
 	PUInt8 new = (PUInt8)MemAllocate(size);																// Copy the buffer...
 	
 	if (new == Null) {
-		return False;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	StrCopyMemory(new, buf, size);
@@ -189,7 +196,7 @@ Boolean IpcSendMessage(PWChar name, UInt32 msg, UIntPtr size, PUInt8 buf, PIpcRe
 		PsCurrentProcess = oldp;
 		PsUnlockTaskSwitch(old);
 		
-		return False;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	mes->msg = msg;																						// Setup it
@@ -202,7 +209,7 @@ Boolean IpcSendMessage(PWChar name, UInt32 msg, UIntPtr size, PUInt8 buf, PIpcRe
 		PsCurrentProcess = oldp;
 		PsUnlockTaskSwitch(old);
 		
-		return False;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	if (rport != Null) {																				// Set the rport?
@@ -216,7 +223,7 @@ Boolean IpcSendMessage(PWChar name, UInt32 msg, UIntPtr size, PUInt8 buf, PIpcRe
 			PsCurrentProcess = oldp;
 			PsUnlockTaskSwitch(old);
 			
-			return False;
+			return STATUS_OUT_OF_MEMORY;
 		}
 	} else {
 		mes->rport = -1;
@@ -230,18 +237,18 @@ Boolean IpcSendMessage(PWChar name, UInt32 msg, UIntPtr size, PUInt8 buf, PIpcRe
 	PsCurrentProcess = oldp;																			// Switch back the old proc struct
 	PsUnlockTaskSwitch(old);																			// Unlock
 	
-	return True;
+	return STATUS_SUCCESS;
 }
 	
-Boolean IpcSendResponse(PIpcResponsePort port, UInt32 msg, UIntPtr size, PUInt8 buf) {
+Status IpcSendResponse(PIpcResponsePort port, UInt32 msg, UIntPtr size, PUInt8 buf) {
 	if (port == Null) {																					// Sanity check
-		return False;
+		return STATUS_INVALID_ARG;
 	}
 	
 	PUInt8 new = (PUInt8)MemAllocate(size);																// Copy the buffer...
 	
 	if (new == Null) {
-		return False;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	StrCopyMemory(new, buf, size);
@@ -262,7 +269,7 @@ Boolean IpcSendResponse(PIpcResponsePort port, UInt32 msg, UIntPtr size, PUInt8 
 		MmSwitchDirectory(oldp->dir);
 		PsCurrentProcess = oldp;
 		PsUnlockTaskSwitch(old);
-		return False;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	mes->msg = msg;																						// Setup it
@@ -274,7 +281,7 @@ Boolean IpcSendResponse(PIpcResponsePort port, UInt32 msg, UIntPtr size, PUInt8 
 		MmSwitchDirectory(oldp->dir);
 		PsCurrentProcess = oldp;
 		PsUnlockTaskSwitch(old);
-		return False;
+		return STATUS_OUT_OF_MEMORY;
 	}
 		
 	mes->size = size;
@@ -285,12 +292,12 @@ Boolean IpcSendResponse(PIpcResponsePort port, UInt32 msg, UIntPtr size, PUInt8 
 	PsCurrentProcess = oldp;																			// Switch back to the old process struct
 	PsUnlockTaskSwitch(old);																			// Unlock
 	
-	return True;
+	return STATUS_SUCCESS;
 }
 	
-Boolean IpcReceiveMessage(PWChar name, PUInt32 msg, UIntPtr size, PUInt8 buf) {
+Status IpcReceiveMessage(PWChar name, PUInt32 msg, UIntPtr size, PUInt8 buf) {
 	if (PsCurrentProcess == Null || IpcPortList == Null || name == Null || msg == Null) {				// Sanity checks
-		return False;
+		return STATUS_INVALID_ARG;
 	}
 	
 	UIntPtr idx = 0;
@@ -308,9 +315,9 @@ Boolean IpcReceiveMessage(PWChar name, PUInt32 msg, UIntPtr size, PUInt8 buf) {
 	}
 	
 	if (!found) {
-		return False;																					// Port not found...
+		return STATUS_PORT_DOESNT_EXISTS;																// Port not found...
 	} else if (port->proc != PsCurrentProcess) {
-		return False;																					// Only the owner of this port can use the receive function
+		return STATUS_NOT_OWNER;																		// Only the owner of this port can use the receive function
 	}
 	
 	while (port->queue.length == 0) {																	// Wait for anything to come in
@@ -325,14 +332,14 @@ Boolean IpcReceiveMessage(PWChar name, PUInt32 msg, UIntPtr size, PUInt8 buf) {
 		StrCopyMemory(buf, mes->buffer, size > mes->size ? mes->size : size);							// Yes!
 	}
 	
-	return True;
+	return STATUS_SUCCESS;
 }
 
-Boolean IpcReceiveResponse(PIpcResponsePort port, PUInt32 msg, UIntPtr size, PUInt8 buf) {
+Status IpcReceiveResponse(PIpcResponsePort port, PUInt32 msg, UIntPtr size, PUInt8 buf) {
 	if (port == Null || msg == Null) {																	// Sanity check
-		return False;
+		return STATUS_INVALID_ARG;
 	} else if (port->proc != PsCurrentProcess) {
-		return False;																					// Only the owner of this port can use the receive function
+		return STATUS_NOT_OWNER;																		// Only the owner of this port can use the receive function
 	}
 	
 	while (port->queue.length == 0) {																	// Wait for anything to come in
@@ -347,7 +354,7 @@ Boolean IpcReceiveResponse(PIpcResponsePort port, PUInt32 msg, UIntPtr size, PUI
 		StrCopyMemory(buf, mes->buffer, size > mes->size ? mes->size : size);							// Yes!
 	}
 	
-	return True;
+	return STATUS_SUCCESS;
 }
 
 Void IpcInit(Void) {

@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 16 of 2018, at 18:28 BRT
-// Last edited on January 07 of 2020, at 12:05 BRT
+// Last edited on January 18 of 2020, at 15:54 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -173,11 +173,12 @@ PWChar FsGetRandomPath(PWChar prefix) {
 		PWChar path = FsJoinPath(prefix, name);																							// Join the prefix and the random name
 		
 		if (path != Null) {																												// Failed?
-			PFsNode file = FsOpenFile(path);																							// No, let's check if it already exists
+			PFsNode file = Null;
+			Status status = FsOpenFile(path, &file);																					// No, let's check if it already exists
 			
 			MemFree((UIntPtr)path);																										// And let's free the path
 			
-			if (file == Null) {
+			if (status == STATUS_FILE_DOESNT_EXISTS) {
 				return name;																											// Yeah, it doesn't exists, so we can return it!
 			}
 			
@@ -188,122 +189,130 @@ PWChar FsGetRandomPath(PWChar prefix) {
 	return Null;
 }
 
-UIntPtr FsReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf) {
-	if (file == Null) {																													// File is Null pointer?
-		return 0;																														// Yes, so we can't do anything...
+Status FsReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf, PUIntPtr read) {
+	if (file == Null || len == 0 || buf == Null) {																						// Sanity check
+		return STATUS_INVALID_ARG;
 	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {																			// We're trying to read an file?
-		return 0;																														// ... Why are you trying to read raw bytes from an directory?
+		return STATUS_NOT_FILE;																											// ... Why are you trying to read raw bytes from an directory?
 	} else if (file->read != Null) {																									// Implementation?
-		return file->read(file, off, len, buf);																							// Yes, so call it!
+		return file->read(file, off, len, buf, read);																					// Yes, so call it!
 	} else {
-		return 0;
+		return STATUS_CANT_READ;
 	}
 }
 
-UIntPtr FsWriteFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf) {
-	if (file == Null) {																													// File is Null pointer?
-		return 0;																														// Yes, so we can't do anything...
-	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {																			// We're trying to read an file?
-		return 0;																														// ... Why are you trying to read raw bytes from an directory?
+Status FsWriteFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf, PUIntPtr write) {
+	if (file == Null || len == 0 || buf == Null) {																						// Sanity check
+		return STATUS_INVALID_ARG;
+	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {																			// We're trying to write to an file?
+		return STATUS_NOT_FILE;																											// ... Why are you trying to write raw bytes to an directory?
 	} else if (file->write != Null) {																									// Implementation?
-		return file->write(file, off, len, buf);																						// Yes, so call it!
+		return file->write(file, off, len, buf, write);																					// Yes, so call it!
 	} else {
-		return 0;
+		return STATUS_CANT_WRITE;
 	}
 }
 
-Boolean FsOpenFileInt(PFsNode node) {
+static Status FsOpenFileInt(PFsNode node) {
 	if (node == Null) {																													// Node is Null pointer?
-		return False;																													// Yes... (Really, those comments are starting to get annoying)
+		return STATUS_INVALID_ARG;																										// Yes... (Really, those comments are starting to get annoying)
 	} else if (node->open != Null) {																									// Any implementation?
 		return node->open(node);																										// Yes, so call it
 	} else {
-		return False;
+		return STATUS_OPEN_FAILED;
 	}
 }
 
-PFsNode FsOpenFile(PWChar path) {
-	if ((FsMountPointList == Null) || (path == Null)) {																					// Some null pointer checks
-		return Null;
+Status FsOpenFile(PWChar path, PFsNode *ret) {
+	if ((FsMountPointList == Null) || (path == Null) || (ret == Null)) {																// Some null pointer checks
+		return STATUS_INVALID_ARG;
 	} else if (FsMountPointList->length == 0) {																							// Don't even lose time trying to open some file if our mount point list is empty
-		return Null;
+		return STATUS_FILE_DOESNT_EXISTS;
 	} else if (path[0] != '/') {																										// Finally, we only support absolute paths in this function
-		return Null;
+		return STATUS_OPEN_FAILED;
 	}
 	
 	PWChar rpath = Null;
 	PFsMountPoint mp = FsGetMountPoint(path, &rpath);																					// Find the mount point
 	
 	if ((mp == Null) || (rpath == Null)) {																								// Failed?
-		return Null;																													// Yes
+		return STATUS_FILE_DOESNT_EXISTS;																								// Yes
 	}
 	
 	PList parts = FsTokenizePath(rpath);																								// Let's try to tokenize our path (relative to the mount point)!
 	PFsNode cur = mp->root;
 	
 	if (parts == Null) {																												// Failed?
-		return Null;																													// Yes
+		return STATUS_OUT_OF_MEMORY;																									// Yes
 	}
 	
-	if (!FsOpenFileInt(cur)) {																											// Let's try to "open" the mount point root directory
+	Status status = FsOpenFileInt(cur);																									// Let's try to "open" the mount point root directory
+	
+	if (status != STATUS_SUCCESS) {
 		ListFree(parts);																												// Failed
-		return Null;
+		return status;
 	}
 	
 	ListForeach(parts, i) {
-		cur = FsFindInDirectory(cur, (PWChar)(i->data));																				// Let's try to find the file/folder in the folder (the file is i->data and the folder is cur)
+		status = FsFindInDirectory(cur, (PWChar)(i->data), &cur);																		// Let's try to find the file/folder in the folder (the file is i->data and the folder is cur)
 		
-		if (cur == Null) {
+		if (status != STATUS_SUCCESS) {
 			ListFree(parts);																											// Failed
-			return Null;
+			return status;
 		}
 		
-		if (!FsOpenFileInt(cur)) {																										// Let's try to "open" the file/folder
+		if ((status = FsOpenFileInt(cur)) != STATUS_SUCCESS) {																			// Let's try to "open" the file/folder
 			ListFree(parts);																											// Failed
-			return Null;
+			return status;
 		}
 	}
 	
 	ListFree(parts);																													// Finally, free the list
 	
-	return cur;																															// And return!
+	*ret = cur;																															// And return!
+	
+	return STATUS_SUCCESS;
 }
 
-Void FsCloseFile(PFsNode node) {
+Status FsCloseFile(PFsNode node) {
 	if (node == Null) {																													// Look, except for FsOpenFile, FsMountFile and FsUmountFile, all the other function follows the same model, so if you want, just take a look at any of them!
-		return;
+		return STATUS_INVALID_ARG;
 	} else if (node->close != Null) {
 		node->close(node);
 	}
+	
+	return STATUS_SUCCESS;
 }
 
-Boolean FsMountFile(PWChar path, PWChar file, PWChar type) {
+Status FsMountFile(PWChar path, PWChar file, PWChar type) {
 	if ((FsMountPointList == Null) || (FsTypeList == Null)) {																			// Like in all the functions, first do some null pointer checks
-		return False;
+		return STATUS_MOUNT_FAILED;
 	} else if ((path == Null) || (file == Null)) {																						// Same as above
-		return False;
+		return STATUS_INVALID_ARG;
 	}
 	
-	PFsNode src = FsOpenFile(file);																										// Try to open the source file
+	PFsNode src;																														// Try to open the source file
+	Status status = FsOpenFile(file, &src);
 	
-	if (src == Null) {																													// Failed (the file doesn't exists)?
-		return False;																													// Yes
+	if (status != STATUS_SUCCESS) {																										// Failed?
+		return status;																													// Yes
 	} else if ((src->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {																			// The file isn't an file?
 		FsCloseFile(src);																												// Yeah, but we can't mount directories...
-		return False;
+		return STATUS_NOT_FILE;
 	}
 	
-	PFsNode dest = FsOpenFile(path);																									// Try to open the destination file
+	PFsNode dest;
+	status = FsOpenFile(path, &dest);																									// Try to open the destination file
 	
-	if ((dest == Null) && (!StrCompare(path, L"/"))) {																					// Failed (and we aren't trying to mount the root directory)?
+	if ((status != STATUS_SUCCESS) && (!StrCompare(path, L"/"))) {																		// Failed (and we aren't trying to mount the root directory)?
 		FsCloseFile(src);																												// Yes, close the src file
-		return False;																													// And return
-	} else if (dest != Null) {
+		return STATUS_MOUNT_FAILED;																										// And return
+	} else if (status == STATUS_SUCCESS) {
 		if (!StrCompare(path, L"/")) {																									// Trying to mount the root directory?
 			if ((dest->flags & FS_FLAG_DIR) != FS_FLAG_DIR) {																			// No, so we need to check if the dest is an directory!
 				FsCloseFile(dest);																										// Isn't, so close it, close src and return
 				FsCloseFile(src);
-				return False;
+				return STATUS_NOT_DIR;
 			}
 		}
 	}
@@ -313,13 +322,13 @@ Boolean FsMountFile(PWChar path, PWChar file, PWChar type) {
 	if ((type != Null) && (typ == Null)) {																								// If it returned Null and was an user requested type, IT FAILED, RETURN NULL
 		FsCloseFile(dest);
 		FsCloseFile(src);
-		return False;
+		return STATUS_MOUNT_FAILED;
 	} else if (typ != Null) {																											// Else (if was user requested type and was found), let's do some probe
 		if (typ->probe != Null) {
 			if (!typ->probe(src)) {
 				FsCloseFile(dest);																										// Failed... we can't mount it
 				FsCloseFile(src);
-				return False;
+				return STATUS_MOUNT_FAILED;
 			}
 		}
 	} else if (type == Null) {
@@ -337,47 +346,48 @@ Boolean FsMountFile(PWChar path, PWChar file, PWChar type) {
 		if (typ == Null) {
 			FsCloseFile(dest);																											// We haven't found it...
 			FsCloseFile(src);
-			return False;
+			return STATUS_MOUNT_FAILED;
 		}
 	}
 	
 	if (typ->mount == Null) {
 		FsCloseFile(dest);																												// WTF? This FS doesn't have an mount function lol
 		FsCloseFile(src);
-		return False;
+		return STATUS_MOUNT_FAILED;
 	}
 	
-	PFsMountPoint mp = typ->mount(src, path);																							// Try to mount it
+	PFsMountPoint mp;
+	status = typ->mount(src, path, &mp);																								// Try to mount it
 	
-	if (mp == Null) {																													// The mount failed?
+	if (status != STATUS_SUCCESS) {																										// The mount failed?
 		FsCloseFile(dest);																												// Yes :(
 		FsCloseFile(src);
-		return False;
+		return status;
 	}
 	
 	FsCloseFile(dest);																													// Let's close our files, we don't need them anymore!
 	
 	if (!FsAddMountPoint(mp->path, mp->type, mp->root)) {																				// And let's try to add this mount point
 		MemFree((UIntPtr)mp);																											// Failed, so return False
-		return False;
+		return STATUS_OUT_OF_MEMORY;
 	} else {
 		MemFree((UIntPtr)mp);																											// Otherwise, return True
-		return True;
+		return STATUS_SUCCESS;
 	}
 }
 
-Boolean FsUmountFile(PWChar path) {
+Status FsUmountFile(PWChar path) {
 	if ((FsMountPointList == Null) || (path == Null)) {																					// Again, null pointer checks
-		return False;
+		return STATUS_UMOUNT_FAILED;
 	}
 	
 	PWChar rpath = Null;
 	PFsMountPoint mp = FsGetMountPoint(path, &rpath);																					// Let's get the mount point info/struct
 	
 	if (mp == Null) {																													// Failed...
-		return False;
+		return STATUS_NOT_MOUNTED;
 	} else if (!StrCompare(rpath, L"")) {
-		return False;																													// You need to pass the absolute path to the mount point to this function!
+		return STATUS_UMOUNT_FAILED;																									// You need to pass the absolute path to the mount point to this function!
 	}
 	
 	PFsType type = FsGetType(mp->type);																									// Try to get the fs type info
@@ -385,68 +395,69 @@ Boolean FsUmountFile(PWChar path) {
 	if (type != Null) {																													// Failed?
 		if (type->umount != Null) {																										// No, we can call the umount function?
 			if (!type->umount(mp)) {																									// Yes!
-				return False;																											// Failed, return False
+				return STATUS_UMOUNT_FAILED;																							// Failed...
 			}
 		}
 	}
 	
-	return FsRemoveMountPoint(path);																									// The FsRemoveMountPoint will do all the job now!
+	return FsRemoveMountPoint(path) ? STATUS_SUCCESS : STATUS_UMOUNT_FAILED;															// The FsRemoveMountPoint will do all the job now!
 }
 
-PWChar FsReadDirectoryEntry(PFsNode dir, UIntPtr entry) {
-	if (dir == Null) {
-		return Null;
+Status FsReadDirectoryEntry(PFsNode dir, UIntPtr entry, PWChar *ret) {
+	if (dir == Null || ret == Null) {
+		return STATUS_INVALID_ARG;
 	} else if ((dir->flags & FS_FLAG_DIR) != FS_FLAG_DIR) {																				// Directory-only function!
-		return Null;
+		return STATUS_NOT_DIR;
 	} else if (dir->readdir != Null) {
-		return dir->readdir(dir, entry);
+		return dir->readdir(dir, entry, ret);
 	} else {
-		return Null;
+		return STATUS_CANT_READ;
 	}
 }
 
-PFsNode FsFindInDirectory(PFsNode dir, PWChar name) {
+Status FsFindInDirectory(PFsNode dir, PWChar name, PFsNode *ret) {
 	if ((dir == Null) || (name == Null)) {
-		return Null;
+		return STATUS_INVALID_ARG;
 	} else if ((dir->flags & FS_FLAG_DIR) != FS_FLAG_DIR) {																				// Directory-only function!
-		return Null;
+		return STATUS_NOT_DIR;
 	} else if (dir->finddir != Null) {
-		return dir->finddir(dir, name);
+		return dir->finddir(dir, name, ret);
 	} else {
-		return Null;
+		return STATUS_CANT_READ;
 	}
 }
 
-Boolean FsCreateFile(PFsNode dir, PWChar name, UIntPtr flags) {
+Status FsCreateFile(PFsNode dir, PWChar name, UIntPtr flags) {
 	if ((dir == Null) || (name == Null)) {
-		return False;
+		return STATUS_INVALID_ARG;
 	} else if ((dir->flags & FS_FLAG_DIR) != FS_FLAG_DIR) {																				// Directory-only function!
-		return False;
+		return STATUS_NOT_DIR;
 	}
 	
-	PFsNode file = FsFindInDirectory(dir, name);																						// Let's try to not create entries with the same name
+	PFsNode file;
+	Status status = FsFindInDirectory(dir, name, &file);																				// Let's try to not create entries with the same name
 	
-	if (file != Null) {
+	if (status == STATUS_SUCCESS) {
 		FsCloseFile(file);																												// ...
-		return False;
+		return STATUS_FILE_ALREADY_EXISTS;
 	}
 	
 	if (dir->create != Null) {
 		return dir->create(dir, name, flags);
 	} else {
-		return False;
+		return STATUS_CREATE_FAILED;
 	}
 }
 
-Boolean FsControlFile(PFsNode file, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf) {
+Status FsControlFile(PFsNode file, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf) {
 	if (file == Null) {																													// File is Null pointer?
-		return False;																													// Yes, so we can't do anything...
+		return STATUS_INVALID_ARG;																										// Yes, so we can't do anything...
 	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {																			// We're trying to control an file?
-		return False;																													// ... Why... WHY?
+		return STATUS_NOT_FILE;																											// ... Why... WHY?
 	} else if (file->control != Null) {																									// Implementation?
 		return file->control(file, cmd, ibuf, obuf);																					// Yes, so call it!
 	} else {
-		return False;
+		return STATUS_CANT_CONTROL;
 	}
 }
 
@@ -613,7 +624,7 @@ Boolean FsRemoveMountPoint(PWChar path) {
 	return True;																														// And return True!
 }
 
-Boolean FsAddType(PWChar name, Boolean (*probe)(PFsNode), PFsMountPoint (*mount)(PFsNode, PWChar), Boolean (*umount)(PFsMountPoint)) {
+Boolean FsAddType(PWChar name, Boolean (*probe)(PFsNode), Status (*mount)(PFsNode, PWChar, PFsMountPoint*), Boolean (*umount)(PFsMountPoint)) {
 	if ((FsTypeList == Null) || (name == Null) || (probe == Null) || (mount == Null) || (umount == Null)) {								// Null pointer checks
 		return False;
 	} else if (FsGetType(name) != Null) {																								// This fs type doesn't exists... right?

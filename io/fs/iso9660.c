@@ -1,32 +1,32 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 17 of 2018, at 16:10 BRT
-// Last edited on January 04 of 2020, at 18:01 BRT
+// Last edited on January 18 of 2020, at 16:16 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/file.h>
 #include <chicago/iso9660.h>
 #include <chicago/string.h>
 
-UIntPtr Iso9660ReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf) {
-	if (file == Null) {																								// Let's do some null pointer checks first!
-		return 0;
+Status Iso9660ReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf, PUIntPtr read) {
+	if (file == Null || len == 0 || buf == Null || read == Null) {													// Let's do some null pointer checks first!
+		return STATUS_INVALID_ARG;
 	} else if ((file->priv == Null) || (file->inode == 0)) {
-		return 0;
+		return STATUS_INVALID_ARG;
 	} else if (file->read == Null) {
-		return 0;
+		return STATUS_INVALID_ARG;
 	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {														// We're trying to read raw bytes from an directory?
-		return 0;																									// Why?
+		return STATUS_NOT_FILE;																						// Why?
 	} else if (off >= file->length) {																				// For byte per byte read
-		return 0;
+		return STATUS_END_OF_FILE;
 	}
 	
 	PFsNode dev = file->priv;																						// Let's get our base device (it's inside of the priv)
 	
 	if (dev->read == Null) {																						// We have the read function... right?
-		return 0;																									// Nope (how you initialized this device WITHOUT THE READ FUNCTION????????????)
+		return STATUS_INVALID_ARG;																					// Nope (how you initialized this device WITHOUT THE READ FUNCTION????????????)
 	} if ((dev->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {															// It's a file?
-		return 0;																									// Nope (again, how?)
+		return STATUS_INVALID_ARG;																					// Nope (again, how?)
 	}
 	
 	PIso9660DirEntry entry = (PIso9660DirEntry)file->inode;															// Let's get our dir entry (it's inside of the inode)
@@ -38,7 +38,7 @@ UIntPtr Iso9660ReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf) {
 		end = off + len;
 	}
 	
-	return dev->read(dev, (entry->extent_lba_lsb * 2048) + off, end - off, buf);									// And let's read!
+	return dev->read(dev, (entry->extent_lba_lsb * 2048) + off, end - off, buf, read);								// And let's read!
 }
 
 Boolean Iso9660OpenFile(PFsNode node) {
@@ -61,25 +61,27 @@ Void Iso9660CloseFile(PFsNode node) {
 	MemFree((UIntPtr)node);
 }
 
-PWChar Iso9660ReadDirectoryEntry(PFsNode dir, UIntPtr entry) {
-	if (dir == Null) {																								// I already did this comment (null pointer check) so many times... if you want, take a look in the other functions
-		return Null;
+Status Iso9660ReadDirectoryEntry(PFsNode dir, UIntPtr entry, PWChar *ret) {
+	if (dir == Null || ret == Null) {																				// I already did this comment (null pointer check) so many times... if you want, take a look in the other functions
+		return STATUS_INVALID_ARG;
 	} else if ((dir->priv == Null) || (dir->inode == 0)) {
-		return Null;
+		return STATUS_INVALID_ARG;
 	} else if ((dir->flags & FS_FLAG_DIR) != FS_FLAG_DIR) {															// Trying to read an directory entry using an file... why?
-		return Null;
+		return STATUS_NOT_DIR;
 	} else if (entry == 0) {																						// Current directory?
-		return StrDuplicate(L".");
+		*ret = StrDuplicate(L".");
+		return *ret == Null ? STATUS_OUT_OF_MEMORY : STATUS_SUCCESS;
 	} else if (entry == 1) {																						// Parent directory?
-		return StrDuplicate(L"..");
+		*ret = StrDuplicate(L"..");
+		return *ret == Null ? STATUS_OUT_OF_MEMORY : STATUS_SUCCESS;
 	}
 	
 	PFsNode dev = dir->priv;																						// Get our device and make sure that it's valid
 	
 	if (dev->read == Null) {
-		return False;
+		return STATUS_INVALID_ARG;
 	} if ((dev->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {
-		return False;
+		return STATUS_INVALID_ARG;
 	}
 	
 	PIso9660DirEntry rent = (PIso9660DirEntry)dir->inode;															// Get our directory entry
@@ -88,13 +90,16 @@ PWChar Iso9660ReadDirectoryEntry(PFsNode dir, UIntPtr entry) {
 	UIntPtr soff = 0;
 	
 	if (data == Null) {
-		return Null;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	for (UIntPtr i = rent->extent_length_lsb; i > 0; ) {															// Let's do it!
-		if (!dev->read(dev, (rent->extent_lba_lsb + soff) * 2048, i >= 2048 ? 2048 : i, off)) {
+		UIntPtr read;
+		Status status = dev->read(dev, (rent->extent_lba_lsb + soff) * 2048, i >= 2048 ? 2048 : i, off, &read);
+		
+		if (status != STATUS_SUCCESS) {
 			MemFree((UIntPtr)data);
-			return Null;
+			return status;
 		}
 		
 		if (i >= 2048) {
@@ -118,30 +123,30 @@ PWChar Iso9660ReadDirectoryEntry(PFsNode dir, UIntPtr entry) {
 		
 		if ((dent->flags & 0x01) != 0x01) {																			// Hidden file/directory?
 			if (idx == entry) {																						// It's an normal, visible, file/directory! Is the one that we want?
-				PWChar ret = Null;																					// YES!
+				PWChar rret = Null;																					// YES!
 				
 				if (dent->name[dent->name_length - 2] == ';' && dent->name[dent->name_length - 1] == '1') {			// Let's alloc space for the name (and for fixing it)
-					ret = (PWChar)MemAllocate((dent->name_length - 1) * sizeof(WChar));
+					rret = (PWChar)MemAllocate((dent->name_length - 1) * sizeof(WChar));
 				} else {
-					ret = (PWChar)MemAllocate((dent->name_length + 1) * sizeof(WChar));
+					rret = (PWChar)MemAllocate((dent->name_length + 1) * sizeof(WChar));
 				}
 				
 				if (ret == Null) {																					// Failed? (When MemAllocate fails, we get a very big Null)
 					MemFree((UIntPtr)data);
-					return Null;
+					return STATUS_OUT_OF_MEMORY;
 				}
 				
 				if (dent->name[dent->name_length - 2] == ';' && dent->name[dent->name_length - 1] == '1') {			// Fix the name?
-					StrUnicodeFromC(ret, (PChar)dent->name, dent->name_length - 2);									// Yes
-					ret[dent->name_length - 2] = '\0';
+					StrUnicodeFromC(rret, (PChar)dent->name, dent->name_length - 2);								// Yes
+					rret[dent->name_length - 2] = '\0';
 				} else {
-					StrUnicodeFromC(ret, (PChar)dent->name, dent->name_length);										// No, so we only need to put the 0 (NUL) at the end of the string!
-					ret[dent->name_length] = '\0';
+					StrUnicodeFromC(rret, (PChar)dent->name, dent->name_length);									// No, so we only need to put the 0 (NUL) at the end of the string!
+					rret[dent->name_length] = '\0';
 				}
 				
 				MemFree((UIntPtr)data);
 				
-				return ret;
+				*ret = rret;
 			}
 			
 			idx++;
@@ -152,24 +157,24 @@ PWChar Iso9660ReadDirectoryEntry(PFsNode dir, UIntPtr entry) {
 	
 	MemFree((UIntPtr)data);																							// We haven't found it...
 	
-	return Null;
+	return STATUS_FILE_DOESNT_EXISTS;
 }
 
-PFsNode Iso9660FindInDirectory(PFsNode dir, PWChar name) {
-	if ((dir == Null) || (name == Null)) {																			// The first part of this function IS EXACTLY EQUAL TO THE first part of ReadDirectoryEntry, if you want, take a look at it
-		return Null;
+Status Iso9660FindInDirectory(PFsNode dir, PWChar name, PFsNode *ret) {
+	if ((dir == Null) || (name == Null) || (ret == Null)) {															// The first part of this function IS EXACTLY EQUAL TO THE first part of ReadDirectoryEntry, if you want, take a look at it
+		return STATUS_INVALID_ARG;
 	} else if ((dir->priv == Null) || (dir->inode == 0)) {
-		return Null;
+		return STATUS_INVALID_ARG;
 	} else if ((dir->flags & FS_FLAG_DIR) != FS_FLAG_DIR) {
-		return Null;
+		return STATUS_NOT_DIR;
 	}
 	
 	PFsNode dev = dir->priv;
 	
 	if (dev->read == Null) {
-		return False;
+		return STATUS_INVALID_ARG;
 	} if ((dev->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {
-		return False;
+		return STATUS_INVALID_ARG;
 	}
 	
 	PIso9660DirEntry rent = (PIso9660DirEntry)dir->inode;
@@ -178,13 +183,16 @@ PFsNode Iso9660FindInDirectory(PFsNode dir, PWChar name) {
 	UIntPtr soff = 0;
 	
 	if (data == Null) {
-		return Null;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	for (UIntPtr i = rent->extent_length_lsb; i > 0; ) {
-		if (!dev->read(dev, (rent->extent_lba_lsb + soff) * 2048, i >= 2048 ? 2048 : i, off)) {
+		UIntPtr read;
+		Status status = dev->read(dev, (rent->extent_lba_lsb + soff) * 2048, i >= 2048 ? 2048 : i, off, &read);
+		
+		if (status != STATUS_SUCCESS) {
 			MemFree((UIntPtr)data);
-			return Null;
+			return status;
 		}
 		
 		if (i >= 2048) {
@@ -215,7 +223,7 @@ PFsNode Iso9660FindInDirectory(PFsNode dir, PWChar name) {
 			
 			if (dename == Null) {
 				MemFree((UIntPtr)data);
-				return Null;
+				return STATUS_OUT_OF_MEMORY;
 			}
 			
 			if (dent->name[dent->name_length - 2] == ';' && dent->name[dent->name_length - 1] == '1') {
@@ -233,7 +241,7 @@ PFsNode Iso9660FindInDirectory(PFsNode dir, PWChar name) {
 					if (de == Null) {
 						MemFree((UIntPtr)dename);																	// The allocation failed...
 						MemFree((UIntPtr)data);
-						return Null;
+						return STATUS_OUT_OF_MEMORY;
 					} else {
 						StrCopyMemory(de, dent, dent->directory_record_size);										// Copy it!
 					}
@@ -244,7 +252,7 @@ PFsNode Iso9660FindInDirectory(PFsNode dir, PWChar name) {
 						MemFree((UIntPtr)de);																		// Allocation failed, free everything and return Null
 						MemFree((UIntPtr)dename);
 						MemFree((UIntPtr)data);
-						return Null;
+						return STATUS_OUT_OF_MEMORY;
 					}
 					
 					node->name = dename;																			// Let's fill everything
@@ -273,7 +281,9 @@ PFsNode Iso9660FindInDirectory(PFsNode dir, PWChar name) {
 					
 					MemFree((UIntPtr)data);																			// Free the allocated/readed directory data
 					
-					return node;																					// And return!
+					*ret = node;																					// And return!
+					
+					return STATUS_SUCCESS;
 				}
 			}
 			
@@ -285,7 +295,7 @@ PFsNode Iso9660FindInDirectory(PFsNode dir, PWChar name) {
 	
 	MemFree((UIntPtr)data);																							// We haven't found it...
 	
-	return Null;
+	return STATUS_FILE_DOESNT_EXISTS;
 }
 
 Boolean Iso9660Probe(PFsNode file) {
@@ -304,7 +314,9 @@ Boolean Iso9660Probe(PFsNode file) {
 	}
 	
 	for (UInt32 i = 0x10; i < 0x15 ; i++) {
-		if (file->read(file, i * 2048, 2048, (PUInt8)pvd)) {														// Let's try to read this sector
+		UIntPtr read;
+		
+		if (file->read(file, i * 2048, 2048, (PUInt8)pvd, &read) == STATUS_SUCCESS) {								// Let's try to read this sector
 			if ((pvd->type == 0x01) && (StrCompareMemory(pvd->cd001, "CD001", 5)) && (pvd->version == 0x01)) {		// It's the PVD?
 				MemFree((UIntPtr)pvd);																				// Yes! So it's an valid Iso9660 fs!
 				return True;
@@ -321,24 +333,26 @@ Boolean Iso9660Probe(PFsNode file) {
 	return False;
 }
 
-PFsMountPoint Iso9660Mount(PFsNode file, PWChar path) {
-	if ((file == Null) || (path == Null)) {
-		return False;
+Status Iso9660Mount(PFsNode file, PWChar path, PFsMountPoint *ret) {
+	if ((file == Null) || (path == Null) || (ret == Null)) {
+		return STATUS_INVALID_ARG;
 	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {
-		return False;
+		return STATUS_NOT_FILE;
 	} else if (file->read == Null) {
-		return False;
+		return STATUS_CANT_READ;
 	}
 	
 	PIso9660PVD pvd = (PIso9660PVD)MemAllocate(sizeof(Iso9660PVD));
 	Boolean found = False;
 	
 	if (pvd == Null) {
-		return Null;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	for (UInt32 i = 0x10; !found && i < 0x15; i++) {
-		if (file->read(file, i * 2048, 2048, (PUInt8)pvd)) {														// Let's try to read this sector
+		UIntPtr read;
+		
+		if (file->read(file, i * 2048, 2048, (PUInt8)pvd, &read) != STATUS_SUCCESS) {								// Let's try to read this sector
 			if ((pvd->type == 0x01) && (StrCompareMemory(pvd->cd001, "CD001", 5)) && (pvd->version == 0x01)) {		// It's the PVD?
 				found = True;																						// Yes!
 			} else if (pvd->type == 0xFF) {																			// It's the terminator...
@@ -351,14 +365,14 @@ PFsMountPoint Iso9660Mount(PFsNode file, PWChar path) {
 	
 	if (!found) {																									// We have found it?
 		MemFree((UIntPtr)pvd);																						// Nope
-		return Null;
+		return STATUS_MOUNT_FAILED;
 	}
 	
 	PIso9660DirEntry rootde = (PIso9660DirEntry)MemAllocate(34);													// Let's copy the root directory
 	
 	if (rootde == Null) {
 		MemFree((UIntPtr)pvd);																						// Failed to allocate the required space :(
-		return Null;
+		return STATUS_OUT_OF_MEMORY;
 	} else {
 		StrCopyMemory(rootde, (PVoid)(&pvd->root_directory), 34);													// Let's copy it
 		MemFree((UIntPtr)pvd);																						// And free the PVD, we don't need it anymore
@@ -368,7 +382,7 @@ PFsMountPoint Iso9660Mount(PFsNode file, PWChar path) {
 	
 	if (mp == Null) {
 		MemFree((UIntPtr)rootde);																					// Fai- really, i will stop putting those "Failed" and "Null pointer check" comments...
-		return Null;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	mp->path = StrDuplicate(path);																					// Let's try to duplicate the path string
@@ -376,7 +390,7 @@ PFsMountPoint Iso9660Mount(PFsNode file, PWChar path) {
 	if (mp->path == Null) {
 		MemFree((UIntPtr)mp);
 		MemFree((UIntPtr)rootde);
-		return Null;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	mp->type = StrDuplicate(L"Iso9660");																			// And the type string
@@ -386,7 +400,7 @@ PFsMountPoint Iso9660Mount(PFsNode file, PWChar path) {
 		MemFree((UIntPtr)mp);
 		MemFree((UIntPtr)rootde);
 		
-		return Null;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	mp->root = (PFsNode)MemAllocate(sizeof(FsNode));																// Create the root directory node
@@ -397,7 +411,7 @@ PFsMountPoint Iso9660Mount(PFsNode file, PWChar path) {
 		MemFree((UIntPtr)mp);
 		MemFree((UIntPtr)rootde);
 		
-		return Null;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	mp->root->name = StrDuplicate(L"/");																			// Duplicate the name
@@ -409,7 +423,7 @@ PFsMountPoint Iso9660Mount(PFsNode file, PWChar path) {
 		MemFree((UIntPtr)mp);
 		MemFree((UIntPtr)rootde);
 		
-		return Null;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	mp->root->priv = file;																							// Finally, fill everything!
@@ -426,7 +440,9 @@ PFsMountPoint Iso9660Mount(PFsNode file, PWChar path) {
 	mp->root->create = Null;
 	mp->root->control = Null;
 	
-	return mp;
+	*ret = mp;
+	
+	return STATUS_SUCCESS;
 }
 
 Boolean Iso9660Umount(PFsMountPoint mp) {

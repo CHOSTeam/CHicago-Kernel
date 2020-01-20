@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 27 of 2018, at 14:59 BRT
-// Last edited on January 18 of 2020, at 12:17 BRT
+// Last edited on January 20 of 2020, at 11:05 BRT
 
 #define __CHICAGO_PROCESS__
 
@@ -43,22 +43,20 @@ List PsKillList = { Null, Null, 0, False };
 
 UIntPtr PsNextID = 0;
 
-PThread PsCreateThreadInt(UInt8 prio, UIntPtr entry, UIntPtr userstack, Boolean user) {
-	if (prio >= 6) {																															// If the priority is too high fall back to the normal priority
+Status PsCreateThreadInt(UInt8 prio, UIntPtr entry, UIntPtr userstack, Boolean user, PThread *ret) {
+	if (ret == Null || (user && (userstack == 0))) {																							// Sanity checks
+		return STATUS_INVALID_ARG;																												// Nope
+	} else if (prio >= 6) {																														// If the priority is too high fall back to the normal priority
 		prio = PS_PRIORITY_NORMAL;
-	}
-	
-	if (user && (userstack == 0)) {																												// Valid user stack?
-		return Null;																															// Nope
 	}
 	
 	PThread th = (PThread)MemAllocate(sizeof(Thread));																							// Let's try to allocate the process struct!
 	
 	if (th == Null) {
-		return Null;																															// Failed
+		return STATUS_OUT_OF_MEMORY;																											// Failed
 	} else if ((th->ctx = PsCreateContext(entry, userstack, user)) == Null) {																	// Create the thread context
 		MemFree((UIntPtr)th);																													// Failed
-		return Null;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	th->id = 0;																																	// We're going to set the id and the parent process later
@@ -72,24 +70,33 @@ PThread PsCreateThreadInt(UInt8 prio, UIntPtr entry, UIntPtr userstack, Boolean 
 	th->waitp = Null;
 	th->waitt = Null;
 	th->killp = False;
-	th->tls = user ? VirtAllocAddress(0, MM_PAGE_SIZE, VIRT_PROT_READ | VIRT_PROT_WRITE) : 0;													// Init the TLS (if we need to)
 	
-	if (user && th->tls == 0) {
+	Status status = user ? VirtAllocAddress(0, MM_PAGE_SIZE, VIRT_PROT_READ | VIRT_PROT_WRITE, &th->tls) : STATUS_SUCCESS;						// Init the TLS (if we need to)
+	
+	if (status != STATUS_SUCCESS) {
 		PsFreeContext(th->ctx);																													// Failed
 		MemFree((UIntPtr)th);
-		return Null;
+		return status;
 	} else if (user) {
 		StrSetMemory((PUInt8)th->tls, 0, MM_PAGE_SIZE);																							// Clean the TLS
 	}
 	
-	return th;
+	*ret = th;
+	
+	return STATUS_SUCCESS;
 }
 
-PProcess PsCreateProcessInt(PWChar name, UInt8 prio, UIntPtr entry, UIntPtr dir) {
+Status PsCreateProcessInt(PWChar name, UInt8 prio, UIntPtr entry, UIntPtr dir, PProcess *ret) {
+	if (ret == Null) {																															// Sanity check
+		return STATUS_INVALID_ARG;																												// Nope
+	} else if (prio >= 6) {																														// If the priority is too high fall back to the normal priority
+		prio = PS_PRIORITY_NORMAL;
+	}
+	
 	PProcess proc = (PProcess)MemAllocate(sizeof(Process));																						// Let's try to allocate the process struct!
 	
 	if (proc == Null) {
-		return Null;																															// Failed
+		return STATUS_OUT_OF_MEMORY;																											// Failed
 	}
 	
 	proc->id = PsNextID++;																														// Use the next PID
@@ -102,7 +109,7 @@ PProcess PsCreateProcessInt(PWChar name, UInt8 prio, UIntPtr entry, UIntPtr dir)
 			MemFree((UIntPtr)proc->name);																										// Failed...
 			MemFree((UIntPtr)proc);
 			
-			return Null;
+			return STATUS_OUT_OF_MEMORY;
 		}
 	}
 	
@@ -110,7 +117,7 @@ PProcess PsCreateProcessInt(PWChar name, UInt8 prio, UIntPtr entry, UIntPtr dir)
 		MmFreeDirectory(proc->dir);																												// Failed...
 		MemFree((UIntPtr)proc->name);
 		MemFree((UIntPtr)proc);
-		return Null;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	proc->last_tid = 0;
@@ -122,7 +129,7 @@ PProcess PsCreateProcessInt(PWChar name, UInt8 prio, UIntPtr entry, UIntPtr dir)
 		MmFreeDirectory(proc->dir);
 		MemFree((UIntPtr)proc->name);
 		MemFree((UIntPtr)proc);
-		return Null;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	proc->handles = ListNew(False);																												// Init the handle list for the process
@@ -134,19 +141,20 @@ PProcess PsCreateProcessInt(PWChar name, UInt8 prio, UIntPtr entry, UIntPtr dir)
 		MmFreeDirectory(proc->dir);
 		MemFree((UIntPtr)proc->name);
 		MemFree((UIntPtr)proc);
-		return Null;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
-	PThread th = PsCreateThreadInt(prio, entry, 0, False);																						// Create the first thread
+	PThread th;
+	Status status = PsCreateThreadInt(prio, entry, 0, False, &th);																				// Create the first thread
 	
-	if (th == Null) {
+	if (status != STATUS_SUCCESS) {
 		ListFree(proc->handles);																												// Failed...
 		ListFree(proc->shm_mapped_sections);
 		ListFree(proc->threads);
 		MmFreeDirectory(proc->dir);
 		MemFree((UIntPtr)proc->name);
 		MemFree((UIntPtr)proc);
-		return Null;
+		return status;
 	}
 	
 	th->id = proc->last_tid++;																													// Set the thread id
@@ -161,18 +169,20 @@ PProcess PsCreateProcessInt(PWChar name, UInt8 prio, UIntPtr entry, UIntPtr dir)
 		MmFreeDirectory(proc->dir);
 		MemFree((UIntPtr)proc->name);
 		MemFree((UIntPtr)proc);
-		return Null;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
-	return proc;
+	*ret = proc;
+	
+	return STATUS_SUCCESS;
 }
 
-PThread PsCreateThread(UInt8 prio, UIntPtr entry, UIntPtr userstack, Boolean user) {
-	return PsCreateThreadInt(prio, entry, userstack, user);																						// Use our PsCreateThreadInt function
+Status PsCreateThread(UInt8 prio, UIntPtr entry, UIntPtr userstack, Boolean user, PThread *ret) {
+	return PsCreateThreadInt(prio, entry, userstack, user, ret);																				// Use our PsCreateThreadInt function
 }
 
-PProcess PsCreateProcess(PWChar name, UInt8 prio, UIntPtr entry) {
-	return PsCreateProcessInt(name, prio, entry, 0);																							// Use our PsCreateProcessInt function
+Status PsCreateProcess(PWChar name, UInt8 prio, UIntPtr entry, PProcess *ret) {
+	return PsCreateProcessInt(name, prio, entry, 0, ret);																						// Use our PsCreateProcessInt function
 }
 
 Void PsAddToQueue(PThread th, UInt8 priority) {
@@ -275,49 +285,63 @@ Void PsSleep(UIntPtr ms) {
 	PsSwitchTask(PsDontRequeue);																												// Remove it from the queue and go to the next thread
 }
 
-UIntPtr PsWaitThread(UIntPtr id) {
-	if (PsCurrentThread == Null) {																												// Is threading initialized?
-		return 1;																																// Nope
+Status PsWaitThread(UIntPtr id, PUIntPtr ret) {
+	if (PsCurrentThread == Null || ret == Null) {																								// Sanity checks
+		return STATUS_INVALID_ARG;
 	}
 	
 	PsLockTaskSwitch(old);																														// Lock
 	
 	if (!ListAdd(&PsWaittList, PsCurrentThread)) {																								// Try to add it to the waitt list
 		PsUnlockTaskSwitch(old);																												// Failed, but let's keep on trying!
-		return PsWaitThread(id);
+		return PsWaitThread(id, ret);
 	}
 	
 	PsCurrentThread->waitt = PsGetThread(id);
 	
+	if (PsCurrentThread->waitt == Null) {
+		PsUnlockTaskSwitch(old);
+		return STATUS_ALREADY_KILLED;
+	}
+	
 	PsUnlockTaskSwitch(old);																													// Unlock
 	PsSwitchTask(PsDontRequeue);																												// Remove it from the queue and go to the next thread
 	
-	return PsCurrentThread->retv;
+	*ret = PsCurrentThread->retv;
+	
+	return STATUS_SUCCESS;
 }
 
-UIntPtr PsWaitProcess(UIntPtr id) {
-	if (PsCurrentThread == Null) {																												// Is threading initialized?
-		return 1;																																// Nope
+Status PsWaitProcess(UIntPtr id, PUIntPtr ret) {
+	if (PsCurrentThread == Null || ret == Null) {																								// Sanity checks
+		return STATUS_INVALID_ARG;
 	}
 	
 	PsLockTaskSwitch(old);																														// Lock
 	
 	if (!ListAdd(&PsWaitpList, PsCurrentThread)) {																								// Try to add it to the waitp list
 		PsUnlockTaskSwitch(old);																												// Failed, but let's keep on trying!
-		return PsWaitThread(id);
+		return PsWaitThread(id, ret);
 	}
 	
 	PsCurrentThread->waitp = PsGetProcess(id);
 	
+	if (PsCurrentThread->waitp == Null) {
+		PsUnlockTaskSwitch(old);
+		return STATUS_ALREADY_KILLED;
+	}
+	
 	PsUnlockTaskSwitch(old);																													// Unlock
 	PsSwitchTask(PsDontRequeue);																												// Remove it from the queue and go to the next thread
 	
-	return PsCurrentThread->retv;
+	*ret = PsCurrentThread->retv;
+	
+	return STATUS_SUCCESS;
 }
 
-Void PsLock(PLock lock) {
+Status PsLock(PLock lock) {
 	if ((lock == Null) || (PsCurrentThread == Null)) {																							// Sanity checks
-		return;
+		return STATUS_INVALID_ARG;
 	}
 	
 	PsLockTaskSwitch(old);																														// Lock (the task switching)
@@ -327,27 +351,28 @@ Void PsLock(PLock lock) {
 		lock->locked = True;
 		lock->owner = PsCurrentThread;
 		PsUnlockTaskSwitch(old);
-		return;
+		return STATUS_SUCCESS;
 	}
 	
 	if (!ListAdd(&PsWaitlList, PsCurrentThread)) {																								// Try to add it to the waitl list
 		PsUnlockTaskSwitch(old);																												// Failed, but let's keep on trying!
-		PsLock(lock);
-		return;
+		return PsLock(lock);
 	}
 	
 	PsCurrentThread->waitl = lock;
 	
 	PsUnlockTaskSwitch(old);																													// Unlock
 	PsSwitchTask(PsDontRequeue);																												// Remove it from the queue and go to the next thread
+	
+	return STATUS_SUCCESS;
 }
 
-Boolean PsTryLock(PLock lock) {
+Status PsTryLock(PLock lock) {
 	if ((lock == Null) || (PsCurrentThread == Null)) {																							// Sanity checks
-		return False;
+		return STATUS_INVALID_ARG;
 	}
 	
-	Boolean ret = False;
+	Status ret = STATUS_TRYLOCK_FAILED;
 	
 	PsLockTaskSwitch(old);																														// Lock (the task switching)
 	
@@ -363,11 +388,11 @@ Boolean PsTryLock(PLock lock) {
 	return ret;
 }
 
-Void PsUnlock(PLock lock) {
+Status PsUnlock(PLock lock) {
 	if ((lock == Null) || (PsCurrentThread == Null)) {																							// Sanity checks
-		return;
+		return STATUS_INVALID_ARG;
 	} else if (!lock->locked || (lock->owner != PsCurrentThread)) {																				// We're the owner of this lock? We really need to unlock it?
-		return;																																	// Nope >:(
+		return STATUS_NOT_OWNER;																												// Nope >:(
 	}
 	
 	PsLockTaskSwitch(old);																														// Lock (the task switching)
@@ -375,7 +400,7 @@ Void PsUnlock(PLock lock) {
 	lock->count--;																																// Decrease the counter
 	
 	if (lock->count > 0) {																														// We can fully unlock it for other threads?
-		return;																																	// Nope...
+		return STATUS_SUCCESS;																													// Nope...
 	}
 	
 	lock->locked = False;																														// Unlock it and remove the owner (set it to Null)
@@ -394,11 +419,13 @@ Void PsUnlock(PLock lock) {
 			PsUnlockTaskSwitch(old);
 			PsSwitchTask(Null);
 			
-			return;
+			return STATUS_SUCCESS;
 		}
 	}
 	
 	PsUnlockTaskSwitch(old);																													// Unlock (the task switching)
+	
+	return STATUS_SUCCESS;
 }
 
 static Void PsAddToKillList(PThread th) {
@@ -697,9 +724,10 @@ static Void PsKillerThreadFunc(Void) {
 }
 
 Void PsInitIdleProcess(Void) {
-	PProcess proc = PsCreateProcess(L"System Idle Process", PS_PRIORITY_VERYLOW, (UIntPtr)PsIdleThread);										// Now, let's try to create the idle process
+	PProcess proc;
+	Status status = PsCreateProcess(L"System Idle Process", PS_PRIORITY_VERYLOW, (UIntPtr)PsIdleThread, &proc);									// Now, let's try to create the idle process
 	
-	if (proc == Null) {
+	if (status != STATUS_SUCCESS) {
 		DbgWriteFormated("PANIC! Failed to init tasking\r\n");																					// ...
 		Panic(PANIC_KERNEL_INIT_FAILED);
 	}
@@ -708,9 +736,9 @@ Void PsInitIdleProcess(Void) {
 }
 
 Void PsInitKillerThread(Void) {
-	PsKillerThread = PsCreateThread(PS_PRIORITY_VERYLOW, (UIntPtr)PsKillerThreadFunc, 0, False);												// Now, let's try to create the killer thread
+	Status status = PsCreateThread(PS_PRIORITY_VERYLOW, (UIntPtr)PsKillerThreadFunc, 0, False, &PsKillerThread);								// Now, let's try to create the killer thread
 	
-	if (PsKillerThread == Null) {
+	if (status != STATUS_SUCCESS) {
 		DbgWriteFormated("PANIC! Failed to init tasking\r\n");																					// ...
 		Panic(PANIC_KERNEL_INIT_FAILED);
 	}
@@ -719,9 +747,10 @@ Void PsInitKillerThread(Void) {
 }
 
 Void PsInit(Void) {
-	PProcess proc = PsCreateProcessInt(L"System Process", PS_PRIORITY_NORMAL, (UIntPtr)KernelMainLate, MmKernelDirectory);						// Try to create the system process
+	PProcess proc;
+	Status status = PsCreateProcessInt(L"System Process", PS_PRIORITY_NORMAL, (UIntPtr)KernelMainLate, MmKernelDirectory, &proc);				// Try to create the system process
 	
-	if (proc == Null) {
+	if (status != STATUS_SUCCESS) {
 		DbgWriteFormated("PANIC! Failed to init tasking\r\n");
 		Panic(PANIC_KERNEL_INIT_FAILED);
 	}

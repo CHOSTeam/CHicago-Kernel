@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 29 of 2018, at 22:30 BRT
-// Last edited on October 26 of 2019, at 12:35 BRT
+// Last edited on January 20 of 2020, at 11:12 BRT
 
 #include <chicago/mm.h>
 
@@ -46,7 +46,7 @@ Boolean HeapIncrement(UIntPtr amount) {
 			return False;
 		}
 		
-		if (!MmMap(HeapCurrentAligned, phys, MM_MAP_KDEF)) {								// Now try to map it
+		if (MmMap(HeapCurrentAligned, phys, MM_MAP_KDEF) != STATUS_SUCCESS) {				// Now try to map it
 			MmDereferencePage(phys);														// Failed, so undo everything
 			
 			for (UIntPtr i = old; i < HeapCurrentAligned; i += MM_PAGE_SIZE) {
@@ -76,7 +76,6 @@ Boolean HeapDecrement(UIntPtr amount) {
 	
 	while ((HeapCurrentAligned - MM_PAGE_SIZE) > HeapCurrent) {								// And the aligned one
 		HeapCurrentAligned -= MM_PAGE_SIZE;
-		
 		MmDereferencePage(MmGetPhys(HeapCurrentAligned));									// Dereference the physical page
 		MmUnmap(HeapCurrentAligned);														// And unmap
 	}

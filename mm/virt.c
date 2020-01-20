@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on September 15 of 2018, at 12:46 BRT
-// Last edited on December 29 of 2019, at 12:50 BRT
+// Last edited on January 18 of 2020, at 17:03 BRT
 
 #include <chicago/mm.h>
 #include <chicago/process.h>
@@ -51,9 +51,9 @@ UInt32 VirtConvertFlags2(UInt32 flags) {
 	return ret;
 }
 
-UIntPtr VirtAllocAddress(UIntPtr addr, UIntPtr size, UInt32 flags) {
+Status VirtAllocAddress(UIntPtr addr, UIntPtr size, UInt32 flags, PUIntPtr ret) {
 	Boolean check = True;
-	Boolean aor = (flags & VIRT_FLAGS_AOR) == VIRT_FLAGS_AOR;
+	Boolean aor = (flags & VIRT_FLAGS_ALLOCNOW) != VIRT_FLAGS_ALLOCNOW;
 	
 	if ((size % MM_PAGE_SIZE) != 0) {													// Page align the size
 		size += MM_PAGE_SIZE - (size % MM_PAGE_SIZE);
@@ -67,12 +67,12 @@ UIntPtr VirtAllocAddress(UIntPtr addr, UIntPtr size, UInt32 flags) {
 		}
 		
 		if (addr == 0) {																// Failed?
-			return 0;																	// Yes...
+			return STATUS_OUT_OF_MEMORY;												// Yes...
 		} else {
 			check = False;
 		}
 	} else if (addr >= MM_USER_END) {													// Valid address?
-		return 0;																		// No...
+		return STATUS_INVALID_ARG;														// No...
 	} else if ((addr % MM_PAGE_SIZE) != 0) {											// Page aligned?
 		addr -= addr % MM_PAGE_SIZE;													// No, so let's page align it!
 	}
@@ -80,7 +80,7 @@ UIntPtr VirtAllocAddress(UIntPtr addr, UIntPtr size, UInt32 flags) {
 	if (check) {
 		for (UIntPtr i = addr; i < addr + size; i += MM_PAGE_SIZE) {
 			if (MmQuery(i)) {															// In use?
-				return 0;																// Yes >:(
+				return STATUS_ALREADY_MAPPED;											// Yes >:(
 			}
 		}
 	}
@@ -100,10 +100,12 @@ UIntPtr VirtAllocAddress(UIntPtr addr, UIntPtr size, UInt32 flags) {
 				MmUnmap(j);
 			}
 			
-			return 0;
+			return STATUS_OUT_OF_MEMORY;
 		}
 		
-		if (!MmMap(i, phys, flgs | (aor ? MM_MAP_AOR : 0))) {							// Try to map!
+		Status status = MmMap(i, phys, flgs | (aor ? MM_MAP_AOR : 0));					// Try to map!
+		
+		if (status != STATUS_SUCCESS) {
 			MmDereferencePage(phys);													// Failed, undo everything...
 			
 			for (UIntPtr j = old; j < i; j += MM_PAGE_SIZE) {
@@ -114,7 +116,7 @@ UIntPtr VirtAllocAddress(UIntPtr addr, UIntPtr size, UInt32 flags) {
 				MmUnmap(j);
 			}
 			
-			return 0;
+			return status;
 		}
 	}
 	
@@ -122,12 +124,14 @@ UIntPtr VirtAllocAddress(UIntPtr addr, UIntPtr size, UInt32 flags) {
 		PsCurrentProcess->mem_usage += size;
 	}
 	
-	return addr;																		// :)
+	*ret = addr;																		// :)
+	
+	return STATUS_SUCCESS;
 }
 
-Boolean VirtFreeAddress(UIntPtr addr, UIntPtr size) {
+Status VirtFreeAddress(UIntPtr addr, UIntPtr size) {
 	if ((addr == 0) || (addr >= MM_USER_END)) {											// Valid address?
-		return False;																	// Nope
+		return STATUS_INVALID_ARG;														// Nope
 	} else if ((addr % MM_PAGE_SIZE) != 0) {											// Page aligned?
 		addr -= addr % MM_PAGE_SIZE;													// No, page align it!
 	}
@@ -138,7 +142,7 @@ Boolean VirtFreeAddress(UIntPtr addr, UIntPtr size) {
 	
 	for (UIntPtr i = addr; i < addr + size; i += MM_PAGE_SIZE) {						// Let's try to do it!
 		if (!MmQuery(i)) {																// Mapped?
-			return False;																// No...
+			return STATUS_NOT_MAPPED;													// No...
 		}
 		
 		if ((MmQuery(i) & MM_MAP_AOR) != MM_MAP_AOR) {									// Free/dereference the physical page
@@ -152,7 +156,7 @@ Boolean VirtFreeAddress(UIntPtr addr, UIntPtr size) {
 		PsCurrentProcess->mem_usage -= size;
 	}
 	
-	return True;
+	return STATUS_SUCCESS;
 }
 
 UInt32 VirtQueryProtection(UIntPtr addr) {
@@ -163,9 +167,9 @@ UInt32 VirtQueryProtection(UIntPtr addr) {
 	}
 }
 
-Boolean VirtChangeProtection(UIntPtr addr, UIntPtr size, UInt32 flags) {
+Status VirtChangeProtection(UIntPtr addr, UIntPtr size, UInt32 flags) {
 	if ((addr == 0) || (addr >= MM_USER_END)) {											// Valid address?
-		return False;																	// Nope...
+		return STATUS_INVALID_ARG;														// Nope...
 	} else if ((addr % MM_PAGE_SIZE) != 0) {											// Page aligned?
 		addr -= addr % MM_PAGE_SIZE;													// Nope, let's page align this addr!
 	}
@@ -178,17 +182,18 @@ Boolean VirtChangeProtection(UIntPtr addr, UIntPtr size, UInt32 flags) {
 	
 	for (UIntPtr i = addr; i < addr + size; i += MM_PAGE_SIZE) {						// Let's try to do it!
 		if (!MmQuery(i)) {																// Mapped?
-			return False;																// No...
+			return STATUS_NOT_MAPPED;													// No...
 		}
 		
 		UInt32 extra = ((MmQuery(i) & MM_MAP_AOR) == MM_MAP_AOR) ? MM_MAP_AOR : 0;		// Get if we need to set the AOR flag
+		Status status = MmMap(i, MmGetPhys(i), flgs | extra);							// Try to remap with the new protection
 		
-		if (!MmMap(i, MmGetPhys(i), flgs | extra)) {									// Try to remap with the new protection
-			return False;																// Failed :(
+		if (status != STATUS_SUCCESS) {
+			return status;																// Failed :(
 		}
 	}
 	
-	return True;
+	return STATUS_SUCCESS;
 }
 
 UIntPtr VirtGetUsage(Void) {

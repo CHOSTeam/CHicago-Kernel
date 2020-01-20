@@ -1,7 +1,7 @@
 # File author is Ítalo Lima Marconato Matias
 #
 # Created on May 11 of 2018, at 13:14 BRT
-# Last edited on January 18 of 2020, at 11:07 BRT
+# Last edited on January 20 of 2020, at 10:52 BRT
 
 ARCH ?= x86
 VERBOSE ?= false
@@ -13,7 +13,7 @@ INC_DIR ?= Development/Headers
 
 ifeq ($(ARCH),x86)
 	SUBARCH ?= 32
-	ARCH_CFLAGS := -no-pie -fno-pic -Iarch/$(ARCH)/include$(SUBARCH)
+	ARCH_CFLAGS := -Wno-return-local-addr -Wno-int-conversion -no-pie -fno-pic -Iarch/$(ARCH)/include$(SUBARCH)
 	ARCH_LDFLAGS := -no-pie -fno-pic
 	
 	ifeq ($(SUBARCH),32)
@@ -49,8 +49,9 @@ OBJECTS += io/dev/framebuffer.c.o io/dev/null.c.o io/dev/zero.c.o io/fs/devfs.c.
 OBJECTS += io/fs/iso9660.c.o
 OBJECTS += mm/alloc.c.o mm/heap.c.o mm/pmm.c.o mm/shm.c.o
 OBJECTS += mm/virt.c.o
+OBJECTS += sc/sc.c.o sc/sctable.c.o
 OBJECTS += sys/ipc.c.o sys/panic.c.o sys/process.c.o sys/rand.c.o
-OBJECTS += sys/sc.c.o sys/string.c.o
+OBJECTS += sys/string.c.o
 OBJECTS += vid/display.c.o vid/img.c.o
 
 OTHER_OBJECTS := font.psf splash.bmp
@@ -77,19 +78,19 @@ endif
 PATH := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))/../toolchain/$(ARCH)-$(SUBARCH)/bin:$(PATH)
 SHELL := env PATH=$(PATH) /bin/bash
 
-all: $(KERNEL)
+all: sc/sctable.c $(KERNEL)
 
 clean:
 ifeq ($(UNSUPPORTED_ARCH),true)
 	$(error Unsupported architecture $(ARCH), subarch $(SUBARCH))
 endif
-	$(NOECHO)rm -f $(ARCH_LIB_OBJECTS) $(ARCH_OBJECTS) $(LIB_OBJECTS) $(OBJECTS) $(LIB_OTHER_OBJECTS) $(OTHER_OBJECTS) $(LIB_KERNEL) $(KERNEL) build/lib_$(ARCH)_$(SUBARCH)/arch/$(ARCH)/kdriver.s.o
+	$(NOECHO)rm -f $(ARCH_OBJECTS) $(OBJECTS) $(OTHER_OBJECTS) $(KERNEL) sc/sctable.c include/chicago/sc.h
 
 clean-all:
 ifeq ($(UNSUPPORTED_ARCH),true)
 	$(error Unsupported architecture $(ARCH), subarch $(SUBARCH))
 endif
-	$(NOECHO)rm -rf build
+	$(NOECHO)rm -rf build sc/sctable.c include/chicago/sc.h
 
 remake: clean all
 ifeq ($(UNSUPPORTED_ARCH),true)
@@ -140,3 +141,11 @@ else
 	$(NOECHO)$(TARGET)-gcc -DARCH=L\"$(ARCH)\" -DARCH_C=\"$(ARCH)-$(SUBARCH)\" -std=c2x -Iinclude -Iarch/$(ARCH)/include -I arch/$(ARCH)/subarch/$(SUBARCH)/include -ffreestanding -fshort-wchar -funroll-loops -fomit-frame-pointer -ffast-math -O3 -Wall -Wextra -Wno-implicit-fallthrough -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast $(ARCH_CFLAGS) -c $< -o $@
 endif
 endif
+
+include/chicago/sc.h: sc/syscalls.tbl
+	$(NOECHO)echo Generating $@
+	$(NOECHO)sc/makesc.sh sc/syscalls.tbl > $@
+
+sc/sctable.c: include/chicago/sc.h
+	$(NOECHO)echo Generating $@
+	$(NOECHO)sc/makesctable.sh sc/syscalls.tbl > $@

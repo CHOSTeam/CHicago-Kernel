@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 19:19 BRT
-// Last edited on December 29 of 2019, at 14:24 BRT
+// Last edited on January 20 of 2020, at 11:21 BRT
 
 #include <chicago/arch/vmm.h>
 
@@ -255,7 +255,7 @@ UIntPtr MmFindHighestFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count) {
 UIntPtr MmMapTemp(UIntPtr phys, UInt32 flags) {
 	for (UIntPtr i = 0xFFFFFF0000000000; i < 0xFFFFFF8000000000; i += MM_PAGE_SIZE) {											// Let's try to find an free temp address
 		if (MmQuery(i) == 0) {																									// Free?
-			if (MmMap(i, phys, flags)) {																						// Yes, so try to map it
+			if (MmMap(i, phys, flags) == STATUS_SUCCESS) {																		// Yes, so try to map it
 				return i;																										// Mapped! Now we only need to return it
 			}
 		}
@@ -264,7 +264,7 @@ UIntPtr MmMapTemp(UIntPtr phys, UInt32 flags) {
 	return 0;																													// Failed...
 }
 
-Boolean MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags) {
+Status MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags) {
 	if ((virt % MM_PAGE_SIZE) != 0) {																							// Align to page size
 		virt -= virt % MM_PAGE_SIZE;
 	}
@@ -293,7 +293,7 @@ Boolean MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags) {
 		UIntPtr block = MmReferencePage(0);																						// No, so let's alloc it
 		
 		if (block == 0) {																										// Failed?
-			return False;																										// Then just return
+			return STATUS_OUT_OF_MEMORY;																						// Then just return
 		}
 		
 		if (virt >= 0xFFFF800000000000) {																						// Kernel-only page directory?
@@ -307,12 +307,12 @@ Boolean MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags) {
 	}
 	
 	if ((MmGetP3(virt) & PAGE_HUGE) == PAGE_HUGE) {																				// This P3 entry is a huge one? (1GiB page)
-		return False;																											// Yes, but sorry, we don't support mapping it YET
+		return STATUS_MAP_ERROR;																								// Yes, but sorry, we don't support mapping it YET
 	} else if ((MmGetP3(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																// This P3 entry exists?
 		UIntPtr block = MmReferencePage(0);																						// No, so let's alloc it
 		
 		if (block == 0) {																										// Failed?
-			return False;																										// Then just return
+			return STATUS_OUT_OF_MEMORY;																						// Then just return
 		}
 		
 		if (virt >= 0xFFFF800000000000) {																						// Kernel-only page directory?
@@ -326,12 +326,12 @@ Boolean MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags) {
 	}
 	
 	if ((MmGetP2(virt) & PAGE_HUGE) == PAGE_HUGE) {																				// This P2 entry is a huge one? (2MiB page)
-		return False;																											// Yes, but sorry, we don't support mapping it YET
+		return STATUS_MAP_ERROR;																								// Yes, but sorry, we don't support mapping it YET
 	} else if ((MmGetP2(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																// This P2 entry exists?
 		UIntPtr block = MmReferencePage(0);																						// No, so let's alloc it
 		
 		if (block == 0) {																										// Failed?
-			return False;																										// Then just return
+			return STATUS_OUT_OF_MEMORY;																						// Then just return
 		}
 		
 		if (virt >= 0xFFFF800000000000) {																						// Kernel-only page directory?
@@ -347,26 +347,26 @@ Boolean MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags) {
 	MmSetP1(virt, phys, flags2);																								// Map the phys addr to the virt addr
 	MmInvlpg(virt);																												// Update the TLB
 	
-	return True;
+	return STATUS_SUCCESS;
 }
 
-Boolean MmUnmap(UIntPtr virt) {
+Status MmUnmap(UIntPtr virt) {
 	if ((MmGetP4(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																		// This P4 entry exists?
-		return False;																											// Nope
+		return STATUS_NOT_MAPPED;																								// Nope
 	} else if ((MmGetP3(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																// This P3 entry exists?
-		return False;																											// Nope
+		return STATUS_NOT_MAPPED;																								// Nope
 	} else if ((MmGetP3(virt) & PAGE_HUGE) == PAGE_HUGE) {																		// This P3 entry is a huge one? (1GiB page)
-		return False;																											// Yes, but sorry, we don't support mapping it YET
+		return STATUS_UNMAP_ERROR;																								// Yes, but sorry, we don't support mapping it YET
 	} else if ((MmGetP2(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																// This P2 entry exists?
-		return False;																											// Nope
+		return STATUS_NOT_MAPPED;																								// Nope
 	} else if ((MmGetP2(virt) & PAGE_HUGE) == PAGE_HUGE) {																		// This P2 entry is a huge one? (2MiB page)
-		return False;																											// Yes, but sorry, we don't support mapping it YET
+		return STATUS_UNMAP_ERROR;																								// Yes, but sorry, we don't support mapping it YET
 	} else if ((MmGetP1(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																// This P1 entry exists?
-		return False;																											// Nope
+		return STATUS_NOT_MAPPED;																								// Nope
 	} else {
 		MmSetP1(virt, 0, 0);																									// Yes, so unmap the virt addr
 		MmInvlpg(virt);																											// Update the TLB
-		return True;
+		return STATUS_SUCCESS;
 	}
 }
 

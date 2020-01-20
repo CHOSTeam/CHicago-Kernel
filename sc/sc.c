@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:14 BRT
-// Last edited on January 18 of 2020, at 11:27 BRT
+// Last edited on January 20 of 2020, at 11:03 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/console.h>
@@ -66,9 +66,9 @@ IntPtr ScAppendHandle(UInt8 type, PVoid data) {
 	return PsCurrentProcess->last_handle_id++;
 }
 
-Void ScSysGetVersion(PSystemVersion ver) {
+Status ScSysGetVersion(PSystemVersion ver) {
 	if (!ScCheckPointer(ver)) {																																// Check if the pointer is inside of the userspace
-		return;
+		return STATUS_INVALID_ARG;
 	}
 	
 	if (ScCheckPointer(ver->major)) {																														// And let's do it!
@@ -90,33 +90,37 @@ Void ScSysGetVersion(PSystemVersion ver) {
 	if (ScCheckPointer(ver->arch)) {
 		StrCopy(ver->arch, CHICAGO_ARCH);
 	}
+	
+	return STATUS_SUCCESS;
 }
 
-PInt ScSysGetErrno(Void) {
-	return (PInt)PsCurrentThread->tls;																														// Return the errno pointer (first entry on the TLS)
-}
-
-Void ScSysCloseHandle(IntPtr handle) {
+Status ScSysCloseHandle(IntPtr handle) {
 	if (handle >= PsCurrentProcess->last_handle_id) {																										// Check if the handle is valid
-		return;
+		return STATUS_INVALID_ARG;
 	}
 	
 	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Try to get the handle data
 	
 	if (hndl == Null) {
-		return;
+		return STATUS_WRONG_HANDLE;
 	}
 	
 	ScFreeHandle(hndl->type, hndl->data);																													// Free the data (if required)
 	
 	hndl->used = False;																																		// "Free" this entry
+	
+	return STATUS_SUCCESS;
 }
 
-UIntPtr ScVirtAllocAddress(UIntPtr addr, UIntPtr size, UInt32 flags) {
-	return VirtAllocAddress(addr, size, flags);																												// Just redirect
+Status ScVirtAllocAddress(UIntPtr addr, UIntPtr size, UInt32 flags, PUIntPtr ret) {
+	if (!ScCheckPointer(ret)) {																																// Sanity check
+		return STATUS_INVALID_ARG;
+	}
+	
+	return VirtAllocAddress(addr, size, flags, ret);																										// Just redirect
 }
 
-Boolean ScVirtFreeAddress(UIntPtr addr, UIntPtr size) {
+Status ScVirtFreeAddress(UIntPtr addr, UIntPtr size) {
 	return VirtFreeAddress(addr, size);																														// Just redirect
 }
 
@@ -124,7 +128,7 @@ UInt32 ScVirtQueryProtection(UIntPtr addr) {
 	return VirtQueryProtection(addr);																														// Just redirect
 }
 
-Boolean ScVirtChangeProtection(UIntPtr addr, UIntPtr size, UInt32 flags) {
+Status ScVirtChangeProtection(UIntPtr addr, UIntPtr size, UInt32 flags) {
 	return VirtChangeProtection(addr, size, flags);																											// Just redirect
 }
 
@@ -132,18 +136,24 @@ UIntPtr ScVirtGetUsage(Void) {
 	return VirtGetUsage();																																	// Just redirect
 }
 
-IntPtr ScPsCreateThread(UIntPtr entry) {
-	UIntPtr stack = VirtAllocAddress(0, 0x100000, VIRT_PROT_READ | VIRT_PROT_WRITE | VIRT_FLAGS_HIGHEST | VIRT_FLAGS_AOR);									// Alloc the stack
-	
-	if (stack == 0) {
-		return -1;
+Status ScPsCreateThread(UIntPtr entry, PIntPtr ret) {
+	if (!ScCheckPointer(ret)) {																																// Sanity check
+		return STATUS_INVALID_ARG;	
 	}
 	
-	PThread th = PsCreateThread(PS_PRIORITY_NORMAL, entry, stack + 0x100000 - sizeof(UIntPtr), True);														// Create a new user thread
+	UIntPtr stack;
+	Status status = VirtAllocAddress(0, 0x100000, VIRT_PROT_READ | VIRT_PROT_WRITE | VIRT_FLAGS_HIGHEST, &stack);											// Alloc the stack
 	
-	if (th == Null) {
+	if (status != STATUS_SUCCESS) {
+		return status;
+	}
+	
+	PThread th;
+	status = PsCreateThread(PS_PRIORITY_NORMAL, entry, stack + 0x100000 - sizeof(UIntPtr), True, &th);														// Create a new user thread
+	
+	if (status != STATUS_SUCCESS) {
 		VirtFreeAddress(stack, 0x100000);																													// Failed
-		return -1;
+		return status;
 	}
 	
 	IntPtr handle = ScAppendHandle(HANDLE_TYPE_THREAD, th);																									// Try to create the handle
@@ -151,12 +161,14 @@ IntPtr ScPsCreateThread(UIntPtr entry) {
 	if (handle == -1) {
 		PsFreeContext(th->ctx);																																// Failed, free the thread context and the thread struct itself
 		MemFree((UIntPtr)th);
-		return -1;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	PsAddThread(th);																																		// Add the thread!
 	
-	return handle;
+	*ret = handle;
+	
+	return STATUS_SUCCESS;
 }
 	
 IntPtr ScPsGetCurrentThread(Void) {
@@ -171,78 +183,89 @@ Void ScPsSleep(UIntPtr ms) {
 	PsSleep(ms);																																			// Just redirect
 }
 
-UIntPtr ScPsWait(IntPtr handle) {
-	if (handle >= PsCurrentProcess->last_handle_id) {																										// Check if the handle is valid
-		return 1;
+Status ScPsWait(IntPtr handle, PUIntPtr ret) {
+	if (handle >= PsCurrentProcess->last_handle_id || (!ScCheckPointer(ret))) {																				// Sanity check
+		return STATUS_INVALID_ARG;
 	}
 	
 	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Try to get the handle data
 	
 	if (hndl == Null) {
-		return 1;
+		return STATUS_WRONG_HANDLE;
 	} else if (hndl->type == HANDLE_TYPE_THREAD) {
-		return PsWaitThread(((PThread)hndl->data)->id);																										// If it's a handle to a thread, we need to call PsWaitThread
+		return PsWaitThread(((PThread)hndl->data)->id, ret);																								// If it's a handle to a thread, we need to call PsWaitThread
 	} else if (hndl->type == HANDLE_TYPE_PROCESS) {
-		return PsWaitProcess(((PProcess)hndl->data)->id);																									// If it's a handle to a process, we need to call PsWaitProcess
+		return PsWaitProcess(((PProcess)hndl->data)->id, ret);																								// If it's a handle to a process, we need to call PsWaitProcess
 	}
 	
-	return 1;																																				// None of the above, so let's just return 1
+	return STATUS_WRONG_HANDLE;																																// None of the above, so this is not a process nor a thread...
 }
 
-IntPtr ScPsCreateLock(Void) {
+Status ScPsCreateLock(PIntPtr ret) {
+	if (!ScCheckPointer(ret)) {
+		return STATUS_INVALID_ARG;
+	}
+	
 	PLock lock = (PLock)MemAllocate(sizeof(Lock));																											// Let's alloc our lock
 	
 	if (lock == Null) {
-		return -1;
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
 	lock->count = 0;																																		// Clean it
 	lock->locked = False;
 	lock->owner = Null;
 	
-	return ScAppendHandle(HANDLE_TYPE_LOCK, lock);																											// And create the handle!
+	*ret = ScAppendHandle(HANDLE_TYPE_LOCK, lock);																											// And create the handle!
+	
+	if (*ret == -1) {
+		MemFree((UIntPtr)lock);																																// Failed...
+		return STATUS_OUT_OF_MEMORY;
+	}
+	
+	return STATUS_SUCCESS;
 }
 
-Void ScPsLock(IntPtr handle) {
+Status ScPsLock(IntPtr handle) {
 	if (handle >= PsCurrentProcess->last_handle_id) {																										// Check if the handle is valid
-		return;
+		return STATUS_INVALID_ARG;
 	}
 	
 	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Try to get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_LOCK) {
-		return;
+		return STATUS_WRONG_HANDLE;
 	}
 	
-	PsLock((PLock)hndl->data);																																// Now we just need to redirect
+	return PsLock((PLock)hndl->data);																														// Now we just need to redirect
 }
 
-Boolean ScPsTryLock(IntPtr handle) {
+Status ScPsTryLock(IntPtr handle) {
 	if (handle >= PsCurrentProcess->last_handle_id) {																										// Check if the handle is valid
-		return False;
+		return STATUS_INVALID_ARG;
 	}
 	
 	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Try to get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_LOCK) {
-		return False;
+		return STATUS_WRONG_HANDLE;
 	}
 	
-	return PsTryLock((PLock)hndl->data);																													// Now we just need to redirect
+	return PsTryLock((PLock)hndl->data);																													// Redirect
 }
 
-Void ScPsUnlock(IntPtr handle) {
+Status ScPsUnlock(IntPtr handle) {
 	if (handle >= PsCurrentProcess->last_handle_id) {																										// Check if the handle is valid
-		return;
+		return STATUS_INVALID_ARG;
 	}
 	
 	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Try to get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_LOCK) {
-		return;
+		return STATUS_WRONG_HANDLE;
 	}
 	
-	PsUnlock((PLock)hndl->data);																															// Now we just need to redirect
+	return PsUnlock((PLock)hndl->data);																														// Now we just need to redirect
 }
 
 Void ScPsExitThread(UIntPtr ret) {
@@ -253,42 +276,54 @@ Void ScPsExitProcess(UIntPtr ret) {
 	PsExitProcess(ret);																																		// Just redirect
 }
 
-IntPtr ScFsOpenFile(PWChar path) {
+Status ScFsOpenFile(PWChar path, PIntPtr ret) {
 	if (!ScCheckPointer(path)) {																															// Check if the pointer is inside of the userspace
-		return -1;
+		return STATUS_INVALID_ARG;
 	}
 	
-	PFsNode file = FsOpenFile(path);																														// Try to open the file
+	PFsNode file;
+	Status status = FsOpenFile(path, &file);																												// Try to open the file
 	
-	if (file == Null) {
-		return -1;																																			// Failed
+	if (status != STATUS_SUCCESS) {
+		return status;																																		// Failed
 	}
 	
-	return ScAppendHandle(HANDLE_TYPE_FILE, file);																											// Create the handle
+	*ret = ScAppendHandle(HANDLE_TYPE_FILE, file);																											// Create the handle
+	
+	if (*ret == -1) {
+		FsCloseFile(file);																																	// Failed
+		return STATUS_OPEN_FAILED;
+	}
+	
+	return STATUS_SUCCESS;
 }
 
-UIntPtr ScFsReadFile(IntPtr handle, UIntPtr len, PUInt8 buf) {
-	if ((handle >= PsCurrentProcess->last_handle_id) || (!ScCheckPointer(buf))) {																			// Sanity checks
-		return 0;
+Status ScFsReadFile(IntPtr handle, UIntPtr len, PUInt8 buf, PUIntPtr ret) {
+	if ((handle >= PsCurrentProcess->last_handle_id) || (!ScCheckPointer(buf)) || (!ScCheckPointer(ret))) {													// Sanity checks
+		return STATUS_INVALID_ARG;
 	}
 	
 	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_FILE) {
-		return 0;
+		return STATUS_WRONG_HANDLE;
 	}
 	
 	PFsNode pfile = (PFsNode)hndl->data;																													// Get the real file
-	UIntPtr read = FsReadFile(pfile, pfile->offset, len, buf);																								// Redirect...
+	Status status = FsReadFile(pfile, pfile->offset, len, buf, ret);																						// Redirect...
 	
-	pfile->offset += read;																																	// And increase the offset
+	if (status != STATUS_SUCCESS) {
+		return status;
+	}
 	
-	return read;
+	pfile->offset += *ret;																																	// And increase the offset
+	
+	return *ret;
 }
 
-UIntPtr ScFsWriteFile(IntPtr handle, UIntPtr len, PUInt8 buf) {
-	if ((handle >= PsCurrentProcess->last_handle_id) || (!ScCheckPointer(buf))) {																			// Sanity checks
-		return 0;
+Status ScFsWriteFile(IntPtr handle, UIntPtr len, PUInt8 buf, PUIntPtr ret) {
+	if ((handle >= PsCurrentProcess->last_handle_id) || (!ScCheckPointer(buf)) || (!ScCheckPointer(ret))) {													// Sanity checks
+		return STATUS_INVALID_ARG;
 	} else if (handle == -1) {																																// Temporary stdout/Console device
 		PChar cbuf = (PChar)buf;																															// Convert the buffer into a char buffer
 		
@@ -300,165 +335,184 @@ UIntPtr ScFsWriteFile(IntPtr handle, UIntPtr len, PUInt8 buf) {
 			ConWriteCharacter(cbuf[i]);
 		}
 		
-		return len;
+		*ret = len;
+		
+		return STATUS_SUCCESS;
 	}
 	
 	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_FILE) {
-		return 0;
+		return STATUS_WRONG_HANDLE;
 	}
 	
 	PFsNode pfile = (PFsNode)hndl->data;																													// Get the real file
-	UIntPtr written = FsWriteFile(pfile, pfile->offset, len, buf);																							// Redirect...
+	Status status = FsWriteFile(pfile, pfile->offset, len, buf, ret);																						// Redirect...
 	
-	pfile->offset += written;																																// And increase the offset
+	if (status != STATUS_SUCCESS) {
+		return status;
+	}
 	
-	return written;
+	pfile->offset += *ret;																																	// And increase the offset
+	
+	return *ret;
 }
 
-Boolean ScFsMountFile(PWChar path, PWChar file, PWChar type) {
+Status ScFsMountFile(PWChar path, PWChar file, PWChar type) {
 	if ((!ScCheckPointer(path)) || (!ScCheckPointer(file)) || (!ScCheckPointer(type))) {																	// Sanity checks
-		return False;	
+		return STATUS_INVALID_ARG;	
 	} else {
 		return FsMountFile(path, file, type);																												// And redirect
 	}
 }
 
-Boolean ScFsUmountFile(PWChar path) {
+Status ScFsUmountFile(PWChar path) {
 	if (!ScCheckPointer(path)) {																															// Sanity checks
-		return False;
+		return STATUS_INVALID_ARG;
 	} else {
 		return FsUmountFile(path);																															// And redirect
 	}
 }
 
-Boolean ScFsReadDirectoryEntry(IntPtr handle, UIntPtr entry, PWChar out) {
+Status ScFsReadDirectoryEntry(IntPtr handle, UIntPtr entry, PWChar out) {
 	if ((handle >= PsCurrentProcess->last_handle_id) || (!ScCheckPointer(out))) {																			// Sanity checks
-		return False;
+		return STATUS_INVALID_ARG;
 	}
 	
 	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_FILE) {
-		return False;
+		return STATUS_WRONG_HANDLE;
 	}
 	
-	PWChar name = FsReadDirectoryEntry((PFsNode)hndl->data, entry);																							// Use the internal function
+	PWChar name;
+	Status status = FsReadDirectoryEntry((PFsNode)hndl->data, entry, &name);																				// Use the internal function
 	
-	if (name == Null) {
-		return False;																																		// Failed (probably this entry doesn't exists)
+	if (status != STATUS_SUCCESS) {
+		return status;																																		// Failed (probably this entry doesn't exists)
 	}
 	
 	StrCopy(out, name);																																		// Copy the out pointer to the userspace
 	MemFree((UIntPtr)name);																																	// Free the out pointer
 	
-	return True;
+	return STATUS_SUCCESS;
 }
 
-IntPtr ScFsFindInDirectory(IntPtr handle, PWChar name) {
-	if ((handle >= PsCurrentProcess->last_handle_id) || (!ScCheckPointer(name))) {																			// Sanity checks
-		return -1;
+Status ScFsFindInDirectory(IntPtr handle, PWChar name, PIntPtr ret) {
+	if ((handle >= PsCurrentProcess->last_handle_id) || (!ScCheckPointer(name)) || (!ScCheckPointer(ret))) {												// Sanity checks
+		return STATUS_INVALID_ARG;
 	}
 	
 	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_FILE) {
-		return False;
+		return STATUS_WRONG_HANDLE;
 	}
 	
-	PFsNode file = FsFindInDirectory((PFsNode)hndl->data, name);																							// Use the internal function
+	PFsNode file;
+	Status status = FsFindInDirectory((PFsNode)hndl->data, name, &file);																					// Use the internal function
 	
-	if (file == Null) {
-		return -1;																																			// Failed (probably this file doesn't exists)
+	if (status != STATUS_SUCCESS) {
+		return status;																																		// Failed (probably this file doesn't exists)
 	}
 	
-	return ScAppendHandle(HANDLE_TYPE_FILE, file);																											// Create the handle
+	*ret = ScAppendHandle(HANDLE_TYPE_FILE, file);																											// Create the handle
+	
+	if (*ret == -1) {
+		FsCloseFile(file);																																	// Failed...
+		return STATUS_OPEN_FAILED;
+	}
+	
+	return STATUS_SUCCESS;
 }
 
-Boolean ScFsCreateFile(IntPtr handle, PWChar name, UIntPtr flags) {
+Status ScFsCreateFile(IntPtr handle, PWChar name, UIntPtr flags) {
 	if ((handle >= PsCurrentProcess->last_handle_id) || (!ScCheckPointer(name))) {																			// Sanity checks
-		return False;
+		return STATUS_INVALID_ARG;
 	}
 	
 	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_FILE) {
-		return False;
+		return STATUS_WRONG_HANDLE;
 	}
 	
 	return FsCreateFile((PFsNode)hndl->data, name, flags);																									// And redirect
 }
 
-Boolean ScFsControlFile(IntPtr handle, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf) {
+Status ScFsControlFile(IntPtr handle, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf) {
 	if ((handle >= PsCurrentProcess->last_handle_id) || (ibuf != Null && !ScCheckPointer(ibuf)) || (obuf != Null && !ScCheckPointer(obuf))) {				// Sanity checks
-		return False;
+		return STATUS_INVALID_ARG;
 	}
 	
 	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_FILE) {
-		return False;
+		return STATUS_WRONG_HANDLE;
 	}
 	
 	return FsControlFile((PFsNode)hndl->data, cmd, ibuf, obuf);																								// And redirect
 }
 
-UIntPtr ScFsGetFileSize(IntPtr handle) {
-	if (handle >= PsCurrentProcess->last_handle_id) {																										// Sanity check
-		return 0;
+Status ScFsGetFileSize(IntPtr handle, PUIntPtr ret) {
+	if (handle >= PsCurrentProcess->last_handle_id || !ScCheckPointer(ret)) {																				// Sanity check
+		return STATUS_INVALID_ARG;
 	}
 	
 	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_FILE) {
-		return False;
+		return STATUS_WRONG_HANDLE;
 	}
 	
 	PFsNode node = (PFsNode)hndl->data;																														// Get the real file
 	
 	if ((node->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {																										// File?
-		return 0;																																			// We can't read the length of an directory (sorry)
+		return STATUS_NOT_FILE;																																// We can't read the length of an directory (sorry)
 	}
 	
-	return node->length;
+	*ret = node->length;
+	
+	return STATUS_SUCCESS;
 }
 
-UIntPtr ScFsGetPosition(IntPtr handle) {
-	if (handle >= PsCurrentProcess->last_handle_id) {																										// Sanity check
-		return 0;
+Status ScFsGetPosition(IntPtr handle, PUIntPtr ret) {
+	if (handle >= PsCurrentProcess->last_handle_id || !ScCheckPointer(ret)) {																				// Sanity check
+		return STATUS_INVALID_ARG;
 	}
 	
 	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_FILE) {
-		return False;
+		return STATUS_WRONG_HANDLE;
 	}
 	
 	PFsNode node = (PFsNode)hndl->data;																														// Get the real file
 	
 	if ((node->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {																										// File?
-		return 0;																																			// We can't read the offset of an directory (sorry)
+		return STATUS_NOT_FILE;																																// We can't read the offset of an directory (sorry)
 	}
 	
-	return node->offset;																																	// And return the offset
+	*ret = node->offset;																																	// And return the offset
+	
+	return STATUS_SUCCESS;
 }
 
-Void ScFsSetPosition(IntPtr handle, UIntPtr base, UIntPtr off) {
+Status ScFsSetPosition(IntPtr handle, UIntPtr base, UIntPtr off) {
 	if (handle >= PsCurrentProcess->last_handle_id) {																										// Sanity check
-		return;
+		return STATUS_INVALID_ARG;
 	}
 	
 	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_FILE) {
-		return;
+		return STATUS_WRONG_HANDLE;
 	}
 	
 	PFsNode node = (PFsNode)hndl->data;																														// Get the real file
 	
 	if ((node->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {																										// File?
-		return;																																				// We can't read the offset of an directory (sorry)
+		return STATUS_NOT_FILE;																																// We can't read the offset of an directory (sorry)
 	}
 	
 	if (base == 0) {																																		// Base = File Start
@@ -467,40 +521,48 @@ Void ScFsSetPosition(IntPtr handle, UIntPtr base, UIntPtr off) {
 		node->offset += off;
 	} else if (base == 2) {																																	// Base = File End
 		node->offset = node->length + off;
+	} else {
+		return STATUS_INVALID_ARG;
 	}
+	
+	return STATUS_SUCCESS;
 }
 
-Boolean ScIpcCreatePort(PWChar name) {
+Status ScIpcCreatePort(PWChar name) {
 	if (!ScCheckPointer(name)) {																															// Sanity check
-		return False;
+		return STATUS_INVALID_ARG;
 	}
 	
 	return IpcCreatePort(name);
 }
 
-IntPtr ScIpcCreateResponsePort(Void) {
-	return IpcCreateResponsePort();
-}
-
-Void ScIpcRemovePort(PWChar name) {
-	if (!ScCheckPointer(name)) {																															// Sanity check
-		return;
+Status ScIpcCreateResponsePort(PIntPtr ret) {
+	if (!ScCheckPointer(ret)) {																																// Sanity check
+		return STATUS_INVALID_ARG;
 	}
 	
-	IpcRemovePort(name);
+	return IpcCreateResponsePort(ret);
 }
 
-Boolean ScIpcCheckPort(PWChar name) {
+Status ScIpcRemovePort(PWChar name) {
 	if (!ScCheckPointer(name)) {																															// Sanity check
-		return False;
+		return STATUS_INVALID_ARG;
+	}
+	
+	return IpcRemovePort(name);
+}
+
+Status ScIpcCheckPort(PWChar name) {
+	if (!ScCheckPointer(name)) {																															// Sanity check
+		return STATUS_INVALID_ARG;
 	}
 	
 	return IpcCheckPort(name);
 }
 
-Boolean ScIpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntPtr rport) {
+Status ScIpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntPtr rport) {
 	if (rport >= PsCurrentProcess->last_handle_id || !ScCheckPointer(port) || (buf != Null && !ScCheckPointer(buf))) {										// Sanity checks
-		return False;
+		return STATUS_INVALID_ARG;
 	}
 	
 	PIpcResponsePort rp = Null;
@@ -509,7 +571,7 @@ Boolean ScIpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntP
 		PHandle hndl = ListGet(PsCurrentProcess->handles, rport);																							// Yes, get the handle data
 		
 		if (hndl == Null || hndl->type != HANDLE_TYPE_IPC_RESPONSE_PORT) {
-			return False;
+			return STATUS_WRONG_HANDLE;
 		}
 		
 		rp = (PIpcResponsePort)hndl->data;																													// And the response port struct
@@ -518,54 +580,58 @@ Boolean ScIpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntP
 	return IpcSendMessage(port, msg, size, buf, rp);																										// Now redirect!
 }
 
-Boolean ScIpcSendResponse(IntPtr handle, UInt32 msg, UIntPtr size, PUInt8 buf) {
+Status ScIpcSendResponse(IntPtr handle, UInt32 msg, UIntPtr size, PUInt8 buf) {
 	if (handle >= PsCurrentProcess->last_handle_id || (buf != Null && !ScCheckPointer(buf))) {																// Sanity checks
-		return False;
+		return STATUS_INVALID_ARG;
 	}
 	
 	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_IPC_RESPONSE_PORT) {
-		return False;
+		return STATUS_WRONG_HANDLE;
 	}
 	
 	return IpcSendResponse((PIpcResponsePort)hndl->data, msg, size, buf);																					// And redirect
 }
 
-Boolean ScIpcReceiveMessage(PWChar name, PUInt32 msg, UIntPtr size, PUInt8 buf) {
+Status ScIpcReceiveMessage(PWChar name, PUInt32 msg, UIntPtr size, PUInt8 buf) {
 	if (!ScCheckPointer(name) || !ScCheckPointer(name) || !ScCheckPointer(msg) || (buf != Null && !ScCheckPointer(buf))) {									// Sanity check
-		return False;
+		return STATUS_INVALID_ARG;
 	}
 	
 	return IpcReceiveMessage(name, msg, size, buf);																											// And redirect
 }
 
-Boolean ScIpcReceiveResponse(IntPtr handle, PUInt32 msg, UIntPtr size, PUInt8 buf) {
+Status ScIpcReceiveResponse(IntPtr handle, PUInt32 msg, UIntPtr size, PUInt8 buf) {
 	if (handle >= PsCurrentProcess->last_handle_id || !ScCheckPointer(msg) || (buf != Null && !ScCheckPointer(buf))) {										// Sanity check
-		return False;
+		return STATUS_INVALID_ARG;
 	}
 	
 	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_IPC_RESPONSE_PORT) {
-		return False;
+		return STATUS_WRONG_HANDLE;
 	}
 	
 	return IpcReceiveResponse((PIpcResponsePort)hndl->data, msg, size, buf);																				// And redirect
 }
 
-UIntPtr ScShmCreateSection(UIntPtr size, PUIntPtr key) {
-	if (!ScCheckPointer(key)) {																																// Sanity check
-		return 0;
+Status ScShmCreateSection(UIntPtr size, PUIntPtr key, PUIntPtr ret) {
+	if (!ScCheckPointer(key) || !ScCheckPointer(ret)) {																										// Sanity check
+		return STATUS_INVALID_ARG;
 	}
 	
-	return ShmCreateSection(size, key);																														// And redirect
+	return ShmCreateSection(size, key, ret);																												// And redirect
 }
 
-UIntPtr ScShmMapSection(UIntPtr key) {
-	return ShmMapSection(key);																																// Redirect
+Status ScShmMapSection(UIntPtr key, PUIntPtr ret) {
+	if (!ScCheckPointer(ret)) {																																// Sanity check
+		return STATUS_INVALID_ARG;
+	}
+	
+	return ShmMapSection(key, ret);																															// Redirect
 }
 
-Void ScShmUnmapSection(UIntPtr key) {
+Status ScShmUnmapSection(UIntPtr key) {
 	return ShmUnmapSection(key);																															// Redirect
 }

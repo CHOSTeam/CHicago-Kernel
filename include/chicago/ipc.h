@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 24 of 2019, at 14:28 BRT
-// Last edited on January 08 of 2020, at 09:36 BRT
+// Last edited on January 18 of 2020, at 12:58 BRT
 
 #ifndef __CHICAGO_IPC_H__
 #define __CHICAGO_IPC_H__
@@ -32,15 +32,15 @@ typedef struct {
 extern PList IpcPortList;
 #endif
 
-Boolean IpcCreatePort(PWChar name);
-IntPtr IpcCreateResponsePort(Void);
-Void IpcRemovePort(PWChar name);
-Boolean IpcCheckPort(PWChar name);
+Status IpcCreatePort(PWChar name);
+Status IpcCreateResponsePort(PIntPtr ret);
+Status IpcRemovePort(PWChar name);
+Status IpcCheckPort(PWChar name);
 Void IpcFreeResponsePort(PIpcResponsePort port);
-Boolean IpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, PIpcResponsePort rport);
-Boolean IpcSendResponse(PIpcResponsePort port, UInt32 msg, UIntPtr size, PUInt8 buf);
-Boolean IpcReceiveMessage(PWChar name, PUInt32 msg, UIntPtr size, PUInt8 buf);
-Boolean IpcReceiveResponse(PIpcResponsePort port, PUInt32 msg, UIntPtr size, PUInt8 buf);
+Status IpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, PIpcResponsePort rport);
+Status IpcSendResponse(PIpcResponsePort port, UInt32 msg, UIntPtr size, PUInt8 buf);
+Status IpcReceiveMessage(PWChar name, PUInt32 msg, UIntPtr size, PUInt8 buf);
+Status IpcReceiveResponse(PIpcResponsePort port, PUInt32 msg, UIntPtr size, PUInt8 buf);
 Void IpcInit(Void);
 
 #endif		// __CHICAGO_IPC_H__
