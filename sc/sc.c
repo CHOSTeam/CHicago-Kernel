@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:14 BRT
-// Last edited on January 20 of 2020, at 11:03 BRT
+// Last edited on January 20 of 2020, at 22:04 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/console.h>
@@ -276,13 +276,13 @@ Void ScPsExitProcess(UIntPtr ret) {
 	PsExitProcess(ret);																																		// Just redirect
 }
 
-Status ScFsOpenFile(PWChar path, PIntPtr ret) {
+Status ScFsOpenFile(PWChar path, UIntPtr flags, PIntPtr ret) {
 	if (!ScCheckPointer(path)) {																															// Check if the pointer is inside of the userspace
 		return STATUS_INVALID_ARG;
 	}
 	
 	PFsNode file;
-	Status status = FsOpenFile(path, &file);																												// Try to open the file
+	Status status = FsOpenFile(path, flags, &file);																											// Try to open/create the file
 	
 	if (status != STATUS_SUCCESS) {
 		return status;																																		// Failed
@@ -424,20 +424,6 @@ Status ScFsFindInDirectory(IntPtr handle, PWChar name, PIntPtr ret) {
 	}
 	
 	return STATUS_SUCCESS;
-}
-
-Status ScFsCreateFile(IntPtr handle, PWChar name, UIntPtr flags) {
-	if ((handle >= PsCurrentProcess->last_handle_id) || (!ScCheckPointer(name))) {																			// Sanity checks
-		return STATUS_INVALID_ARG;
-	}
-	
-	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
-	
-	if (hndl == Null || hndl->type != HANDLE_TYPE_FILE) {
-		return STATUS_WRONG_HANDLE;
-	}
-	
-	return FsCreateFile((PFsNode)hndl->data, name, flags);																									// And redirect
 }
 
 Status ScFsControlFile(IntPtr handle, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf) {

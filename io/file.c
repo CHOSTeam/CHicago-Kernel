@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 16 of 2018, at 18:28 BRT
-// Last edited on January 18 of 2020, at 15:54 BRT
+// Last edited on January 20 of 2020, at 22:47 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -174,7 +174,7 @@ PWChar FsGetRandomPath(PWChar prefix) {
 		
 		if (path != Null) {																												// Failed?
 			PFsNode file = Null;
-			Status status = FsOpenFile(path, &file);																					// No, let's check if it already exists
+			Status status = FsOpenFile(path, 0, &file);																					// No, let's check if it already exists
 			
 			MemFree((UIntPtr)path);																										// And let's free the path
 			
@@ -194,42 +194,84 @@ Status FsReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf, PUIntPtr r
 		return STATUS_INVALID_ARG;
 	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {																			// We're trying to read an file?
 		return STATUS_NOT_FILE;																											// ... Why are you trying to read raw bytes from an directory?
-	} else if (file->read != Null) {																									// Implementation?
-		return file->read(file, off, len, buf, read);																					// Yes, so call it!
-	} else {
-		return STATUS_CANT_READ;
+	} else if (file->read == Null || (file->flags & FS_FLAG_READ) != FS_FLAG_READ) {													// Can we read it?
+		return STATUS_CANT_READ;																										// Nope...
 	}
+	
+	return file->read(file, off, len, buf, read);																						// Yeah, we can!
 }
 
 Status FsWriteFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf, PUIntPtr write) {
 	if (file == Null || len == 0 || buf == Null) {																						// Sanity check
 		return STATUS_INVALID_ARG;
-	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {																			// We're trying to write to an file?
-		return STATUS_NOT_FILE;																											// ... Why are you trying to write raw bytes to an directory?
-	} else if (file->write != Null) {																									// Implementation?
-		return file->write(file, off, len, buf, write);																					// Yes, so call it!
-	} else {
-		return STATUS_CANT_WRITE;
+	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {																			// We're trying to read an file?
+		return STATUS_NOT_FILE;																											// ... Why are you trying to read raw bytes from an directory?
+	} else if (file->write == Null || (file->flags & FS_FLAG_WRITE) != FS_FLAG_WRITE) {													// Can we write to it?
+		return STATUS_CANT_WRITE;																										// Nope...
 	}
+	
+	return file->write(file, off, len, buf, write);																						// Yeah, we can!
 }
 
-static Status FsOpenFileInt(PFsNode node) {
+static Status FsOpenFileInt(PFsNode node, UIntPtr flags) {
 	if (node == Null) {																													// Node is Null pointer?
 		return STATUS_INVALID_ARG;																										// Yes... (Really, those comments are starting to get annoying)
 	} else if (node->open != Null) {																									// Any implementation?
-		return node->open(node);																										// Yes, so call it
+		Status status = node->open(node);																								// Yes, so call it
+		
+		if (status != STATUS_SUCCESS) {
+			return status;																												// The open failed...
+		} else if (((flags & FS_FLAG_READ) == FS_FLAG_READ) && node->read == Null) {													// Can we read?
+			return STATUS_CANT_READ;																									// Nope...
+		} else if (((flags & FS_FLAG_WRITE) == FS_FLAG_WRITE) && node->write == Null) {													// Can we write?
+			return STATUS_CANT_WRITE;																									// Nope...
+		}
+		
+		return STATUS_SUCCESS;
 	} else {
 		return STATUS_OPEN_FAILED;
 	}
 }
 
-Status FsOpenFile(PWChar path, PFsNode *ret) {
+static Status FsCreateFileInt(PFsNode dir, PWChar name, UIntPtr type) {
+	if ((dir == Null) || (name == Null)) {
+		return STATUS_INVALID_ARG;
+	} else if ((dir->flags & FS_FLAG_DIR) != FS_FLAG_DIR) {																				// Directory-only function!
+		return STATUS_NOT_DIR;
+	}
+	
+	PFsNode file;
+	Status status = FsFindInDirectory(dir, name, &file);																				// Let's try to not create entries with the same name
+	
+	if (status == STATUS_SUCCESS) {
+		FsCloseFile(file);																												// ...
+		return STATUS_FILE_ALREADY_EXISTS;
+	}
+	
+	if (dir->create != Null) {
+		return dir->create(dir, name, type);
+	} else {
+		return STATUS_CREATE_FAILED;
+	}
+}
+
+Status FsOpenFile(PWChar path, UIntPtr flags, PFsNode *ret) {
 	if ((FsMountPointList == Null) || (path == Null) || (ret == Null)) {																// Some null pointer checks
 		return STATUS_INVALID_ARG;
 	} else if (FsMountPointList->length == 0) {																							// Don't even lose time trying to open some file if our mount point list is empty
 		return STATUS_FILE_DOESNT_EXISTS;
 	} else if (path[0] != '/') {																										// Finally, we only support absolute paths in this function
 		return STATUS_OPEN_FAILED;
+	}
+	
+	UIntPtr flgs = 0;
+	
+	if ((flags & OPEN_FLAGS_READ) == OPEN_FLAGS_READ) {																					// Parse the flags
+		flgs |= FS_FLAG_READ;
+	}
+	
+	if ((flags & OPEN_FLAGS_WRITE) == OPEN_FLAGS_WRITE) {
+		flgs |= FS_FLAG_WRITE;
 	}
 	
 	PWChar rpath = Null;
@@ -246,25 +288,56 @@ Status FsOpenFile(PWChar path, PFsNode *ret) {
 		return STATUS_OUT_OF_MEMORY;																									// Yes
 	}
 	
-	Status status = FsOpenFileInt(cur);																									// Let's try to "open" the mount point root directory
+	Status status = FsOpenFileInt(cur, 0);																								// Let's try to "open" the mount point root directory
 	
 	if (status != STATUS_SUCCESS) {
 		ListFree(parts);																												// Failed
 		return status;
 	}
 	
+	UIntPtr ftype = (flags & OPEN_FLAGS_DIR) ? FS_FLAG_DIR : FS_FLAG_FILE;
+	
 	ListForeach(parts, i) {
-		status = FsFindInDirectory(cur, (PWChar)(i->data), &cur);																		// Let's try to find the file/folder in the folder (the file is i->data and the folder is cur)
+		PFsNode new;
+		status = FsFindInDirectory(cur, (PWChar)(i->data), &new);																		// Let's try to find the file/folder in the folder (the file is i->data and the folder is cur)
 		
-		if (status != STATUS_SUCCESS) {
+		FsCloseFile(cur);																												// Close the current file (we don't want to leak memory)
+		cur = new;
+		
+		if (status == STATUS_FILE_DOESNT_EXISTS && (flags & OPEN_FLAGS_CREATE) == OPEN_FLAGS_CREATE) {									// Should we just try to create the folder/file?
+			if ((flags & OPEN_FLAGS_DONT_CREATE_DIRS) == OPEN_FLAGS_DONT_CREATE_DIRS && i->next == Null) {								// I think so... is this a dir? If yes, should we create it?
+				goto c;																													// ... So just fail...
+			}
+			
+			status = FsCreateFileInt(cur, (PWChar)(i->data), i->next == Null ? ftype : FS_FLAG_DIR);									// Create the file
+			
+			if (status != STATUS_SUCCESS) {
+				goto c;																													// Failed
+			}
+			
+			status = FsFindInDirectory(cur, (PWChar)(i->data), &cur);																	// Now, try to find it again...
+		} else if (status == STATUS_SUCCESS && (flags & OPEN_FLAGS_ONLY_CREATE) == OPEN_FLAGS_ONLY_CREATE && i->next == Null) {			// Wait, in case this is actually the file (that is, the next entry is Null), should we really just open it, or should we fail?
+			status = STATUS_FILE_ALREADY_EXISTS;																						// We should fail...
+		}
+		
+c:		if (status != STATUS_SUCCESS) {
 			ListFree(parts);																											// Failed
 			return status;
 		}
 		
-		if ((status = FsOpenFileInt(cur)) != STATUS_SUCCESS) {																			// Let's try to "open" the file/folder
-			ListFree(parts);																											// Failed
+		if ((status = FsOpenFileInt(cur, i->next == Null ? flgs : 0)) != STATUS_SUCCESS) {												// Let's try to "open" the file/folder
+			FsCloseFile(cur);																											// Failed
+			ListFree(parts);
 			return status;
+		} else if (i->next == Null && (cur->flags & ftype) != ftype) {																	// In case this is actually the file/dir, is this the right type? That is, in case we asked for a directory, is this a directory?
+			FsCloseFile(cur);																											/// ...
+			ListFree(parts);
+			return STATUS_OPEN_FAILED;
 		}
+	}
+	
+	if ((flags & OPEN_FLAGS_APPEND) == OPEN_FLAGS_APPEND) {																				// Move to the end of the file?
+		cur->offset = cur->length;																										// Yeah
 	}
 	
 	ListFree(parts);																													// Finally, free the list
@@ -292,7 +365,7 @@ Status FsMountFile(PWChar path, PWChar file, PWChar type) {
 	}
 	
 	PFsNode src;																														// Try to open the source file
-	Status status = FsOpenFile(file, &src);
+	Status status = FsOpenFile(file, OPEN_FLAGS_READ, &src);																			// We need at least the read permission
 	
 	if (status != STATUS_SUCCESS) {																										// Failed?
 		return status;																													// Yes
@@ -302,7 +375,7 @@ Status FsMountFile(PWChar path, PWChar file, PWChar type) {
 	}
 	
 	PFsNode dest;
-	status = FsOpenFile(path, &dest);																									// Try to open the destination file
+	status = FsOpenFile(path, 0, &dest);																								// Try to open the destination file
 	
 	if ((status != STATUS_SUCCESS) && (!StrCompare(path, L"/"))) {																		// Failed (and we aren't trying to mount the root directory)?
 		FsCloseFile(src);																												// Yes, close the src file
@@ -424,28 +497,6 @@ Status FsFindInDirectory(PFsNode dir, PWChar name, PFsNode *ret) {
 		return dir->finddir(dir, name, ret);
 	} else {
 		return STATUS_CANT_READ;
-	}
-}
-
-Status FsCreateFile(PFsNode dir, PWChar name, UIntPtr flags) {
-	if ((dir == Null) || (name == Null)) {
-		return STATUS_INVALID_ARG;
-	} else if ((dir->flags & FS_FLAG_DIR) != FS_FLAG_DIR) {																				// Directory-only function!
-		return STATUS_NOT_DIR;
-	}
-	
-	PFsNode file;
-	Status status = FsFindInDirectory(dir, name, &file);																				// Let's try to not create entries with the same name
-	
-	if (status == STATUS_SUCCESS) {
-		FsCloseFile(file);																												// ...
-		return STATUS_FILE_ALREADY_EXISTS;
-	}
-	
-	if (dir->create != Null) {
-		return dir->create(dir, name, flags);
-	} else {
-		return STATUS_CREATE_FAILED;
 	}
 }
 
