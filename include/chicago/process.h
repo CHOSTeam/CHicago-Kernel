@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 27 of 2018, at 14:42 BRT
-// Last edited on January 20 of 2020, at 11:02 BRT
+// Last edited on January 21 of 2020, at 23:19 BRT
 
 #ifndef __CHICAGO_PROCESS_H__
 #define __CHICAGO_PROCESS_H__
@@ -34,11 +34,11 @@ typedef struct {
 	UIntPtr id;
 	PWChar name;
 	UIntPtr dir;
-	PList threads;
+	List threads;
 	UIntPtr last_tid;
 	UIntPtr mem_usage;
-	PList shm_mapped_sections;
-	PList handles;
+	List shm_mapped_sections;
+	List handles;
 	IntPtr last_handle_id;
 } Process, *PProcess;
 

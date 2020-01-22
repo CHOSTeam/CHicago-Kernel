@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 25 of 2019, at 10:55 BRT
-// Last edited on January 18 of 2020, at 17:01 BRT
+// Last edited on January 21 of 2020, at 23:16 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -10,10 +10,10 @@
 #include <chicago/rand.h>
 #include <chicago/shm.h>
 
-PList ShmSectionList = Null;
+List ShmSectionList = { Null, Null, 0, False };
 
 static PShmSection ShmGetSection(UIntPtr key) {
-	ListForeach(ShmSectionList, i) {																			// Let's iterate the section list
+	ListForeach(&ShmSectionList, i) {																			// Let's iterate the section list
 		if (((PShmSection)i->data)->key == key) {
 			return (PShmSection)i->data;																		// We found it!
 		}
@@ -23,7 +23,7 @@ static PShmSection ShmGetSection(UIntPtr key) {
 }
 
 Status ShmCreateSection(UIntPtr size, PUIntPtr key, PUIntPtr ret) {
-	if (PsCurrentProcess == Null || ShmSectionList == Null || size == 0 || key == Null) {						// Sanity checks
+	if (PsCurrentProcess == Null || size == 0 || key == Null) {													// Sanity checks
 		return STATUS_INVALID_ARG;
 	}
 	
@@ -74,7 +74,7 @@ Status ShmCreateSection(UIntPtr size, PUIntPtr key, PUIntPtr ret) {
 		}
 	}
 	
-	if (!ListAdd(ShmSectionList, msect->shm)) {																	// Add the section to the global section list
+	if (!ListAdd(&ShmSectionList, msect->shm)) {																// Add the section to the global section list
 		while (msect->shm->pregions.length != 0) {																// Failed, let's first remove everything from the physical regions map
 			ListRemove(&msect->shm->pregions, 0);
 		}
@@ -84,12 +84,12 @@ Status ShmCreateSection(UIntPtr size, PUIntPtr key, PUIntPtr ret) {
 		MemFree((UIntPtr)msect);
 		
 		return STATUS_OUT_OF_MEMORY;
-	} else if (!ListAdd(PsCurrentProcess->shm_mapped_sections, msect)) {										// Now add it to the process mapped shm sections list
+	} else if (!ListAdd(&PsCurrentProcess->shm_mapped_sections, msect)) {										// Now add it to the process mapped shm sections list
 		while (msect->shm->pregions.length != 0) {																// Failed, let's first remove everything from the physical regions map
 			ListRemove(&msect->shm->pregions, 0);
 		}
 		
-		ListRemove(ShmSectionList, ShmSectionList->length - 1);													// Remove it from the global section list
+		ListRemove(&ShmSectionList, ShmSectionList.length - 1);													// Remove it from the global section list
 		VirtFreeAddress(msect->virt, size);																		// And now free everything
 		MemFree((UIntPtr)msect->shm);
 		MemFree((UIntPtr)msect);
@@ -104,7 +104,7 @@ Status ShmCreateSection(UIntPtr size, PUIntPtr key, PUIntPtr ret) {
 }
 
 static PShmMappedSection ShmGetMappedSection(UIntPtr key) {
-	ListForeach(PsCurrentProcess->shm_mapped_sections, i) {														// Let's iterate the mapped sections list
+	ListForeach(&PsCurrentProcess->shm_mapped_sections, i) {													// Let's iterate the mapped sections list
 		if (((PShmMappedSection)i->data)->shm->key == key) {													// Found?
 			return (PShmMappedSection)i->data;																	// Yes!
 		}
@@ -114,7 +114,7 @@ static PShmMappedSection ShmGetMappedSection(UIntPtr key) {
 }
 
 static UIntPtr ShmGetMappedSectionVirt(PShmSection shm) {
-	ListForeach(PsCurrentProcess->shm_mapped_sections, i) {														// Let's iterate the mapped sections list
+	ListForeach(&PsCurrentProcess->shm_mapped_sections, i) {													// Let's iterate the mapped sections list
 		if (((PShmMappedSection)i->data)->shm == shm) {															// Found?
 			return ((PShmMappedSection)i->data)->virt;															// Yes, so it is already mapped, return the virtual address
 		}
@@ -124,7 +124,7 @@ static UIntPtr ShmGetMappedSectionVirt(PShmSection shm) {
 }
 
 Status ShmMapSection(UIntPtr key, PUIntPtr ret) {
-	if (PsCurrentProcess == Null || ShmSectionList == Null) {													// Sanity checks
+	if (PsCurrentProcess == Null) {																				// Sanity checks
 		return STATUS_SHM_DOESNT_EXISTS;
 	}
 	
@@ -165,7 +165,7 @@ Status ShmMapSection(UIntPtr key, PUIntPtr ret) {
 		}
 	}
 	
-	if (!ListAdd(PsCurrentProcess->shm_mapped_sections, msect)) {												// Now add it to the process mapped shm sections list
+	if (!ListAdd(&PsCurrentProcess->shm_mapped_sections, msect)) {												// Now add it to the process mapped shm sections list
 		VirtFreeAddress(msect->virt, shm->pregions.length * MM_PAGE_SIZE);										// Failed...
 		MemFree((UIntPtr)msect);
 		
@@ -179,25 +179,15 @@ Status ShmMapSection(UIntPtr key, PUIntPtr ret) {
 }
 
 static Void ShmRemoveFromList(PList list, PVoid item) {
-	UIntPtr i = 0;
-	Boolean found = False;
+	UIntPtr i;																									// Just use ListSearch + ListRemove...
 	
-	ListForeach(list, j) {																						// Let's iterate the list
-		if (j->data == item) {
-			found = True;																						// In case we find the item, set the found flag
-			break;
-		}
-		
-		i++;
-	}
-	
-	if (found) {																								// And now, if the found flag is set, remove it!
+	if (ListSearch(list, item, &i)) {
 		ListRemove(list, i);
 	}
 }
 
 Status ShmUnmapSection(UIntPtr key) {
-	if (PsCurrentProcess == Null || ShmSectionList == Null) {													// Sanity checks
+	if (PsCurrentProcess == Null) {																				// Sanity checks
 		return STATUS_SHM_DOESNT_EXISTS;
 	}
 	
@@ -207,13 +197,13 @@ Status ShmUnmapSection(UIntPtr key) {
 		return STATUS_SHM_DOESNT_EXISTS;																		// It's not mapped...
 	}
 	
-	ShmRemoveFromList(PsCurrentProcess->shm_mapped_sections, msect);											// Ok! First, let's remove it from the mapped shm sections list
+	ShmRemoveFromList(&PsCurrentProcess->shm_mapped_sections, msect);											// Ok! First, let's remove it from the mapped shm sections list
 	VirtFreeAddress(msect->virt, msect->shm->pregions.length * MM_PAGE_SIZE);									// Now, free the virtual memory (and if this is the last reference, also free the physical memory)
 	
 	msect->shm->refs--;																							// Decrease the reference count
 	
 	if (msect->shm->refs == 0) {																				// This is the last reference?
-		ShmRemoveFromList(ShmSectionList, msect->shm);															// Yes, first, let's remove it from the section list
+		ShmRemoveFromList(&ShmSectionList, msect->shm);															// Yes, first, let's remove it from the section list
 		
 		while (msect->shm->pregions.length != 0) {																// Now, free the physical regions map
 			ListRemove(&msect->shm->pregions, 0);
@@ -225,13 +215,4 @@ Status ShmUnmapSection(UIntPtr key) {
 	MemFree((UIntPtr)msect);																					// Free the msect strct
 	
 	return STATUS_SUCCESS;
-}
-
-Void ShmInit(Void) {
-	ShmSectionList = ListNew(True);																				// Try to init the port list
-	
-	if (ShmSectionList == Null) {
-		DbgWriteFormated("PANIC! Failed to init IPC\r\n");														// Failed... but it's a critical component, so HALT
-		Panic(PANIC_KERNEL_INIT_FAILED);
-	}
 }

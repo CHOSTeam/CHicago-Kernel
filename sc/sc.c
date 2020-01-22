@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:14 BRT
-// Last edited on January 20 of 2020, at 22:04 BRT
+// Last edited on January 21 of 2020, at 23:20 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/console.h>
@@ -34,7 +34,7 @@ Void ScFreeHandle(UInt8 type, PVoid data) {
 }
 
 IntPtr ScAppendHandle(UInt8 type, PVoid data) {
-	ListForeach(PsCurrentProcess->handles, i) {																												// Try to find an unused entry
+	ListForeach(&PsCurrentProcess->handles, i) {																											// Try to find an unused entry
 		PHandle hndl = (PHandle)i->data;
 		
 		if (!hndl->used) {																																	// Found?
@@ -57,7 +57,7 @@ IntPtr ScAppendHandle(UInt8 type, PVoid data) {
 	hndl->num = PsCurrentProcess->last_handle_id;
 	hndl->used = True;
 	
-	if (!ListAdd(PsCurrentProcess->handles, hndl)) {																										// Try to add this file to the process handle list!
+	if (!ListAdd(&PsCurrentProcess->handles, hndl)) {																										// Try to add this file to the process handle list!
 		MemFree((UIntPtr)hndl);																																// Failed, free the handle data (if required) and return -1
 		ScFreeHandle(type, data);
 		return -1;
@@ -99,7 +99,7 @@ Status ScSysCloseHandle(IntPtr handle) {
 		return STATUS_INVALID_ARG;
 	}
 	
-	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Try to get the handle data
+	PHandle hndl = ListGet(&PsCurrentProcess->handles, handle);																								// Try to get the handle data
 	
 	if (hndl == Null) {
 		return STATUS_WRONG_HANDLE;
@@ -188,7 +188,7 @@ Status ScPsWait(IntPtr handle, PUIntPtr ret) {
 		return STATUS_INVALID_ARG;
 	}
 	
-	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Try to get the handle data
+	PHandle hndl = ListGet(&PsCurrentProcess->handles, handle);																								// Try to get the handle data
 	
 	if (hndl == Null) {
 		return STATUS_WRONG_HANDLE;
@@ -231,7 +231,7 @@ Status ScPsLock(IntPtr handle) {
 		return STATUS_INVALID_ARG;
 	}
 	
-	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Try to get the handle data
+	PHandle hndl = ListGet(&PsCurrentProcess->handles, handle);																								// Try to get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_LOCK) {
 		return STATUS_WRONG_HANDLE;
@@ -245,7 +245,7 @@ Status ScPsTryLock(IntPtr handle) {
 		return STATUS_INVALID_ARG;
 	}
 	
-	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Try to get the handle data
+	PHandle hndl = ListGet(&PsCurrentProcess->handles, handle);																								// Try to get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_LOCK) {
 		return STATUS_WRONG_HANDLE;
@@ -259,7 +259,7 @@ Status ScPsUnlock(IntPtr handle) {
 		return STATUS_INVALID_ARG;
 	}
 	
-	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Try to get the handle data
+	PHandle hndl = ListGet(&PsCurrentProcess->handles, handle);																								// Try to get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_LOCK) {
 		return STATUS_WRONG_HANDLE;
@@ -303,7 +303,7 @@ Status ScFsReadFile(IntPtr handle, UIntPtr len, PUInt8 buf, PUIntPtr ret) {
 		return STATUS_INVALID_ARG;
 	}
 	
-	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
+	PHandle hndl = ListGet(&PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_FILE) {
 		return STATUS_WRONG_HANDLE;
@@ -340,7 +340,7 @@ Status ScFsWriteFile(IntPtr handle, UIntPtr len, PUInt8 buf, PUIntPtr ret) {
 		return STATUS_SUCCESS;
 	}
 	
-	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
+	PHandle hndl = ListGet(&PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_FILE) {
 		return STATUS_WRONG_HANDLE;
@@ -379,7 +379,7 @@ Status ScFsReadDirectoryEntry(IntPtr handle, UIntPtr entry, PWChar out) {
 		return STATUS_INVALID_ARG;
 	}
 	
-	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
+	PHandle hndl = ListGet(&PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_FILE) {
 		return STATUS_WRONG_HANDLE;
@@ -403,7 +403,7 @@ Status ScFsFindInDirectory(IntPtr handle, PWChar name, PIntPtr ret) {
 		return STATUS_INVALID_ARG;
 	}
 	
-	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
+	PHandle hndl = ListGet(&PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_FILE) {
 		return STATUS_WRONG_HANDLE;
@@ -431,7 +431,7 @@ Status ScFsControlFile(IntPtr handle, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf) {
 		return STATUS_INVALID_ARG;
 	}
 	
-	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
+	PHandle hndl = ListGet(&PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_FILE) {
 		return STATUS_WRONG_HANDLE;
@@ -445,7 +445,7 @@ Status ScFsGetFileSize(IntPtr handle, PUIntPtr ret) {
 		return STATUS_INVALID_ARG;
 	}
 	
-	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
+	PHandle hndl = ListGet(&PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_FILE) {
 		return STATUS_WRONG_HANDLE;
@@ -467,7 +467,7 @@ Status ScFsGetPosition(IntPtr handle, PUIntPtr ret) {
 		return STATUS_INVALID_ARG;
 	}
 	
-	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
+	PHandle hndl = ListGet(&PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_FILE) {
 		return STATUS_WRONG_HANDLE;
@@ -489,7 +489,7 @@ Status ScFsSetPosition(IntPtr handle, UIntPtr base, UIntPtr off) {
 		return STATUS_INVALID_ARG;
 	}
 	
-	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
+	PHandle hndl = ListGet(&PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_FILE) {
 		return STATUS_WRONG_HANDLE;
@@ -554,7 +554,7 @@ Status ScIpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, IntPt
 	PIpcResponsePort rp = Null;
 	
 	if (rport != -1) {																																		// Should we get the response port from the rport handle?
-		PHandle hndl = ListGet(PsCurrentProcess->handles, rport);																							// Yes, get the handle data
+		PHandle hndl = ListGet(&PsCurrentProcess->handles, rport);																							// Yes, get the handle data
 		
 		if (hndl == Null || hndl->type != HANDLE_TYPE_IPC_RESPONSE_PORT) {
 			return STATUS_WRONG_HANDLE;
@@ -571,7 +571,7 @@ Status ScIpcSendResponse(IntPtr handle, UInt32 msg, UIntPtr size, PUInt8 buf) {
 		return STATUS_INVALID_ARG;
 	}
 	
-	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get the handle data
+	PHandle hndl = ListGet(&PsCurrentProcess->handles, handle);																								// Get the handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_IPC_RESPONSE_PORT) {
 		return STATUS_WRONG_HANDLE;
@@ -593,7 +593,7 @@ Status ScIpcReceiveResponse(IntPtr handle, PUInt32 msg, UIntPtr size, PUInt8 buf
 		return STATUS_INVALID_ARG;
 	}
 	
-	PHandle hndl = ListGet(PsCurrentProcess->handles, handle);																								// Get handle data
+	PHandle hndl = ListGet(&PsCurrentProcess->handles, handle);																								// Get handle data
 	
 	if (hndl == Null || hndl->type != HANDLE_TYPE_IPC_RESPONSE_PORT) {
 		return STATUS_WRONG_HANDLE;

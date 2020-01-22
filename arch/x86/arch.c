@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:21 BRT
-// Last edited on December 30 of 2019, at 12:10 BRT
+// Last edited on January 21 of 2020, at 23:08 BRT
 
 #include <chicago/arch/ahci.h>
 #include <chicago/arch/bootmgr.h>
@@ -121,8 +121,7 @@ Void ArchInit(Void) {
 	PCIInit();																									// Init the PCI device list
 	DbgWriteFormated("[x86] PCI initialized\r\n");
 	
-	FsInitDeviceList();																							// Init the x86-only devices (and the device list)
-	AHCIInit();
+	AHCIInit();																									// Init the x86-only devices
 	IDEInit();
 	
 	FsSetBootDevice(BootmgrBootDev);																			// Try to set the boot device

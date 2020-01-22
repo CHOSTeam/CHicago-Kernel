@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 24 of 2019, at 14:18 BRT
-// Last edited on January 20 of 2020, at 10:29 BRT
+// Last edited on January 21 of 2020, at 23:21 BRT
 
 #define __CHICAGO_IPC__
 
@@ -13,10 +13,10 @@
 #include <chicago/sc.h>
 #include <chicago/string.h>
 
-PList IpcPortList = Null;
+List IpcPortList = { Null, Null, 0, False };
 
 Status IpcCreatePort(PWChar name) {
-	if (PsCurrentProcess == Null || IpcPortList == Null || name == Null) {								// Sanity checks
+	if (PsCurrentProcess == Null || name == Null) {														// Sanity checks
 		return STATUS_INVALID_ARG;																		// Nope...
 	}
 	
@@ -39,7 +39,7 @@ Status IpcCreatePort(PWChar name) {
 	port->queue.free = False;
 	port->proc = PsCurrentProcess;																		// Save the port owner
 	
-	if (!ListAdd(IpcPortList, port)) {																	// Add this port to the port list
+	if (!ListAdd(&IpcPortList, port)) {																	// Add this port to the port list
 		MemFree((UIntPtr)port->name);
 		MemFree((UIntPtr)port);
 		return STATUS_OUT_OF_MEMORY;
@@ -76,7 +76,7 @@ Status IpcCreateResponsePort(PIntPtr ret) {
 }
 
 Status IpcRemovePort(PWChar name) {
-	if (PsCurrentProcess == Null || IpcPortList == Null || name == Null) {								// Sanity checks
+	if (PsCurrentProcess == Null || name == Null) {														// Sanity checks
 		return STATUS_INVALID_ARG;
 	}
 	
@@ -84,8 +84,8 @@ Status IpcRemovePort(PWChar name) {
 	Boolean found = False;
 	PIpcPort port = Null;
 	
-	for (; !found && idx < IpcPortList->length; idx++) {												// Let's search for this port in the port list!
-		port = ListGet(IpcPortList, idx);
+	for (; !found && idx < IpcPortList.length; idx++) {													// Let's search for this port in the port list!
+		port = ListGet(&IpcPortList, idx);
 		
 		if (StrGetLength(port->name) != StrGetLength(name)) {											// Same length?
 			continue;																					// Nope
@@ -100,7 +100,7 @@ Status IpcRemovePort(PWChar name) {
 		return STATUS_NOT_OWNER;																		// Only the owner of this port can remove it
 	}
 	
-	ListRemove(IpcPortList, idx);																		// Remove this port from the list
+	ListRemove(&IpcPortList, idx);																		// Remove this port from the list
 	
 	while (port->queue.length != 0) {																	// Let's free all the messages that are in the queue
 		PIpcMessage msg = QueueRemove(&port->queue);
@@ -116,11 +116,11 @@ Status IpcRemovePort(PWChar name) {
 }
 
 Status IpcCheckPort(PWChar name) {
-	if (PsCurrentProcess == Null || IpcPortList == Null || name == Null) {								// Sanity checks
+	if (PsCurrentProcess == Null || name == Null) {														// Sanity checks
 		return STATUS_INVALID_ARG;
 	}
 	
-	ListForeach(IpcPortList, i) {																		// Let's iterate the port list
+	ListForeach(&IpcPortList, i) {																		// Let's iterate the port list
 		if (StrGetLength(((PIpcPort)i->data)->name) != StrGetLength(name)) {							// Check if both names have the same length
 			continue;
 		} else if (StrCompare(((PIpcPort)i->data)->name, name)) {										// And compare them!
@@ -149,7 +149,7 @@ Void IpcFreeResponsePort(PIpcResponsePort port) {
 }
 
 Status IpcSendMessage(PWChar name, UInt32 msg, UIntPtr size, PUInt8 buf, PIpcResponsePort rport) {
-	if (PsCurrentProcess == Null || IpcPortList == Null || name == Null) {								// Sanity checks
+	if (PsCurrentProcess == Null || name == Null) {														// Sanity checks
 		return STATUS_INVALID_ARG;
 	}
 	
@@ -157,8 +157,8 @@ Status IpcSendMessage(PWChar name, UInt32 msg, UIntPtr size, PUInt8 buf, PIpcRes
 	Boolean found = False;
 	PIpcPort port = Null;
 	
-	for (; !found && idx < IpcPortList->length; idx++) {												// Let's search for this port in the port list!
-		port = ListGet(IpcPortList, idx);
+	for (; !found && idx < IpcPortList.length; idx++) {													// Let's search for this port in the port list!
+		port = ListGet(&IpcPortList, idx);
 		
 		if (StrGetLength(port->name) != StrGetLength(name)) {											// Same length?
 			continue;																					// Nope
@@ -296,7 +296,7 @@ Status IpcSendResponse(PIpcResponsePort port, UInt32 msg, UIntPtr size, PUInt8 b
 }
 	
 Status IpcReceiveMessage(PWChar name, PUInt32 msg, UIntPtr size, PUInt8 buf) {
-	if (PsCurrentProcess == Null || IpcPortList == Null || name == Null || msg == Null) {				// Sanity checks
+	if (PsCurrentProcess == Null || name == Null || msg == Null) {										// Sanity checks
 		return STATUS_INVALID_ARG;
 	}
 	
@@ -304,8 +304,8 @@ Status IpcReceiveMessage(PWChar name, PUInt32 msg, UIntPtr size, PUInt8 buf) {
 	Boolean found = False;
 	PIpcPort port = Null;
 	
-	for (; !found && idx < IpcPortList->length; idx++) {												// Let's search for this port in the port list!
-		port = ListGet(IpcPortList, idx);
+	for (; !found && idx < IpcPortList.length; idx++) {													// Let's search for this port in the port list!
+		port = ListGet(&IpcPortList, idx);
 		
 		if (StrGetLength(port->name) != StrGetLength(name)) {											// Same length?
 			continue;																					// Nope
@@ -355,13 +355,4 @@ Status IpcReceiveResponse(PIpcResponsePort port, PUInt32 msg, UIntPtr size, PUIn
 	}
 	
 	return STATUS_SUCCESS;
-}
-
-Void IpcInit(Void) {
-	IpcPortList = ListNew(True);																		// Try to init the port list
-	
-	if (IpcPortList == Null) {
-		DbgWriteFormated("PANIC! Failed to init IPC\r\n");												// Failed... but it's a critical component, so HALT
-		Panic(PANIC_KERNEL_INIT_FAILED);
-	}
 }

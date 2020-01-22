@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 14 of 2018, at 22:35 BRT
-// Last edited on January 18 of 2020, at 15:22 BRT
+// Last edited on January 21 of 2020, at 23:07 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -11,7 +11,7 @@
 #include <chicago/process.h>
 #include <chicago/string.h>
 
-PList FsDeviceList = Null;
+List FsDeviceList = { Null, Null, 0, False };
 PWChar FsBootDevice = Null;
 
 Status FsReadDevice(PDevice dev, UIntPtr off, UIntPtr len, PUInt8 buf, PUIntPtr read) {
@@ -45,10 +45,6 @@ Status FsControlDevice(PDevice dev, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf) {
 }
 
 Boolean FsAddDevice(PWChar name, PVoid priv, Status (*read)(PDevice, UIntPtr, UIntPtr, PUInt8, PUIntPtr), Status (*write)(PDevice, UIntPtr, UIntPtr, PUInt8, PUIntPtr), Status (*control)(PDevice, UIntPtr, PUInt8, PUInt8)) {
-	if (FsDeviceList == Null) {													// Device list was initialized?
-		return False;															// No...
-	}
-	
 	PDevice dev = (PDevice)MemAllocate(sizeof(Device));							// Allocate memory for the dev struct
 	
 	if (dev == Null) {															// Failed?
@@ -61,7 +57,7 @@ Boolean FsAddDevice(PWChar name, PVoid priv, Status (*read)(PDevice, UIntPtr, UI
 	dev->write = write;
 	dev->control = control;
 	
-	if (!ListAdd(FsDeviceList, dev)) {											// Try to add to the list
+	if (!ListAdd(&FsDeviceList, dev)) {											// Try to add to the list
 		MemFree((UIntPtr)dev);													// Failed, so let's free the dev struct
 		return False;															// And return False
 	}
@@ -70,10 +66,6 @@ Boolean FsAddDevice(PWChar name, PVoid priv, Status (*read)(PDevice, UIntPtr, UI
 }
 
 Boolean FsAddHardDisk(PVoid priv, Status (*read)(PDevice, UIntPtr, UIntPtr, PUInt8, PUIntPtr), Status (*write)(PDevice, UIntPtr, UIntPtr, PUInt8, PUIntPtr), Status (*control)(PDevice, UIntPtr, PUInt8, PUInt8)) {
-	if (FsDeviceList == Null) {													// Device list was initialized?
-		return False;															// No...
-	}
-	
 	static UIntPtr count = 0;
 	UIntPtr nlen = StrFormat(Null, L"HardDisk%d", count++);						// Get the length of the name
 	PWChar name = (PWChar)MemAllocate(nlen);									// Alloc space for the name
@@ -93,10 +85,6 @@ Boolean FsAddHardDisk(PVoid priv, Status (*read)(PDevice, UIntPtr, UIntPtr, PUIn
 }
 
 Boolean FsAddCdRom(PVoid priv, Status (*read)(PDevice, UIntPtr, UIntPtr, PUInt8, PUIntPtr), Status (*write)(PDevice, UIntPtr, UIntPtr, PUInt8, PUIntPtr), Status (*control)(PDevice, UIntPtr, PUInt8, PUInt8)) {
-	if (FsDeviceList == Null) {													// Device list was initialized?
-		return False;															// No...
-	}
-	
 	static UIntPtr count = 0;
 	UIntPtr nlen = StrFormat(Null, L"CdRom%d", count++);						// Get the length of the name
 	PWChar name = (PWChar)MemAllocate(nlen);									// Alloc space for the name
@@ -116,34 +104,18 @@ Boolean FsAddCdRom(PVoid priv, Status (*read)(PDevice, UIntPtr, UIntPtr, PUInt8,
 }
 
 Boolean FsRemoveDevice(PWChar name) {
-	if (FsDeviceList == Null) {													// Device list was initialized?
-		return False;															// No...
-	}
-	
 	PDevice dev = FsGetDevice(name);											// Try to get the device
-	UIntPtr idx = 0;
-	Boolean found = False;
 	
 	if (dev == Null) {															// Failed?
 		return False;															// Yes, so this device doesn't exists
 	}
 	
-	for (; !found && idx < FsDeviceList->length; idx++) {
-		if (ListGet(FsDeviceList, idx) == dev) {								// Found?
-			found = True;														// Yes!
-		}
-	}
+	UIntPtr idx;																// Let's try to get the idx of the device on the list
 	
-	if (!found) {																// Found?
-		return False;															// No (What? But we found it earlier)
-	}
-	
-	if (ListRemove(FsDeviceList, idx) == Null) {								// Try to remove it
+	if (!ListSearch(&FsDeviceList, dev, &idx)) {
+		return False;															// ...
+	} else if (ListRemove(&FsDeviceList, idx) == Null) {						// Try to remove it
 		return False;															// Failed...
-	}
-	
-	if (FsGetDevice(name) != Null) {											// We really removed it?
-		return False;															// No (for some reason)
 	}
 	
 	MemFree((UIntPtr)(dev->name));												// Free the name
@@ -153,11 +125,7 @@ Boolean FsRemoveDevice(PWChar name) {
 }
 
 PDevice FsGetDevice(PWChar name) {
-	if (FsDeviceList == Null) {													// Device list was initialized?
-		return Null;															// No...
-	}
-	
-	ListForeach(FsDeviceList, i) {												// Let's do an for in each (foreach) list entry
+	ListForeach(&FsDeviceList, i) {												// Let's do an for in each (foreach) list entry
 		PWChar dname = ((PDevice)(i->data))->name;								// Save the entry name
 		
 		if (StrGetLength(dname) != StrGetLength(name)) {						// Same length?
@@ -171,23 +139,17 @@ PDevice FsGetDevice(PWChar name) {
 }
 
 PDevice FsGetDeviceByID(UIntPtr id) {
-	if (FsDeviceList == Null) {
-		return Null;
-	} else if (id >= FsDeviceList->length) {
+	if (id >= FsDeviceList.length) {
 		return Null;
 	}
 	
-	return (PDevice)ListGet(FsDeviceList, id);
+	return (PDevice)ListGet(&FsDeviceList, id);
 }
 
 UIntPtr FsGetDeviceID(PWChar name) {
-	if (FsDeviceList == Null) {
-		return 0;
-	}
-	
 	UIntPtr idx = 0;
 	
-	ListForeach(FsDeviceList, i) {
+	ListForeach(&FsDeviceList, i) {
 		PWChar dname = ((PDevice)(i->data))->name;
 		
 		if (StrGetLength(dname) != StrGetLength(name)) {
@@ -211,15 +173,6 @@ Void FsSetBootDevice(PWChar name) {
 
 PWChar FsGetBootDevice(Void) {
 	return FsBootDevice;
-}
-
-Void FsInitDeviceList(Void) {
-	FsDeviceList = ListNew(True);													// Try to init the device list
-	
-	if (FsDeviceList == Null) {														// Failed?
-		DbgWriteFormated("PANIC! Couldn't init the device list\r\n");				// Yes, so halt
-		Panic(PANIC_KERNEL_INIT_FAILED);
-	}
 }
 
 Void FsInitDevices(Void) {

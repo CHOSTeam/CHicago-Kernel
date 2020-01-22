@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:14 BRT
-// Last edited on January 20 of 2020, at 23:03 BRT
+// Last edited on January 20 of 2020, at 23:15 BRT
 
 #include <chicago/arch.h>
 #include <chicago/console.h>
@@ -78,11 +78,6 @@ Void KernelMainLate(Void) {
 	PsInitKillerThread();																														// Create and add the killer thread
 	RandSetSeed(RandGenerateSeed());																											// Set the random generator seed
 	DbgWriteFormated("[Kernel] Tasking initialized\r\n");
-	
-	IpcInit();																																	// Init the IPC (message passing) interface
-	ShmInit();																																	// And the SHM (shared memory) interface
-	DispIncrementProgessBar();
-	DbgWriteFormated("[Kernel] IPC initialized\r\n");
 	
 	DispFillProgressBar();																														// Ok, the kernel boot process is now finished!
 	DbgWriteFormated("[Kernel] Kernel initialized\r\n\r\n");

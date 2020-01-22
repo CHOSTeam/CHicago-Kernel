@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 19:26 BRT
-// Last edited on November 07 of 2019, at 19:43 BRT
+// Last edited on January 21 of 2020, at 11:40 BRT
 
 #ifndef __CHICAGO_ARCH_VMM_H__
 #define __CHICAGO_ARCH_VMM_H__
@@ -18,8 +18,8 @@
 #define PAGE_HUGE (1 << 7)
 #define PAGE_GLOBAL (1 << 8)
 #define PAGE_AOR (1 << 9)
-#define PAGE_AVAL1 (1 << 10)
-#define PAGE_AVAL2 (1 << 11)
+#define PAGE_COW (1 << 10)
+#define PAGE_OTHER (1 << 11)
 #define PAGE_MASK 0xFFFFF000
 
 #define MmGetPDEInt(pd, i) ((PUInt32)(pd))[((i) & ~0xFFF) >> 22]

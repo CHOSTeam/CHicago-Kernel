@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 19:19 BRT
-// Last edited on January 20 of 2020, at 11:21 BRT
+// Last edited on January 21 of 2020, at 12:28 BRT
 
 #include <chicago/arch/vmm.h>
 
@@ -368,6 +368,78 @@ Status MmUnmap(UIntPtr virt) {
 		MmInvlpg(virt);																											// Update the TLB
 		return STATUS_SUCCESS;
 	}
+}
+
+Status MmPrepareMapFile(UIntPtr start, UIntPtr end) {
+	if ((start % MM_PAGE_SIZE) != 0) {																							// Align everything to page size
+		start -= start % MM_PAGE_SIZE;
+	}
+	
+	for (UIntPtr i = start; i < end; i += MM_PAGE_SIZE) {																		// First, let's check everything...
+		if ((MmGetP4(i) & PAGE_PRESENT) != PAGE_PRESENT) {																		// This P4 entry exists?
+			return STATUS_NOT_MAPPED;																							// Nope
+		} else if ((MmGetP3(i) & PAGE_PRESENT) != PAGE_PRESENT) {																// This P3 entry exists?
+			return STATUS_NOT_MAPPED;																							// Nope
+		} else if ((MmGetP3(i) & PAGE_HUGE) == PAGE_HUGE) {																		// This P3 entry is a huge one? (1GiB page)
+			return STATUS_MAPFILE_FAILED;																						// Yes, but sorry, we don't support mapping it YET
+		} else if ((MmGetP2(i) & PAGE_PRESENT) != PAGE_PRESENT) {																// This P2 entry exists?
+			return STATUS_NOT_MAPPED;																							// Nope
+		} else if ((MmGetP2(i) & PAGE_HUGE) == PAGE_HUGE) {																		// This P2 entry is a huge one? (2MiB page)
+			return STATUS_MAPFILE_FAILED;																						// Yes, but sorry, we don't support mapping it YET
+		}
+		
+		UIntPtr page = MmGetP1(i);																								// Get the PTE entry
+		
+		if ((page & PAGE_PRESENT) != PAGE_PRESENT && (page & PAGE_AOR) != PAGE_AOR) {											// Not mapped (or already mapped to another mapped file)...
+			return STATUS_NOT_MAPPED;
+		} else if ((page & PAGE_OTHER) == PAGE_OTHER) {																			// Already mapped to another file?
+			return STATUS_ALREADY_MAPPED;																						// Yup...
+		}
+	}
+	
+	for (; start < end; start += MM_PAGE_SIZE) {																				// Now, let's just set the PAGE_OTHER flag in everything, and also unset the present flag in everything
+		UIntPtr page = MmGetP1(start);
+		MmSetP1(start, page & PAGE_MASK, ((page & 0xFFF) | PAGE_OTHER) & ~PAGE_PRESENT);
+		MmInvlpg(start);
+	}
+	
+	return STATUS_SUCCESS;
+}
+
+Status MmPrepareUnmapFile(UIntPtr start, UIntPtr end) {
+	if ((start % MM_PAGE_SIZE) != 0) {																							// Align everything to page size
+		start -= start % MM_PAGE_SIZE;
+	}
+	
+	for (UIntPtr i = start; i < end; i += MM_PAGE_SIZE) {																		// First, let's check everything...
+		if ((MmGetP4(i) & PAGE_PRESENT) != PAGE_PRESENT) {																		// This P4 entry exists?
+			return STATUS_NOT_MAPPED;																							// Nope
+		} else if ((MmGetP3(i) & PAGE_PRESENT) != PAGE_PRESENT) {																// This P3 entry exists?
+			return STATUS_NOT_MAPPED;																							// Nope
+		} else if ((MmGetP3(i) & PAGE_HUGE) == PAGE_HUGE) {																		// This P3 entry is a huge one? (1GiB page)
+			return STATUS_MAPFILE_FAILED;																						// Yes, but sorry, we don't support mapping it YET
+		} else if ((MmGetP2(i) & PAGE_PRESENT) != PAGE_PRESENT) {																// This P2 entry exists?
+			return STATUS_NOT_MAPPED;																							// Nope
+		} else if ((MmGetP2(i) & PAGE_HUGE) == PAGE_HUGE) {																		// This P2 entry is a huge one? (2MiB page)
+			return STATUS_MAPFILE_FAILED;																						// Yes, but sorry, we don't support mapping it YET
+		}
+		
+		UIntPtr page = MmGetP1(i);																								// Get the PTE entry
+		
+		if ((page & PAGE_PRESENT) != PAGE_PRESENT && (page & PAGE_OTHER) != PAGE_OTHER) {										// Not mapped...
+			return STATUS_NOT_MAPPED;
+		} else if ((page & PAGE_OTHER) != PAGE_OTHER) {																			// Not mapped to any file?
+			return STATUS_UNMAPFILE_FAILED;																						// Yup...
+		}
+	}
+	
+	for (; start < end; start += MM_PAGE_SIZE) {																				// Now, let's just unset the PAGE_OTHER flag in everything, and also set the present flag (if required)
+		UIntPtr page = MmGetP1(start);
+		MmSetP1(start, page & PAGE_MASK, ((page & 0xFFF) & ~PAGE_OTHER) | (((page & PAGE_AOR) != PAGE_AOR) ? PAGE_PRESENT : 0));
+		MmInvlpg(start);
+	}
+	
+	return STATUS_SUCCESS;
 }
 
 extern UIntPtr MmKernelDirectoryInt;

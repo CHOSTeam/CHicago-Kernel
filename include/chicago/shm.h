@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 25 of 2019, at 10:56 BRT
-// Last edited on January 18 of 2020, at 17:02 BRT
+// Last edited on January 21 of 2020, at 23:14 BRT
 
 #ifndef __CHICAGO_SHM_H__
 #define __CHICAGO_SHM_H__
@@ -28,6 +28,5 @@ typedef struct {
 Status ShmCreateSection(UIntPtr size, PUIntPtr key, PUIntPtr ret);
 Status ShmMapSection(UIntPtr key, PUIntPtr ret);
 Status ShmUnmapSection(UIntPtr key);
-Void ShmInit(Void);
 
 #endif		// __CHICAGO_SHM_H__

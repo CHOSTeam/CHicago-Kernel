@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 19:19 BRT
-// Last edited on January 20 of 2020, at 11:22 BRT
+// Last edited on January 20 of 2020, at 12:25 BRT
 
 #include <chicago/arch/vmm.h>
 
@@ -219,16 +219,76 @@ Status MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags) {
 
 Status MmUnmap(UIntPtr virt) {
 	if ((MmGetPDE(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																			// This page table exists?
-		return STATUS_NOT_MAPPED;																									// No, so return False
+		return STATUS_NOT_MAPPED;																									// No...
 	} else if ((MmGetPDE(virt) & PAGE_HUGE) == PAGE_HUGE) {																			// 4MiB page?
 		return STATUS_UNMAP_ERROR;																									// Yes, but sorry, we don't support mapping it YET
 	} else if ((MmGetPTE(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																	// Same as above
-		return STATUS_NOT_MAPPED;																									// No, so return False
+		return STATUS_NOT_MAPPED;																									// No...
 	} else {
 		MmSetPTE(virt, 0, 0);																										// Yes, so unmap the virt addr
 		MmInvlpg(virt);																												// Refresh the TLB
 		return STATUS_SUCCESS;
 	}
+}
+
+Status MmPrepareMapFile(UIntPtr start, UIntPtr end) {
+	if ((start % MM_PAGE_SIZE) != 0) {																								// Align everything to page size
+		start -= start % MM_PAGE_SIZE;
+	}
+	
+	for (UIntPtr i = start; i < end; i += MM_PAGE_SIZE) {																			// First, let's check everything...
+		if ((MmGetPDE(i) & PAGE_PRESENT) != PAGE_PRESENT) {																			// This page table exists?
+			return STATUS_NOT_MAPPED;																								// Nope...
+		} else if ((MmGetPDE(i) & PAGE_HUGE) == PAGE_HUGE) {																		// We don't support handling 4MiB pages here yet...
+			return STATUS_MAPFILE_FAILED;
+		}
+		
+		UIntPtr page = MmGetPTE(i);																									// Get the PTE entry
+		
+		if ((page & PAGE_PRESENT) != PAGE_PRESENT && (page & PAGE_AOR) != PAGE_AOR) {												// Not mapped (or already mapped to another mapped file)...
+			return STATUS_NOT_MAPPED;
+		} else if ((page & PAGE_OTHER) == PAGE_OTHER) {																				// Already mapped to another file?
+			return STATUS_ALREADY_MAPPED;																							// Yup...
+		}
+	}
+	
+	for (; start < end; start += MM_PAGE_SIZE) {																					// Now, let's just set the PAGE_OTHER flag in everything, and also unset the present flag in everything
+		UIntPtr page = MmGetPTE(start);
+		MmSetPTE(start, page & PAGE_MASK, ((page & 0xFFF) | PAGE_OTHER) & ~PAGE_PRESENT);
+		MmInvlpg(start);
+	}
+	
+	return STATUS_SUCCESS;
+}
+
+Status MmPrepareUnmapFile(UIntPtr start, UIntPtr end) {
+	if ((start % MM_PAGE_SIZE) != 0) {																								// Align everything to page size
+		start -= start % MM_PAGE_SIZE;
+	}
+	
+	for (UIntPtr i = start; i < end; i += MM_PAGE_SIZE) {																			// First, let's check everything...
+		if ((MmGetPDE(i) & PAGE_PRESENT) != PAGE_PRESENT) {																			// This page table exists?
+			return STATUS_NOT_MAPPED;																								// Nope...
+		} else if ((MmGetPDE(i) & PAGE_HUGE) == PAGE_HUGE) {																		// We don't support handling 4MiB pages here yet...
+			return STATUS_UNMAPFILE_FAILED;
+		}
+		
+		UIntPtr page = MmGetPTE(i);																									// Get the PTE entry
+		
+		if ((page & PAGE_PRESENT) != PAGE_PRESENT && (page & PAGE_OTHER) != PAGE_OTHER) {											// Not mapped...
+			return STATUS_NOT_MAPPED;
+		} else if ((page & PAGE_OTHER) != PAGE_OTHER) {																				// Not mapped to any file?
+			return STATUS_UNMAPFILE_FAILED;																							// Yup...
+		}
+	}
+	
+	for (; start < end; start += MM_PAGE_SIZE) {																					// Now, let's just unset the PAGE_OTHER flag in everything, and also set the present flag (if required)
+		UIntPtr page = MmGetPTE(start);
+		MmSetPTE(start, page & PAGE_MASK, ((page & 0xFFF) & ~PAGE_OTHER) | (((page & PAGE_AOR) != PAGE_AOR) ? PAGE_PRESENT : 0));
+		MmInvlpg(start);
+	}
+	
+	return STATUS_SUCCESS;
 }
 
 UIntPtr MmCreateDirectory(Void) {

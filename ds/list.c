@@ -1,11 +1,10 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 14 of 2018, at 22:08 BRT
-// Last edited on December 07 of 2020, at 11:44 BRT
+// Last edited on January 21 of 2020, at 22:55 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/list.h>
-#include <chicago/mm.h>
 
 PList ListNew(Boolean free) {
 	PList out = (PList)MemAllocate(sizeof(List));									// Let's allocate the space for the initial list (without any entry)
@@ -135,4 +134,20 @@ PVoid ListGet(PList list, UIntPtr idx) {
 	}
 	
 	return node->data;																// And return the data
+}
+
+Boolean ListSearch(PList list, PVoid data, PUIntPtr idx) {
+	if (list == Null || idx == Null) {												// Sanity checks
+		return False;
+	}
+	
+	ListForeach(list, i) {															// Let's search...
+		if (i->data == data) {														// Found?
+			return True;															// Yeah!
+		}
+		
+		(*idx)++;																	// Nope, increase the current index
+	}
+	
+	return False;																	// Not found...
 }

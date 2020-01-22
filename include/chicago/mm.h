@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 18:48 BRT
-// Last edited on January 18 of 2020, at 13:12 BRT
+// Last edited on January 21 of 2020, at 12:25 BRT
 
 #ifndef __CHICAGO_MM_H__
 #define __CHICAGO_MM_H__
@@ -55,6 +55,8 @@ UIntPtr MmFindHighestFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count);
 UIntPtr MmMapTemp(UIntPtr phys, UInt32 flags);
 Status MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags);
 Status MmUnmap(UIntPtr virt);
+Status MmPrepareMapFile(UIntPtr start, UIntPtr end);
+Status MmPrepareUnmapFile(UIntPtr start, UIntPtr end);
 UIntPtr MmCreateDirectory(Void);
 Void MmFreeDirectory(UIntPtr dir);
 UIntPtr MmGetCurrentDirectory(Void);

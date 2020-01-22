@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 16 of 2018, at 18:28 BRT
-// Last edited on January 20 of 2020, at 22:47 BRT
+// Last edited on January 21 of 2020, at 23:12 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -10,8 +10,8 @@
 #include <chicago/rand.h>
 #include <chicago/string.h>
 
-PList FsMountPointList = Null;
-PList FsTypeList = Null;
+List FsMountPointList = { Null, Null, 0, False };
+List FsTypeList = { Null, Null, 0, False };
 
 static UIntPtr FsCountSeparations(PWChar path) {
 	UIntPtr count = 0;
@@ -256,9 +256,9 @@ static Status FsCreateFileInt(PFsNode dir, PWChar name, UIntPtr type) {
 }
 
 Status FsOpenFile(PWChar path, UIntPtr flags, PFsNode *ret) {
-	if ((FsMountPointList == Null) || (path == Null) || (ret == Null)) {																// Some null pointer checks
+	if ((path == Null) || (ret == Null)) {																								// Some null pointer checks
 		return STATUS_INVALID_ARG;
-	} else if (FsMountPointList->length == 0) {																							// Don't even lose time trying to open some file if our mount point list is empty
+	} else if (FsMountPointList.length == 0) {																							// Don't even lose time trying to open some file if our mount point list is empty
 		return STATUS_FILE_DOESNT_EXISTS;
 	} else if (path[0] != '/') {																										// Finally, we only support absolute paths in this function
 		return STATUS_OPEN_FAILED;
@@ -358,9 +358,7 @@ Status FsCloseFile(PFsNode node) {
 }
 
 Status FsMountFile(PWChar path, PWChar file, PWChar type) {
-	if ((FsMountPointList == Null) || (FsTypeList == Null)) {																			// Like in all the functions, first do some null pointer checks
-		return STATUS_MOUNT_FAILED;
-	} else if ((path == Null) || (file == Null)) {																						// Same as above
+	if ((path == Null) || (file == Null)) {																								// Null pointer check...
 		return STATUS_INVALID_ARG;
 	}
 	
@@ -405,7 +403,7 @@ Status FsMountFile(PWChar path, PWChar file, PWChar type) {
 			}
 		}
 	} else if (type == Null) {
-		ListForeach(FsTypeList, i) {																									// Let's probe all the entries of the fs type list!
+		ListForeach(&FsTypeList, i) {																									// Let's probe all the entries of the fs type list!
 			PFsType tp = (PFsType)(i->data);
 			
 			if (tp->probe != Null) {
@@ -450,8 +448,8 @@ Status FsMountFile(PWChar path, PWChar file, PWChar type) {
 }
 
 Status FsUmountFile(PWChar path) {
-	if ((FsMountPointList == Null) || (path == Null)) {																					// Again, null pointer checks
-		return STATUS_UMOUNT_FAILED;
+	if (path == Null) {																													// Again, null pointer checks
+		return STATUS_INVALID_ARG;
 	}
 	
 	PWChar rpath = Null;
@@ -513,8 +511,8 @@ Status FsControlFile(PFsNode file, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf) {
 }
 
 PFsMountPoint FsGetMountPoint(PWChar path, PWChar *outp) {
-	if ((FsMountPointList == Null) || (path == Null)) {																					// The mount point list is initialized? Path is Null?
-		if (outp != Null) {																												// Nope, so let's set the outp (out pointer) to Null and return Null
+	if (path == Null || FsMountPointList.length == 0) {																					// We have anything to do?
+		if (outp != Null) {																												// Nope, let's set the outp (out pointer) to Null and return Null
 			*outp = Null;
 		}
 		
@@ -533,7 +531,7 @@ PFsMountPoint FsGetMountPoint(PWChar path, PWChar *outp) {
 	while (dup[0] != '\0') {
 		Boolean root = StrCompare(dup, L"/");
 		
-		ListForeach(FsMountPointList, i) {
+		ListForeach(&FsMountPointList, i) {
 			PFsMountPoint mp = (PFsMountPoint)(i->data);
 			
 			if (StrGetLength(mp->path) == (ncurr + 1)) {																				// The length of this mount point is the same of the current length of our duplicate pointer?
@@ -572,13 +570,13 @@ PFsMountPoint FsGetMountPoint(PWChar path, PWChar *outp) {
 }
 
 PFsType FsGetType(PWChar type) {
-	if ((FsTypeList == Null) || (type == Null)) {																						// Null pointer checks
+	if (type == Null) {																													// Null pointer checks
 		return Null;
-	} else if (FsTypeList->length == 0) {																								// Type list have any entry?
+	} else if (FsTypeList.length == 0) {																								// Type list have any entry?
 		return Null;																													// No? So don't even lose time searching in it
 	}
 	
-	ListForeach(FsTypeList, i) {
+	ListForeach(&FsTypeList, i) {
 		PFsType typ = (PFsType)(i->data);
 		
 		if (StrGetLength(typ->name) != StrGetLength(type)) {																			// Same length as the requested type?
@@ -592,7 +590,7 @@ PFsType FsGetType(PWChar type) {
 }
 
 Boolean FsAddMountPoint(PWChar path, PWChar type, PFsNode root) {
-	if ((FsMountPointList == Null) || (path == Null) || (type == Null) || (root == Null)) {												// Null pointer checks
+	if ((path == Null) || (type == Null) || (root == Null)) {																			// Null pointer checks
 		return False;
 	}
 	
@@ -616,7 +614,7 @@ Boolean FsAddMountPoint(PWChar path, PWChar type, PFsNode root) {
 	mp->type = type;
 	mp->root = root;
 	
-	if (!ListAdd(FsMountPointList, mp)) {																								// Try to add it to the list
+	if (!ListAdd(&FsMountPointList, mp)) {																								// Try to add it to the list
 		MemFree((UIntPtr)mp);																											// Failed...
 		return False;
 	}
@@ -625,7 +623,7 @@ Boolean FsAddMountPoint(PWChar path, PWChar type, PFsNode root) {
 }
 
 Boolean FsRemoveMountPoint(PWChar path) {
-	if ((FsMountPointList == Null) || (path == Null)) {																					// Null pointer(s)?
+	if (path == Null) {																													// Null pointer?
 		return False;																													// Yes
 	}
 	
@@ -641,29 +639,12 @@ Boolean FsRemoveMountPoint(PWChar path) {
 		return False;
 	}
 	
-	UIntPtr idx = 0;
-	Boolean found = False;
+	UIntPtr idx;
 	
-	for (; !found && idx < FsMountPointList->length; idx++) {																			// Let's search for the index of this mount point in the list
-		if (ListGet(FsMountPointList, idx) == mp) {
-			found = True;
-		}
-	}
-	
-	if (!found) {
-		return False;																													// ... Really? How it found it earlier but didn't found it now?
-	} else if (ListRemove(FsMountPointList, idx) == Null) {																				// Try to remove it!
+	if (!ListSearch(&FsMountPointList, mp, &idx)) {																						// Try to find the mp on the list...
+		return False;
+	} else if (ListRemove(&FsMountPointList, idx) == Null) {																			// Try to remove it!
 		return False;																													// IT FAILED WHEN IT WAS REMOVING... REMOVING!
-	}
-	
-	for (idx = 0, found = False; !found && idx < FsMountPointList->length; idx++) {														// Let's try to find it again
-		if (ListGet(FsMountPointList, idx) == mp) {
-			found = True;
-		}
-	}
-	
-	if (found) {																														// Found?
-		return False;																													// Yes, so the remove failed
 	}
 	
 	MemFree((UIntPtr)mp->root->name);																									// Free everything
@@ -676,7 +657,7 @@ Boolean FsRemoveMountPoint(PWChar path) {
 }
 
 Boolean FsAddType(PWChar name, Boolean (*probe)(PFsNode), Status (*mount)(PFsNode, PWChar, PFsMountPoint*), Boolean (*umount)(PFsMountPoint)) {
-	if ((FsTypeList == Null) || (name == Null) || (probe == Null) || (mount == Null) || (umount == Null)) {								// Null pointer checks
+	if ((name == Null) || (probe == Null) || (mount == Null) || (umount == Null)) {														// Null pointer checks
 		return False;
 	} else if (FsGetType(name) != Null) {																								// This fs type doesn't exists... right?
 		return False;																													// ...
@@ -693,7 +674,7 @@ Boolean FsAddType(PWChar name, Boolean (*probe)(PFsNode), Status (*mount)(PFsNod
 	type->mount = mount;
 	type->umount = umount;
 	
-	if (!ListAdd(FsTypeList, type)) {																									// Try to add it to the list
+	if (!ListAdd(&FsTypeList, type)) {																									// Try to add it to the list
 		MemFree((UIntPtr)type);																											// Failed...
 		return False;
 	}
@@ -702,7 +683,7 @@ Boolean FsAddType(PWChar name, Boolean (*probe)(PFsNode), Status (*mount)(PFsNod
 }
 
 Boolean FsRemoveType(PWChar name) {
-	if ((FsTypeList == Null) || (name == Null)) {																						// Null pointer(s)?
+	if (name == Null) {																													// Null pointer?
 		return False;																													// Yes
 	}
 	
@@ -712,29 +693,12 @@ Boolean FsRemoveType(PWChar name) {
 		return False;																													// No...
 	}
 	
-	UIntPtr idx = 0;
-	Boolean found = False;
+	UIntPtr idx;																														// Search for the index of the type on the type list
 	
-	for (; !found && idx < FsTypeList->length; idx++) {																					// Let's search for the index of this fs type in the list
-		if (ListGet(FsTypeList, idx) == type) {
-			found = True;
-		}
-	}
-	
-	if (!found) {
-		return False;																													// ... Really? How it found it earlier but didn't found it now?
-	} else if (ListRemove(FsTypeList, idx) == Null) {																					// Try to remove it!
+	if (!ListSearch(&FsTypeList, type, &idx)) {
+		return False;
+	} else if (ListRemove(&FsTypeList, idx) == Null) {																					// Try to remove it!
 		return False;																													// IT FAILED WHEN IT WAS REMOVING... REMOVING!
-	}
-	
-	for (idx = 0, found = False; !found && idx < FsTypeList->length; idx++) {															// Let's try to find it again
-		if (ListGet(FsTypeList, idx) == type) {
-			found = True;
-		}
-	}
-	
-	if (found) {																														// Found?
-		return False;																													// Yes, so the remove failed
 	}
 	
 	MemFree((UIntPtr)type->name);																										// Free everything
@@ -749,14 +713,6 @@ Void FsInitTypes(Void) {
 }
 
 Void FsInit(Void) {
-	FsMountPointList = ListNew(True);																									// Let's init our mount point list
-	FsTypeList = ListNew(True);																											// And our filesystem type list
-	
-	if ((FsMountPointList == Null) || (FsTypeList == Null)) {																			// Failed?
-		DbgWriteFormated("PANIC! Couldn't init mount point or filesystem type list\r\n");
-		Panic(PANIC_KERNEL_INIT_FAILED);
-	}
-	
 	FsInitTypes();																														// Init all the supported fs types
 	
 	PWChar bdpath = FsJoinPath(L"/Devices", FsGetBootDevice());																			// Let's mount the boot device

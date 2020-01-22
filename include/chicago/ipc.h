@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on December 24 of 2019, at 14:28 BRT
-// Last edited on January 18 of 2020, at 12:58 BRT
+// Last edited on January 21 of 2020, at 23:17 BRT
 
 #ifndef __CHICAGO_IPC_H__
 #define __CHICAGO_IPC_H__
@@ -41,6 +41,5 @@ Status IpcSendMessage(PWChar port, UInt32 msg, UIntPtr size, PUInt8 buf, PIpcRes
 Status IpcSendResponse(PIpcResponsePort port, UInt32 msg, UIntPtr size, PUInt8 buf);
 Status IpcReceiveMessage(PWChar name, PUInt32 msg, UIntPtr size, PUInt8 buf);
 Status IpcReceiveResponse(PIpcResponsePort port, PUInt32 msg, UIntPtr size, PUInt8 buf);
-Void IpcInit(Void);
 
 #endif		// __CHICAGO_IPC_H__

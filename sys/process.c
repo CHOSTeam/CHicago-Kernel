@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 27 of 2018, at 14:59 BRT
-// Last edited on January 20 of 2020, at 11:05 BRT
+// Last edited on January 21 of 2020, at 23:24 BRT
 
 #define __CHICAGO_PROCESS__
 
@@ -113,44 +113,17 @@ Status PsCreateProcessInt(PWChar name, UInt8 prio, UIntPtr entry, UIntPtr dir, P
 		}
 	}
 	
-	if ((proc->threads = ListNew(False)) == Null) {																								// Create the thread list
-		MmFreeDirectory(proc->dir);																												// Failed...
-		MemFree((UIntPtr)proc->name);
-		MemFree((UIntPtr)proc);
-		return STATUS_OUT_OF_MEMORY;
-	}
-	
 	proc->last_tid = 0;
 	proc->mem_usage = 0;
-	proc->shm_mapped_sections = ListNew(False);																									// Init the mapped shm sections list for the process
-	
-	if (proc->shm_mapped_sections == Null) {
-		ListFree(proc->threads);																												// Failed...
-		MmFreeDirectory(proc->dir);
-		MemFree((UIntPtr)proc->name);
-		MemFree((UIntPtr)proc);
-		return STATUS_OUT_OF_MEMORY;
-	}
-	
-	proc->handles = ListNew(False);																												// Init the handle list for the process
+	StrSetMemory(&proc->threads, 0, sizeof(List));																								// Init all the lists
+	StrSetMemory(&proc->shm_mapped_sections, 0, sizeof(List));
+	StrSetMemory(&proc->handles, 0, sizeof(List));
 	proc->last_handle_id = 0;
-	
-	if (proc->handles == Null) {
-		ListFree(proc->shm_mapped_sections);																									// Failed...
-		ListFree(proc->threads);
-		MmFreeDirectory(proc->dir);
-		MemFree((UIntPtr)proc->name);
-		MemFree((UIntPtr)proc);
-		return STATUS_OUT_OF_MEMORY;
-	}
 	
 	PThread th;
 	Status status = PsCreateThreadInt(prio, entry, 0, False, &th);																				// Create the first thread
 	
 	if (status != STATUS_SUCCESS) {
-		ListFree(proc->handles);																												// Failed...
-		ListFree(proc->shm_mapped_sections);
-		ListFree(proc->threads);
 		MmFreeDirectory(proc->dir);
 		MemFree((UIntPtr)proc->name);
 		MemFree((UIntPtr)proc);
@@ -160,12 +133,9 @@ Status PsCreateProcessInt(PWChar name, UInt8 prio, UIntPtr entry, UIntPtr dir, P
 	th->id = proc->last_tid++;																													// Set the thread id
 	th->parent = proc;																															// And the parent process
 	
-	if (!ListAdd(proc->threads, th)) {																											// Add it!
+	if (!ListAdd(&proc->threads, th)) {																											// Add it!
 		PsFreeContext(th->ctx);																													// Failed...
 		MemFree((UIntPtr)th);
-		ListFree(proc->handles);
-		ListFree(proc->shm_mapped_sections);
-		ListFree(proc->threads);
 		MmFreeDirectory(proc->dir);
 		MemFree((UIntPtr)proc->name);
 		MemFree((UIntPtr)proc);
@@ -216,18 +186,18 @@ Void PsAddThread(PThread th) {
 	th->parent = PsCurrentProcess;																												// Set the parent process
 	
 	PsAddToQueue(th, th->cprio);																												// Try to add this thread to the right queue
-	ListAdd(PsCurrentProcess->threads, th);																										// Try to add this thread to the thread list of this process
+	ListAdd(&PsCurrentProcess->threads, th);																									// Try to add this thread to the thread list of this process
 	PsUnlockTaskSwitch(old);																													// Unlock
 }
 
 Void PsAddProcess(PProcess proc) {
-	if ((proc == Null) || (proc->dir == 0) || (proc->threads == Null)) {																		// Sanity checks
+	if ((proc == Null) || (proc->dir == 0)) {																									// Sanity checks
 		return;
 	}
 	
 	PsLockTaskSwitch(old);																														// Lock
 	
-	ListForeach(proc->threads, i) {																												// Add all the threads from this process to the thread queue
+	ListForeach(&proc->threads, i) {																											// Add all the threads from this process to the thread queue
 		QueueAdd(&PsThreadQueue[((PThread)i->data)->cprio], i->data);
 	}
 	
@@ -240,7 +210,7 @@ PThread PsGetThread(UIntPtr id) {
 		return Null;
 	}
 	
-	ListForeach(PsCurrentProcess->threads, i) {																									// Let's search!
+	ListForeach(&PsCurrentProcess->threads, i) {																								// Let's search!
 		PThread th = (PThread)i->data;
 		
 		if (th->id == id) {																														// Match?
@@ -442,26 +412,16 @@ Void PsExitThread(UIntPtr ret) {
 		PsLockTaskSwitch(old);																													// Yes, so PANIC!
 		DbgWriteFormated("PANIC! The main kernel thread was closed\r\n");
 		Panic(PANIC_KERNEL_MAIN_THREAD_CLOSED);
-	} else if (PsCurrentProcess->threads->length == 1) {																						// We're the only thread?
+	} else if (PsCurrentProcess->threads.length == 1) {																							// We're the only thread?
 		PsExitProcess(ret);																														// Yes, so call PsExitProcess	
 	}
 	
 	PsLockTaskSwitch(old);																														// Lock
 	
 	UIntPtr idx = 0;
-	Boolean found = False;
 	
-	ListForeach(PsCurrentProcess->threads, i) {																									// Let's try to remove ourself from the thread list of this process
-		if (i->data == PsCurrentThread) {																										// Found?
-			found = True;																														// YES!
-			break;
-		} else {
-			idx++;																																// nope
-		}
-	}
-	
-	if (found) {																																// Found?
-		ListRemove(PsCurrentProcess->threads, idx);																								// Yes, remove it!
+	if (ListSearch(&PsCurrentProcess->threads, PsCurrentThread, &idx)) {																		// Try to remove outself from the thread list of this process...
+		ListRemove(&PsCurrentProcess->threads, idx);
 	}
 	
 	for (PListNode i = PsWaittList.tail; i != Null; i = i->prev) {																				// Let's wake up any thread waiting for us
@@ -494,11 +454,11 @@ Void PsExitProcess(UIntPtr ret) {
 	
 	PsLockTaskSwitch(old);																														// Lock
 	
-	ListForeach(PsCurrentProcess->shm_mapped_sections, i) {																						// Unmap and dereference all the mapped shm sections
+	ListForeach(&PsCurrentProcess->shm_mapped_sections, i) {																					// Unmap and dereference all the mapped shm sections
 		ShmUnmapSection(((PShmMappedSection)i->data)->shm->key);
 	}
 	
-	ListForeach(PsCurrentProcess->handles, i) {																									// Close all the handles that this process used
+	ListForeach(&PsCurrentProcess->handles, i) {																								// Close all the handles that this process used
 		PHandle handle = (PHandle)i->data;
 		
 		if (handle->used != False) {
@@ -508,28 +468,15 @@ Void PsExitProcess(UIntPtr ret) {
 		MemFree((UIntPtr)handle);
 	}
 	
-	ListFree(PsCurrentProcess->shm_mapped_sections);																							// Free the mapped shm sections list
-	ListFree(PsCurrentProcess->handles);																										// And free the handle list
-	
-	ListForeach(PsCurrentProcess->threads, i) {																									// Let's free and remove all the threads
+	ListForeach(&PsCurrentProcess->threads, i) {																								// Let's free and remove all the threads
 		PThread th = (PThread)i->data;
 		
 		if (th != PsCurrentThread) {																											// Remove from the queue?
 			for (UInt8 j = 0; j < 6; j++) {																										// Let's try to remove this thread from the thread queue
 				UIntPtr idx = 0;
-				Boolean found = False;
 				
-				ListForeach(&PsThreadQueue[j], k) {
-					if (k->data == th) {
-						found = True;																											// We found it!
-						break;
-					}
-					
-					idx++;
-				}
-				
-				if (found) {
-					ListRemove(&PsThreadQueue[j], idx);																							// Remove it using the index
+				if (ListSearch(&PsThreadQueue[j], th, &idx)) {
+					ListRemove(&PsThreadQueue[j], idx);
 					break;
 				}
 			}
@@ -605,19 +552,9 @@ Void PsExitProcess(UIntPtr ret) {
 	}
 	
 	UIntPtr idx = 0;
-	Boolean found = False;
 	
-	ListForeach(&PsProcessList, i) {																											// Let's try to remove ourself from the process list
-		if (i->data == PsCurrentProcess) {																										// Found?
-			found = True;																														// YES!
-			break;
-		} else {
-			idx++;																																// nope
-		}
-	}
-	
-	if (found) {																																// Found?
-		ListRemove(&PsProcessList, idx);																										// Yes, remove it!
+	if (ListSearch(&PsProcessList, PsCurrentProcess, &idx)) {																					// Try to remove ourself from the process list...
+		ListRemove(&PsProcessList, idx);
 	}
 	
 	PsCurrentThread->killp = True;																												// We should also kill the process
@@ -636,19 +573,9 @@ Void PsWakeup(PList list, PThread th) {
 	PsLockTaskSwitch(old);																														// Lock
 	
 	UIntPtr idx = 0;																															// Let's try to find th in list
-	Boolean found = False;
 	
-	ListForeach(list, i) {
-		if (i->data == th) {																													// Found?
-			found = True;																														// Yes!
-			break;
-		} else {
-			idx++;																																// Nope
-		}
-	}
-	
-	if (!found) {																																// Found?
-		PsUnlockTaskSwitch(old);																												// Nope
+	if (!ListSearch(list, th, &idx)) {
+		PsUnlockTaskSwitch(old);
 		return;
 	}
 	
@@ -673,19 +600,9 @@ Void PsWakeup2(PList list, PThread th) {
 	PsLockTaskSwitch(old);																														// Lock
 	
 	UIntPtr idx = 0;																															// Let's try to find th in list
-	Boolean found = False;
 	
-	ListForeach(list, i) {
-		if (i->data == th) {																													// Found?
-			found = True;																														// Yes!
-			break;
-		} else {
-			idx++;																																// Nope
-		}
-	}
-	
-	if (!found) {																																// Found?
-		PsUnlockTaskSwitch(old);																												// Nope
+	if (!ListSearch(list, th, &idx)) {
+		PsUnlockTaskSwitch(old);
 		return;
 	}
 	
@@ -755,7 +672,7 @@ Void PsInit(Void) {
 		Panic(PANIC_KERNEL_INIT_FAILED);
 	}
 	
-	if (!QueueAdd(&PsThreadQueue[PS_PRIORITY_NORMAL], ListGet(proc->threads, 0))) {																// Try to add it to the thread queue
+	if (!QueueAdd(&PsThreadQueue[PS_PRIORITY_NORMAL], ListGet(&proc->threads, 0))) {															// Try to add it to the thread queue
 		DbgWriteFormated("PANIC! Failed to init tasking\r\n");
 		Panic(PANIC_KERNEL_INIT_FAILED);
 	}

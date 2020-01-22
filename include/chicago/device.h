@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 14 of 2018, at 22:38 BRT
-// Last edited on January 18 of 2020, at 15:16 BRT
+// Last edited on January 21 of 2020, at 23:07 BRT
 
 #ifndef __CHICAGO_DEVICE_H__
 #define __CHICAGO_DEVICE_H__
@@ -32,7 +32,6 @@ PDevice FsGetDeviceByID(UIntPtr id);
 UIntPtr FsGetDeviceID(PWChar name);
 Void FsSetBootDevice(PWChar name);
 PWChar FsGetBootDevice(Void);
-Void FsInitDeviceList(Void);
 Void FsInitDevices(Void);
 
 #endif		// __CHICAGO_DEVICE_H__
