@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:14 BRT
-// Last edited on January 21 of 2020, at 23:20 BRT
+// Last edited on January 24 of 2020, at 09:20 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/console.h>
@@ -121,14 +121,26 @@ Status ScVirtAllocAddress(UIntPtr addr, UIntPtr size, UInt32 flags, PUIntPtr ret
 }
 
 Status ScVirtFreeAddress(UIntPtr addr, UIntPtr size) {
+	if (!ScCheckPointer(addr)) {
+		return STATUS_INVALID_ARG;
+	}
+	
 	return VirtFreeAddress(addr, size);																														// Just redirect
 }
 
 UInt32 ScVirtQueryProtection(UIntPtr addr) {
+	if (!ScCheckPointer(addr)) {
+		return STATUS_INVALID_ARG;
+	}
+	
 	return VirtQueryProtection(addr);																														// Just redirect
 }
 
 Status ScVirtChangeProtection(UIntPtr addr, UIntPtr size, UInt32 flags) {
+	if (!ScCheckPointer(addr)) {
+		return STATUS_INVALID_ARG;
+	}
+	
 	return VirtChangeProtection(addr, size, flags);																											// Just redirect
 }
 

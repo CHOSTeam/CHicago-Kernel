@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 19:19 BRT
-// Last edited on January 20 of 2020, at 12:25 BRT
+// Last edited on January 23 of 2020, at 21:30 BRT
 
 #include <chicago/arch/vmm.h>
 
@@ -193,9 +193,9 @@ Status MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags) {
 	}
 	
 	if ((MmGetPDE(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																			// This page table exists?
-		UIntPtr block = MmReferencePage(0);																							// No, so let's alloc it
+		UIntPtr block;																												// No, so let's alloc it
 		
-		if (block == 0) {																											// Failed?
+		if (MmReferenceSinglePage(0, &block) != STATUS_SUCCESS) {																	// Failed?
 			return STATUS_OUT_OF_MEMORY;																							// Then just return
 		}
 		
@@ -292,15 +292,15 @@ Status MmPrepareUnmapFile(UIntPtr start, UIntPtr end) {
 }
 
 UIntPtr MmCreateDirectory(Void) {
-	UIntPtr ret = MmReferencePage(0);																								// Allocate one physical page
+	UIntPtr ret;																													// Allocate one physical page
 	PUInt32 dir = Null;
 	
-	if (ret == 0) {																													// Failed?
+	if (MmReferenceSinglePage(0, &ret) != STATUS_SUCCESS) {																			// Failed?
 		return 0;																													// Yes...
 	}
 	
 	if ((dir = (PUInt32)MmMapTemp(ret, MM_MAP_KDEF)) == 0) {																		// Try to map it to an temp addr
-		MmDereferencePage(ret);																										// Failed...
+		MmDereferenceSinglePage(ret);																								// Failed...
 		return 0;
 	}
 	
@@ -327,14 +327,14 @@ Void MmFreeDirectory(UIntPtr dir) {
 	PUInt32 tmp = Null;
 	
 	if ((tmp = (PUInt32)MmMapTemp(dir, MM_MAP_KDEF)) == 0) {																		// Let's try to map us to an temp addr
-		MmDereferencePage(dir);																										// Failed, so just free the dir physical address
+		MmDereferenceSinglePage(dir);																								// Failed, so just free the dir physical address
 		return;
 	}
 	
 	for (UInt32 i = 0; i < 768; i++) {																								// Let's free the user tables
 		if ((tmp[i] & PAGE_PRESENT) == PAGE_PRESENT) {																				// Present?
 			if ((tmp[i] & PAGE_HUGE) == PAGE_HUGE) {																				// Yes, 4MiB page?
-				MmDereferencePage(tmp[i] & PAGE_MASK);																				// Yes, free it!
+				MmDereferenceSinglePage(tmp[i] & PAGE_MASK);																		// Yes, free it!
 				continue;
 			}
 			
@@ -342,18 +342,18 @@ Void MmFreeDirectory(UIntPtr dir) {
 			PUInt32 tabta = Null;
 			
 			if ((tabta = (PUInt32)MmMapTemp(tabpa, MM_MAP_KDEF)) == 0) {
-				MmDereferencePage(tabpa);
+				MmDereferenceSinglePage(tabpa);
 				continue;
 			}
 			
 			for (UInt32 j = 0; j < 1024; j++) {
 				if ((tabta[j] & PAGE_PRESENT) == PAGE_PRESENT) {																	// Present?
-					MmDereferencePage(tabta[j] & PAGE_MASK);																		// Yes, just use the dereference function
+					MmDereferenceSinglePage(tabta[j] & PAGE_MASK);																	// Yes, just use the dereference function
 				}				
 			}
 			
 			MmUnmap((UIntPtr)tabta);																								// Unmap the temp addr
-			MmDereferencePage(tabpa);																								// And use the dereference function
+			MmDereferenceSinglePage(tabpa);																							// And use the dereference function
 		}
 	}
 }

@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:21 BRT
-// Last edited on January 21 of 2020, at 23:08 BRT
+// Last edited on January 24 of 2020, at 09:17 BRT
 
 #include <chicago/arch/ahci.h>
 #include <chicago/arch/bootmgr.h>
@@ -56,9 +56,9 @@ Void ArchInitPMM(Void) {
 
 #if __INTPTR_WIDTH__ == 64
 Void ArchInitVMM(Void) {
-	UIntPtr phys = MmReferencePage(0);																			// Try to alloc a physical page
+	UIntPtr phys;																								// Try to alloc a physical page
 	
-	if (phys == 0) {
+	if (MmReferenceSinglePage(0, &phys) != STATUS_SUCCESS) {
 		DbgWriteFormated("PANIC! Couldn't init the VMM\r\n");													// Failed...
 		ArchHalt();																								// Halt
 	}
@@ -71,9 +71,9 @@ Void ArchInitVMM(Void) {
 Void ArchInitVMM(Void) {
 	for (UIntPtr i = 0xC0C00000; i < 0xE0C00000; i += 0x400000) {												// First, let's pre alloc the page tables for our heap
 		if ((MmGetPDE(i) & 0x01) != 0x01) {																		// We need to alloc this one?
-			UIntPtr phys = MmReferencePage(0);																	// Yes, try to alloc a new page
+			UIntPtr phys;																						// Yes, try to alloc a new page
 			
-			if (phys == 0) {
+			if (MmReferenceSinglePage(0, &phys) != STATUS_SUCCESS) {
 				DbgWriteFormated("PANIC! Couldn't init the VMM\r\n");											// Failed...
 				ArchHalt();																						// Halt
 			}

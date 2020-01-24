@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 19:19 BRT
-// Last edited on January 21 of 2020, at 12:28 BRT
+// Last edited on January 23 of 2020, at 21:30 BRT
 
 #include <chicago/arch/vmm.h>
 
@@ -290,9 +290,9 @@ Status MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags) {
 	}
 	
 	if ((MmGetP4(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																		// This P4 entry exists?
-		UIntPtr block = MmReferencePage(0);																						// No, so let's alloc it
+		UIntPtr block;																											// No, so let's alloc it
 		
-		if (block == 0) {																										// Failed?
+		if (MmReferenceSinglePage(0, &block)) {																					// Failed?
 			return STATUS_OUT_OF_MEMORY;																						// Then just return
 		}
 		
@@ -309,9 +309,9 @@ Status MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags) {
 	if ((MmGetP3(virt) & PAGE_HUGE) == PAGE_HUGE) {																				// This P3 entry is a huge one? (1GiB page)
 		return STATUS_MAP_ERROR;																								// Yes, but sorry, we don't support mapping it YET
 	} else if ((MmGetP3(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																// This P3 entry exists?
-		UIntPtr block = MmReferencePage(0);																						// No, so let's alloc it
+		UIntPtr block;																											// No, so let's alloc it
 		
-		if (block == 0) {																										// Failed?
+		if (MmReferenceSinglePage(0, &block)) {																					// Failed?
 			return STATUS_OUT_OF_MEMORY;																						// Then just return
 		}
 		
@@ -328,9 +328,9 @@ Status MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags) {
 	if ((MmGetP2(virt) & PAGE_HUGE) == PAGE_HUGE) {																				// This P2 entry is a huge one? (2MiB page)
 		return STATUS_MAP_ERROR;																								// Yes, but sorry, we don't support mapping it YET
 	} else if ((MmGetP2(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																// This P2 entry exists?
-		UIntPtr block = MmReferencePage(0);																						// No, so let's alloc it
+		UIntPtr block;																											// No, so let's alloc it
 		
-		if (block == 0) {																										// Failed?
+		if (MmReferenceSinglePage(0, &block) != STATUS_SUCCESS) {																// Failed?
 			return STATUS_OUT_OF_MEMORY;																						// Then just return
 		}
 		
@@ -446,15 +446,15 @@ extern UIntPtr MmKernelDirectoryInt;
 
 UIntPtr MmCreateDirectory(Void) {
 	PUInt64 cp4 = (PUInt64)0xFFFFFFFFFFFFF000;
-	UIntPtr ret = MmReferencePage(0);																							// Allocate one physical page
+	UIntPtr ret;																												// Allocate one physical page
 	PUInt64 p4 = Null;
 	
-	if (ret == 0) {																												// Failed?
+	if (MmReferenceSinglePage(0, &ret) != STATUS_SUCCESS) {																		// Failed?
 		return 0;																												// Yes...
 	}
 	
 	if ((p4 = (PUInt64)MmMapTemp(ret, MM_MAP_KDEF)) == 0) {																		// Try to map it to an temp addr
-		MmDereferencePage(ret);																									// Failed...
+		MmDereferenceSinglePage(ret);																							// Failed...
 		return 0;
 	}
 	
@@ -481,7 +481,7 @@ Void MmFreeDirectory(UIntPtr dir) {
 	PUInt64 p4 = Null;
 	
 	if ((p4 = (PUInt64)MmMapTemp(dir, MM_MAP_KDEF)) == 0) {																		// Let's try to map us to an temp addr
-		MmDereferencePage(dir);																									// Failed, so just free the dir physical address
+		MmDereferenceSinglePage(dir);																							// Failed, so just free the dir physical address
 		return;
 	}
 	
@@ -495,7 +495,7 @@ Void MmFreeDirectory(UIntPtr dir) {
 		PUInt64 p3 = Null;																										// Let's map it!
 			
 		if ((p3 = (PUInt64)MmMapTemp(p4[i] & PAGE_MASK, MM_MAP_KDEF)) == 0) {
-			MmDereferencePage(p4[i] & PAGE_MASK);
+			MmDereferenceSinglePage(p4[i] & PAGE_MASK);
 			continue;
 		}
 		
@@ -503,14 +503,14 @@ Void MmFreeDirectory(UIntPtr dir) {
 			if ((p3[j] & PAGE_PRESENT) != PAGE_PRESENT) {																		// This P3 entry exists?
 				continue;																										// Nope
 			} else if ((p3[j] & PAGE_HUGE) == PAGE_HUGE) {																		// Huge P3 page (1 GiB)?
-				MmDereferencePage(p3[j] & PAGE_MASK);																			// Yes, free it!
+				MmDereferenceSinglePage(p3[j] & PAGE_MASK);																		// Yes, free it!
 				continue;
 			}
 			
 			PUInt64 p2 = Null;																									// Let's map it!
 			
 			if ((p2 = (PUInt64)MmMapTemp(p3[j] & PAGE_MASK, MM_MAP_KDEF)) == 0) {
-				MmDereferencePage(p3[j] & PAGE_MASK);
+				MmDereferenceSinglePage(p3[j] & PAGE_MASK);
 				continue;
 			}
 			
@@ -518,37 +518,37 @@ Void MmFreeDirectory(UIntPtr dir) {
 				if ((p2[k] & PAGE_PRESENT) != PAGE_PRESENT) {																	// This P2 entry exists?
 					continue;																									// Nope
 				} else if ((p2[k] & PAGE_HUGE) == PAGE_HUGE) {																	// Huge P2 page (2 MiB)?
-					MmDereferencePage(p2[k] & PAGE_MASK);																		// Yes, free it!
+					MmDereferenceSinglePage(p2[k] & PAGE_MASK);																	// Yes, free it!
 					continue;
 				}
 				
 				PUInt64 p1 = Null;																								// Let's map it!
 
 				if ((p1 = (PUInt64)MmMapTemp(p2[k] & PAGE_MASK, MM_MAP_KDEF)) == 0) {
-					MmDereferencePage(p2[k] & PAGE_MASK);
+					MmDereferenceSinglePage(p2[k] & PAGE_MASK);
 					continue;
 				}
 				
 				for (UInt64 l = 0; l < 512; l++) {																				// Let's free the P1 entries
 					if ((p1[l] & PAGE_PRESENT) == PAGE_PRESENT) {																// Present?
-						MmDereferencePage(p1[l] & PAGE_MASK);																	// Yes, free it
+						MmDereferenceSinglePage(p1[l] & PAGE_MASK);																// Yes, free it
 					}
 				}
 				
 				MmUnmap((UIntPtr)p1);																							// Unmap the P1
-				MmDereferencePage(p2[k] & PAGE_MASK);																			// And free it
+				MmDereferenceSinglePage(p2[k] & PAGE_MASK);																		// And free it
 			}
 			
 			MmUnmap((UIntPtr)p2);																								// Unmap the P2
-			MmDereferencePage(p3[j] & PAGE_MASK);																				// And free it
+			MmDereferenceSinglePage(p3[j] & PAGE_MASK);																			// And free it
 		}
 		
 		MmUnmap((UIntPtr)p3);																									// Unmap the P3
-		MmDereferencePage(p4[i] & PAGE_MASK);																					// And free it
+		MmDereferenceSinglePage(p4[i] & PAGE_MASK);																				// And free it
 	}
 	
 	MmUnmap((UIntPtr)p4);																										// Unmap the P4
-	MmDereferencePage(dir);																										// And free it
+	MmDereferenceSinglePage(dir);																								// And free it
 }
 
 UIntPtr MmGetCurrentDirectory(Void) {

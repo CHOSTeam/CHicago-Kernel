@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 31 of 2018, at 18:45 BRT
-// Last edited on December 30 of 2019, at 12:12 BRT
+// Last edited on January 24 of 2020, at 09:34 BRT
 
 #define __CHICAGO_PMM__
 
@@ -9,7 +9,7 @@
 #include <chicago/arch/pmm.h>
 
 #include <chicago/arch.h>
-#include <chicago/mm.h>
+#include <chicago/string.h>
 
 UIntPtr MmBootAllocPointer = 0;
 UIntPtr KernelRealEnd = 0;
@@ -22,11 +22,12 @@ UIntPtr MmBootAlloc(UIntPtr size, Boolean align) {
 	}
 	
 	MmBootAllocPointer += size;																							// Increase the ptr
+	StrSetMemory((PUInt8)MmBootAllocPointer - size, 0, size);
 	
 	return MmBootAllocPointer - size;																					// Return the old one
 }
 
-UIntPtr PMMCountMemory(Void) {
+static UIntPtr PMMCountMemory(Void) {
 	PBootmgrMemoryMap mmap = BootmgrMemMap;																				// Here we're going to use the memory map for getting the memory size
 	UIntPtr mmapi = 0;
 	UIntPtr max = 0;
@@ -51,12 +52,27 @@ UIntPtr PMMCountMemory(Void) {
 	return max;
 }
 
+static Void PMMFreePage(UIntPtr addr) {
+	UIntPtr i = addr >> 22;																								// Calculate all the indexes
+	UIntPtr j = (addr - (i << 22)) >> 17;
+	UIntPtr k = (addr - (i << 22) - (j << 17)) >> MM_PAGE_SIZE_SHIFT;
+	MmPageRegions[i].pages[j] &= ~(UINTPTR_MAX >> ~(k + 1));															// Free the required bits in the bitmap
+	MmPageRegions[i].free++;																							// Increase the free counter
+	MmUsedBytes -= MM_PAGE_SIZE;																						// And decrease the used bytes counter
+}
+
 Void PMMInit(Void) {
 	MmBootAllocPointer = KernelSymbolTable + KernelSymbolTableSize;														// Set the start of the temp allocator
 	MmMaxBytes = PMMCountMemory();																						// Get memory size based on the memory map entries
-	MmUsedBytes = MmMaxBytes;																							// We're going to free the avaliable pages later
-	MmPageStack = (PUIntPtr)MmBootAlloc(MmMaxBytes / MM_PAGE_SIZE * sizeof(UIntPtr), False);							// Alloc the page frame allocator stack using the initial boot allocator
+	MmUsedBytes = MmMaxBytes;																							// We're going to free the avaliable regions later...
+	MmPageRegionCount = MmMaxBytes / MM_PAGE_SIZE / 1024;																// Setup the MmPageRegionCount variable
+	MmPageRegions = (PMmPageRegion)MmBootAlloc(MmPageRegionCount * sizeof(MmPageRegion), False);						// Alloc the page frame allocator regions
 	MmPageReferences = (PUIntPtr)MmBootAlloc(MmMaxBytes / MM_PAGE_SIZE * sizeof(UIntPtr), False);						// Also alloc the page frame reference map
+	
+	for (UIntPtr i = 0; i < MmPageRegionCount; i++) {																	// Init all the bitmaps on the regions
+		StrSetMemory(MmPageRegions[i].pages, 0xFF, sizeof(MmPageRegions[i].pages));
+	}
+	
 	KernelRealEnd = MmBootAllocPointer;																					// Setup the KernelRealEnd variable
 	MmBootAllocPointer = 0;																								// Break/disable the MmBootAlloc, now we should use MemAllocate/AAllocate/Reallocate/ZAllocate/Free/AFree
 	
@@ -85,8 +101,8 @@ Void PMMInit(Void) {
 			for (UIntPtr i = 0; i < mmap->length; i += MM_PAGE_SIZE) {													// YES!
 				UIntPtr addr = mmap->base + i;
 				
-				if ((addr != 0) && (!((addr >= kstart) && (addr < kend)))) {											// Just check if the addr isn't 0 nor it's the kernel physical address
-					MmFreePage(addr);																					// Everything is ok, SO FREE IT!
+				if (!(addr == 0 || ((addr >= kstart) && (addr < kend)))) {												// Is it inside of the kernel region?
+					PMMFreePage(addr);																					// NOPE!
 				}
 			}
 		}

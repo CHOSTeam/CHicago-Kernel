@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 18:48 BRT
-// Last edited on January 21 of 2020, at 12:25 BRT
+// Last edited on January 23 of 2020, at 21:24 BRT
 
 #ifndef __CHICAGO_MM_H__
 #define __CHICAGO_MM_H__
@@ -10,6 +10,10 @@
 
 #ifndef MM_PAGE_SIZE
 #define MM_PAGE_SIZE 0x1000
+#endif
+
+#ifndef MM_PAGE_SIZE_SHIFT
+#define MM_PAGE_SIZE_SHIFT 12
 #endif
 
 #ifndef MM_USER_START
@@ -35,14 +39,27 @@
 
 #define MmKernelDirectory (MmGetPhys(((UIntPtr)(&MmKernelDirectoryInt))))
 
+typedef struct {
+	UIntPtr free;
+	UIntPtr pages[(1024 * MM_PAGE_SIZE) / (8 * MM_PAGE_SIZE * sizeof(UIntPtr))];
+} MmPageRegion, *PMmPageRegion;
+
 extern UIntPtr MmKernelDirectoryInt;
 
 UIntPtr MmBootAlloc(UIntPtr size, Boolean align);
 
-UIntPtr MmAllocPage(Void);
-UIntPtr MmReferencePage(UIntPtr addr);
-Void MmFreePage(UIntPtr addr);
-Void MmDereferencePage(UIntPtr addr);
+Status MmAllocSinglePage(PUIntPtr ret);
+Status MmAllocContigPages(UIntPtr count, PUIntPtr ret);
+Status MmAllocNonContigPages(UIntPtr count, PUIntPtr ret);
+Status MmFreeSinglePage(UIntPtr addr);
+Status MmFreeContigPages(UIntPtr addr, UIntPtr count);
+Status MmFreeNonContigPages(PUIntPtr pages, UIntPtr count);
+Status MmReferenceSinglePage(UIntPtr addr, PUIntPtr ret);
+Status MmReferenceContigPages(UIntPtr addr, UIntPtr count, PUIntPtr ret);
+Status MmReferenceNonContigPages(PUIntPtr pages, UIntPtr count, PUIntPtr ret);
+Status MmDereferenceSinglePage(UIntPtr addr);
+Status MmDereferenceContigPages(UIntPtr addr, UIntPtr count);
+Status MmDereferenceNonContigPages(PUIntPtr pages, UIntPtr count);
 UIntPtr MmGetReferences(UIntPtr addr);
 UIntPtr MmGetSize(Void);
 UIntPtr MmGetUsage(Void);

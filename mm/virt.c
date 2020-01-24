@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on September 15 of 2018, at 12:46 BRT
-// Last edited on January 18 of 2020, at 17:03 BRT
+// Last edited on January 24 of 2020, at 09:15 BRT
 
 #include <chicago/mm.h>
 #include <chicago/process.h>
@@ -89,12 +89,12 @@ Status VirtAllocAddress(UIntPtr addr, UIntPtr size, UInt32 flags, PUIntPtr ret) 
 	UInt32 flgs = VirtConvertFlags(flags);												// Convert the flags
 	
 	for (UIntPtr i = addr; i < addr + size; i += MM_PAGE_SIZE) {						// And let's do it!
-		UIntPtr phys = aor ? 0 : MmReferencePage(0);									// Alloc some phys space (if we need to)
+		UIntPtr phys = 0;																// Alloc some phys space (if we need to)
 		
-		if (phys == 0 && !aor) {														// Failed?
+		if (!aor && MmReferenceSinglePage(0, &phys) != STATUS_SUCCESS) {				// Failed?
 			for (UIntPtr j = old; j < i; j += MM_PAGE_SIZE) {							// Yes, so undo everything :(
 				if ((MmQuery(j) & MM_MAP_AOR) != MM_MAP_AOR) {
-					MmDereferencePage(MmGetPhys(j));
+					MmDereferenceSinglePage(MmGetPhys(j));
 				}
 				
 				MmUnmap(j);
@@ -106,11 +106,11 @@ Status VirtAllocAddress(UIntPtr addr, UIntPtr size, UInt32 flags, PUIntPtr ret) 
 		Status status = MmMap(i, phys, flgs | (aor ? MM_MAP_AOR : 0));					// Try to map!
 		
 		if (status != STATUS_SUCCESS) {
-			MmDereferencePage(phys);													// Failed, undo everything...
+			MmDereferenceSinglePage(phys);												// Failed, undo everything...
 			
 			for (UIntPtr j = old; j < i; j += MM_PAGE_SIZE) {
 				if ((MmQuery(j) & MM_MAP_AOR) != MM_MAP_AOR) {
-					MmDereferencePage(MmGetPhys(j));
+					MmDereferenceSinglePage(MmGetPhys(j));
 				}
 				
 				MmUnmap(j);
@@ -146,7 +146,7 @@ Status VirtFreeAddress(UIntPtr addr, UIntPtr size) {
 		}
 		
 		if ((MmQuery(i) & MM_MAP_AOR) != MM_MAP_AOR) {									// Free/dereference the physical page
-			MmDereferencePage(MmGetPhys(i));
+			MmDereferenceSinglePage(MmGetPhys(i));
 		}
 		
 		MmUnmap(i);																		// And unmap

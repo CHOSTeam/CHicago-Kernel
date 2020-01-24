@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on January 17 of 2019, at 21:06 BRT
-// Last edited on January 20 of 2020, at 11:14 BRT
+// Last edited on January 23 of 2020, at 21:55 BRT
 
 #include <chicago/arch/ahci.h>
 #include <chicago/arch/ide.h>
@@ -496,7 +496,7 @@ static Void AHCIInitInt(PPCIDevice pdev) {
 	}
 	
 	for (UIntPtr i = 0; i < sizeof(HBAMem); i += MM_PAGE_SIZE) {														// Let's map the ABAR!
-		MmDereferencePage(MmGetPhys(((UIntPtr)abar) + i));
+		MmDereferenceSinglePage(MmGetPhys(((UIntPtr)abar) + i));
 		
 		if (MmMap(((UIntPtr)abar) + i, abarp + i, MM_MAP_KDEF) != STATUS_SUCCESS) {
 			DbgWriteFormated("PANIC! Couldn't init a detected AHCI controller\r\n");									// Failed to map, so halt

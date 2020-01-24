@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 26 of 2018, at 22:00 BRT
-// Last edited on December 31 of 2019, at 12:30 BRT
+// Last edited on January 23 of 2020, at 21:32 BRT
 
 #include <chicago/arch/idt-int.h>
 #include <chicago/arch/port.h>
@@ -82,9 +82,9 @@ Void ISRDefaultHandler(PRegisters regs) {
 			}
 			
 			UInt32 oldf = MmGetPTE(faddr) & 0xFFF;													// YES! Get the current flags
-			UIntPtr newp = MmReferencePage(0);														// Alloc the physical page
+			UIntPtr newp;																			// Alloc the physical page
 			
-			if (newp == 0) {
+			if (MmReferenceSinglePage(0, &newp) != STATUS_SUCCESS) {
 				goto c;																				// Failed...
 			}
 			

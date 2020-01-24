@@ -1,18 +1,18 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 19:20 BRT
-// Last edited on November 15 of 2019, at 21:39 BRT
+// Last edited on January 23 of 2020, at 21:37 BRT
 
 #ifndef __CHICAGO_ARCH_PMM_H__
 #define __CHICAGO_ARCH_PMM_H__
 
-#include <chicago/types.h>
+#include <chicago/mm.h>
 
-extern PUIntPtr MmPageStack;
+extern PMmPageRegion MmPageRegions;
 extern PUIntPtr MmPageReferences;
-extern IntPtr MmPageStackPointer;
-extern UIntPtr MmMaxBytes;
+extern UIntPtr MmPageRegionCount;
 extern UIntPtr MmUsedBytes;
+extern UIntPtr MmMaxBytes;
 
 extern UIntPtr KernelStart;
 
