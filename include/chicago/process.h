@@ -1,12 +1,14 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 27 of 2018, at 14:42 BRT
-// Last edited on January 21 of 2020, at 23:19 BRT
+// Last edited on January 25 of 2020, at 13:16 BRT
 
 #ifndef __CHICAGO_PROCESS_H__
 #define __CHICAGO_PROCESS_H__
 
 #include <chicago/arch/process.h>
+
+#include <chicago/avl.h>
 #include <chicago/file.h>
 #include <chicago/queue.h>
 
@@ -36,6 +38,7 @@ typedef struct {
 	UIntPtr dir;
 	List threads;
 	UIntPtr last_tid;
+	AvlTree mappings;
 	UIntPtr mem_usage;
 	List shm_mapped_sections;
 	List handles;

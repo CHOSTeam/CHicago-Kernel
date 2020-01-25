@@ -1,13 +1,14 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 27 of 2018, at 21:37 BRT
-// Last edited on January 18 of 2020, at 10:16 BRT
+// Last edited on January 25 of 2020, at 11:14 BRT
 
 #include <chicago/console.h>
 #include <chicago/panic.h>
 
 PWChar PanicStrings[PANIC_COUNT] = {
 	L"MM_READWRITE_TO_NONPRESENT_AREA",
+	L"PANIC_MM_READWRITE_TO_KERNEL_AREA",
 	L"MM_WRITE_TO_READONLY_AREA",
 	L"BOOTDEV_MOUNT_FAILED",
 	L"KERNEL_PROCESS_CLOSED",

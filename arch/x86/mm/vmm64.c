@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 19:19 BRT
-// Last edited on January 23 of 2020, at 21:30 BRT
+// Last edited on January 25 of 2020, at 12:08 BRT
 
 #include <chicago/arch/vmm.h>
 
@@ -14,13 +14,13 @@ UIntPtr MmGetPhys(UIntPtr virt) {
 	} else if ((MmGetP3(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																// This P3 entry exists?
 		return 0;																												// Nope
 	} else if ((MmGetP3(virt) & PAGE_HUGE) == PAGE_HUGE) {																		// 1GiB P3 instead of 2MiB P2 or 4KiB P1?
-		return (MmGetP3(virt) & PAGE_MASK) + (virt & 0x3FFFFFFF);																// Yes, return
+		return (MmGetP3(virt) & MM_PAGE_MASK) + (virt & 0x3FFFFFFF);															// Yes, return
 	} else if ((MmGetP2(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																// This P2 entry exists?
 		return 0;																												// Nope
 	} else if ((MmGetP2(virt) & PAGE_HUGE) == PAGE_HUGE) {																		// 2MiB P2 instead of 4KiB P1?
-		return (MmGetP2(virt) & PAGE_MASK) + (virt & 0x1FFFFF);																	// Yes, return
+		return (MmGetP2(virt) & MM_PAGE_MASK) + (virt & 0x1FFFFF);																// Yes, return
 	} else {
-		return (MmGetP1(virt) & PAGE_MASK) + (virt & 0xFFF);																	// Return!
+		return (MmGetP1(virt) & MM_PAGE_MASK) + (virt & 0xFFF);																	// Return!
 	}
 }
 
@@ -55,8 +55,8 @@ UInt32 MmQuery(UIntPtr virt) {
 		ret |= MM_MAP_KERNEL;
 	}
 	
-	if ((page & PAGE_AOR) == PAGE_AOR) {
-		ret |= MM_MAP_AOR;
+	if ((page & PAGE_COW) == PAGE_COW) {
+		ret |= MM_MAP_COW;
 	}
 	
 	if ((page & PAGE_NOEXEC) != PAGE_NOEXEC) {
@@ -370,78 +370,6 @@ Status MmUnmap(UIntPtr virt) {
 	}
 }
 
-Status MmPrepareMapFile(UIntPtr start, UIntPtr end) {
-	if ((start % MM_PAGE_SIZE) != 0) {																							// Align everything to page size
-		start -= start % MM_PAGE_SIZE;
-	}
-	
-	for (UIntPtr i = start; i < end; i += MM_PAGE_SIZE) {																		// First, let's check everything...
-		if ((MmGetP4(i) & PAGE_PRESENT) != PAGE_PRESENT) {																		// This P4 entry exists?
-			return STATUS_NOT_MAPPED;																							// Nope
-		} else if ((MmGetP3(i) & PAGE_PRESENT) != PAGE_PRESENT) {																// This P3 entry exists?
-			return STATUS_NOT_MAPPED;																							// Nope
-		} else if ((MmGetP3(i) & PAGE_HUGE) == PAGE_HUGE) {																		// This P3 entry is a huge one? (1GiB page)
-			return STATUS_MAPFILE_FAILED;																						// Yes, but sorry, we don't support mapping it YET
-		} else if ((MmGetP2(i) & PAGE_PRESENT) != PAGE_PRESENT) {																// This P2 entry exists?
-			return STATUS_NOT_MAPPED;																							// Nope
-		} else if ((MmGetP2(i) & PAGE_HUGE) == PAGE_HUGE) {																		// This P2 entry is a huge one? (2MiB page)
-			return STATUS_MAPFILE_FAILED;																						// Yes, but sorry, we don't support mapping it YET
-		}
-		
-		UIntPtr page = MmGetP1(i);																								// Get the PTE entry
-		
-		if ((page & PAGE_PRESENT) != PAGE_PRESENT && (page & PAGE_AOR) != PAGE_AOR) {											// Not mapped (or already mapped to another mapped file)...
-			return STATUS_NOT_MAPPED;
-		} else if ((page & PAGE_OTHER) == PAGE_OTHER) {																			// Already mapped to another file?
-			return STATUS_ALREADY_MAPPED;																						// Yup...
-		}
-	}
-	
-	for (; start < end; start += MM_PAGE_SIZE) {																				// Now, let's just set the PAGE_OTHER flag in everything, and also unset the present flag in everything
-		UIntPtr page = MmGetP1(start);
-		MmSetP1(start, page & PAGE_MASK, ((page & 0xFFF) | PAGE_OTHER) & ~PAGE_PRESENT);
-		MmInvlpg(start);
-	}
-	
-	return STATUS_SUCCESS;
-}
-
-Status MmPrepareUnmapFile(UIntPtr start, UIntPtr end) {
-	if ((start % MM_PAGE_SIZE) != 0) {																							// Align everything to page size
-		start -= start % MM_PAGE_SIZE;
-	}
-	
-	for (UIntPtr i = start; i < end; i += MM_PAGE_SIZE) {																		// First, let's check everything...
-		if ((MmGetP4(i) & PAGE_PRESENT) != PAGE_PRESENT) {																		// This P4 entry exists?
-			return STATUS_NOT_MAPPED;																							// Nope
-		} else if ((MmGetP3(i) & PAGE_PRESENT) != PAGE_PRESENT) {																// This P3 entry exists?
-			return STATUS_NOT_MAPPED;																							// Nope
-		} else if ((MmGetP3(i) & PAGE_HUGE) == PAGE_HUGE) {																		// This P3 entry is a huge one? (1GiB page)
-			return STATUS_MAPFILE_FAILED;																						// Yes, but sorry, we don't support mapping it YET
-		} else if ((MmGetP2(i) & PAGE_PRESENT) != PAGE_PRESENT) {																// This P2 entry exists?
-			return STATUS_NOT_MAPPED;																							// Nope
-		} else if ((MmGetP2(i) & PAGE_HUGE) == PAGE_HUGE) {																		// This P2 entry is a huge one? (2MiB page)
-			return STATUS_MAPFILE_FAILED;																						// Yes, but sorry, we don't support mapping it YET
-		}
-		
-		UIntPtr page = MmGetP1(i);																								// Get the PTE entry
-		
-		if ((page & PAGE_PRESENT) != PAGE_PRESENT && (page & PAGE_OTHER) != PAGE_OTHER) {										// Not mapped...
-			return STATUS_NOT_MAPPED;
-		} else if ((page & PAGE_OTHER) != PAGE_OTHER) {																			// Not mapped to any file?
-			return STATUS_UNMAPFILE_FAILED;																						// Yup...
-		}
-	}
-	
-	for (; start < end; start += MM_PAGE_SIZE) {																				// Now, let's just unset the PAGE_OTHER flag in everything, and also set the present flag (if required)
-		UIntPtr page = MmGetP1(start);
-		MmSetP1(start, page & PAGE_MASK, ((page & 0xFFF) & ~PAGE_OTHER) | (((page & PAGE_AOR) != PAGE_AOR) ? PAGE_PRESENT : 0));
-		MmInvlpg(start);
-	}
-	
-	return STATUS_SUCCESS;
-}
-
 extern UIntPtr MmKernelDirectoryInt;
 
 UIntPtr MmCreateDirectory(Void) {
@@ -462,7 +390,7 @@ UIntPtr MmCreateDirectory(Void) {
 		if (((cp4[i] & PAGE_PRESENT) != PAGE_PRESENT) || (!((i == 256) || (i == 257) || (i == 511)))) {							// We're going to copy this p4 entry?
 			p4[i] = 0;																											// Nope
 		} else if (i == 511) {																									// Recursive mapping entry?
-			p4[i] = (ret & PAGE_MASK) | 3;																						// Yes
+			p4[i] = (ret & MM_PAGE_MASK) | 3;																					// Yes
 		} else {
 			p4[i] = cp4[i];																										// Just copy it
 		}
@@ -494,8 +422,8 @@ Void MmFreeDirectory(UIntPtr dir) {
 		
 		PUInt64 p3 = Null;																										// Let's map it!
 			
-		if ((p3 = (PUInt64)MmMapTemp(p4[i] & PAGE_MASK, MM_MAP_KDEF)) == 0) {
-			MmDereferenceSinglePage(p4[i] & PAGE_MASK);
+		if ((p3 = (PUInt64)MmMapTemp(p4[i] & MM_PAGE_MASK, MM_MAP_KDEF)) == 0) {
+			MmDereferenceSinglePage(p4[i] & MM_PAGE_MASK);
 			continue;
 		}
 		
@@ -503,14 +431,14 @@ Void MmFreeDirectory(UIntPtr dir) {
 			if ((p3[j] & PAGE_PRESENT) != PAGE_PRESENT) {																		// This P3 entry exists?
 				continue;																										// Nope
 			} else if ((p3[j] & PAGE_HUGE) == PAGE_HUGE) {																		// Huge P3 page (1 GiB)?
-				MmDereferenceSinglePage(p3[j] & PAGE_MASK);																		// Yes, free it!
+				MmDereferenceSinglePage(p3[j] & MM_PAGE_MASK);																	// Yes, free it!
 				continue;
 			}
 			
 			PUInt64 p2 = Null;																									// Let's map it!
 			
-			if ((p2 = (PUInt64)MmMapTemp(p3[j] & PAGE_MASK, MM_MAP_KDEF)) == 0) {
-				MmDereferenceSinglePage(p3[j] & PAGE_MASK);
+			if ((p2 = (PUInt64)MmMapTemp(p3[j] & MM_PAGE_MASK, MM_MAP_KDEF)) == 0) {
+				MmDereferenceSinglePage(p3[j] & MM_PAGE_MASK);
 				continue;
 			}
 			
@@ -518,33 +446,33 @@ Void MmFreeDirectory(UIntPtr dir) {
 				if ((p2[k] & PAGE_PRESENT) != PAGE_PRESENT) {																	// This P2 entry exists?
 					continue;																									// Nope
 				} else if ((p2[k] & PAGE_HUGE) == PAGE_HUGE) {																	// Huge P2 page (2 MiB)?
-					MmDereferenceSinglePage(p2[k] & PAGE_MASK);																	// Yes, free it!
+					MmDereferenceSinglePage(p2[k] & MM_PAGE_MASK);																// Yes, free it!
 					continue;
 				}
 				
 				PUInt64 p1 = Null;																								// Let's map it!
 
-				if ((p1 = (PUInt64)MmMapTemp(p2[k] & PAGE_MASK, MM_MAP_KDEF)) == 0) {
-					MmDereferenceSinglePage(p2[k] & PAGE_MASK);
+				if ((p1 = (PUInt64)MmMapTemp(p2[k] & MM_PAGE_MASK, MM_MAP_KDEF)) == 0) {
+					MmDereferenceSinglePage(p2[k] & MM_PAGE_MASK);
 					continue;
 				}
 				
 				for (UInt64 l = 0; l < 512; l++) {																				// Let's free the P1 entries
 					if ((p1[l] & PAGE_PRESENT) == PAGE_PRESENT) {																// Present?
-						MmDereferenceSinglePage(p1[l] & PAGE_MASK);																// Yes, free it
+						MmDereferenceSinglePage(p1[l] & MM_PAGE_MASK);															// Yes, free it
 					}
 				}
 				
 				MmUnmap((UIntPtr)p1);																							// Unmap the P1
-				MmDereferenceSinglePage(p2[k] & PAGE_MASK);																		// And free it
+				MmDereferenceSinglePage(p2[k] & MM_PAGE_MASK);																	// And free it
 			}
 			
 			MmUnmap((UIntPtr)p2);																								// Unmap the P2
-			MmDereferenceSinglePage(p3[j] & PAGE_MASK);																			// And free it
+			MmDereferenceSinglePage(p3[j] & MM_PAGE_MASK);																		// And free it
 		}
 		
 		MmUnmap((UIntPtr)p3);																									// Unmap the P3
-		MmDereferenceSinglePage(p4[i] & PAGE_MASK);																				// And free it
+		MmDereferenceSinglePage(p4[i] & MM_PAGE_MASK);																			// And free it
 	}
 	
 	MmUnmap((UIntPtr)p4);																										// Unmap the P4

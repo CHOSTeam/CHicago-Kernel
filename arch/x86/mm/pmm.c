@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 31 of 2018, at 18:45 BRT
-// Last edited on January 24 of 2020, at 09:34 BRT
+// Last edited on January 24 of 2020, at 11:31 BRT
 
 #define __CHICAGO_PMM__
 
@@ -67,7 +67,7 @@ Void PMMInit(Void) {
 	MmUsedBytes = MmMaxBytes;																							// We're going to free the avaliable regions later...
 	MmPageRegionCount = MmMaxBytes / MM_PAGE_SIZE / 1024;																// Setup the MmPageRegionCount variable
 	MmPageRegions = (PMmPageRegion)MmBootAlloc(MmPageRegionCount * sizeof(MmPageRegion), False);						// Alloc the page frame allocator regions
-	MmPageReferences = (PUIntPtr)MmBootAlloc(MmMaxBytes / MM_PAGE_SIZE * sizeof(UIntPtr), False);						// Also alloc the page frame reference map
+	MmPageReferences = (PUInt8)MmBootAlloc(MmMaxBytes / MM_PAGE_SIZE * sizeof(UInt8), False);							// Also alloc the page frame reference map
 	
 	for (UIntPtr i = 0; i < MmPageRegionCount; i++) {																	// Init all the bitmaps on the regions
 		StrSetMemory(MmPageRegions[i].pages, 0xFF, sizeof(MmPageRegions[i].pages));

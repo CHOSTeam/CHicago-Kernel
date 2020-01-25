@@ -52,6 +52,60 @@ PChar ExceptionStrings[32] = {
 	"Reserved"
 };
 
+static PMmRegion GetMapping(UIntPtr addr) {
+	PAvlNode node = MmGetMapping(addr, 0, False);													// Try to get the mapping at the address 'addr', the 0 indicates that this is just a single virtual address, not a region...
+	
+	if (node == Null) {
+		return Null;
+	}
+	
+	return node->value;
+}
+
+static UInt32 GetFlags(UIntPtr addr) {
+	UIntPtr page = 0;
+	
+	if ((MmGetPDE(addr) & PAGE_PRESENT) != PAGE_PRESENT) {											// The page table exists?
+		page = MmGetPDE(addr);																		// No...
+	} else if ((MmGetPDE(addr) & PAGE_HUGE) == PAGE_HUGE) {											// 4MiB page?
+		page = MmGetPDE(addr);																		// Yes...
+	} else {
+		page = MmGetPTE(addr);																		// Normal PTE!
+	}
+	
+	UInt32 ret = MM_MAP_READ | MM_MAP_EXEC;															// And convert the page flags to MmMap flags
+	
+	if ((page & PAGE_WRITE) == PAGE_WRITE) {
+		ret |= MM_MAP_WRITE;
+	}
+	
+	if ((page & PAGE_USER) == PAGE_USER) {
+		ret |= (MM_MAP_USER | MM_MAP_KERNEL);
+	} else {
+		ret |= MM_MAP_KERNEL;
+	}
+	
+	if ((page & PAGE_AOR) == PAGE_AOR) {
+		ret |= MM_MAP_AOR;
+	}
+	
+	if ((page & PAGE_COW) == PAGE_COW) {
+		ret |= MM_MAP_COW;
+	}
+	
+	return ret;
+}
+
+static UInt8 GetReason(PRegisters regs) {
+	if ((regs->err_code & 0x01) != 0x01) {															// Not present?
+		return MM_PF_READWRITE_ON_NON_PRESENT;
+	} else if ((regs->err_code & 0x01) == 0x01 && (regs->err_code & 0x02) == 0x02) {				// Write to read-only?
+		return MM_PF_WRITE_ON_READONLY;
+	}
+	
+	return MM_PF_READWRITE_ON_KERNEL_ONLY;															// Oh, (user) read/write on kernel only
+}
+
 Void ISRDefaultHandler(PRegisters regs) {
 	if (regs->int_num >= 32 && regs->int_num <= 47) {
 		if (InterruptHandlers[regs->int_num] != Null) {
@@ -69,40 +123,9 @@ Void ISRDefaultHandler(PRegisters regs) {
 		}
 		
 		if (regs->int_num == 14) {																	// Page fault?
-			UInt32 faddr;																			// Yes, let's handle it
-			
-			Asm Volatile("mov %%cr2, %0" : "=r"(faddr));											// CR2 contains the fault addr
-			
-			if ((MmGetPDE(faddr) & PAGE_PRESENT) != PAGE_PRESENT) {									// Present?
-				DbgWriteFormated("PANIC! Page fault at address 0x%x\r\n", faddr);					// No
-				DbgWriteFormated("       EIP: 0x%x\r\n", regs->eip);
-				ArchPanic(PANIC_MM_READWRITE_TO_NONPRESENT_AREA, regs);
-			} else if ((MmGetPTE(faddr) & PAGE_AOR) != PAGE_AOR) {									// Alloc on runtime?
-				goto c;																				// Nope
-			}
-			
-			UInt32 oldf = MmGetPTE(faddr) & 0xFFF;													// YES! Get the current flags
-			UIntPtr newp;																			// Alloc the physical page
-			
-			if (MmReferenceSinglePage(0, &newp) != STATUS_SUCCESS) {
-				goto c;																				// Failed...
-			}
-			
-			MmSetPTE(faddr, newp, (oldf & ~PAGE_AOR) | PAGE_PRESENT);								// Set the PTE entry
-			MmInvlpg(faddr);																		// And refresh/invalidate the address
-			
-			goto e;																					// We finished here!
-			
-c:			if ((MmGetPTE(faddr) & PAGE_PRESENT) != PAGE_PRESENT) {									// Present?
-				DbgWriteFormated("PANIC! Page fault at address 0x%x\r\n", faddr);
-				DbgWriteFormated("       EIP: 0x%x\r\n", regs->eip);
-				ArchPanic(PANIC_MM_READWRITE_TO_NONPRESENT_AREA, regs);
-			}
-			
-			DbgWriteFormated("PANIC! Page fault at address 0x%x\r\n", faddr);						// Write fault?
-			DbgWriteFormated("       EIP: 0x%x\r\n", regs->eip);
-			ArchPanic(PANIC_MM_WRITE_TO_READONLY_AREA, regs);										// Yes
-e:			;
+			UIntPtr addr;																			// Yes...
+			Asm Volatile("mov %%cr2, %0" : "=r"(addr));												// CR2 contains the fault addr
+			MmPageFaultHandler(GetMapping(addr), regs, addr, GetFlags(addr), GetReason(regs));		// And let's handle it!
 		} else {
 			DbgWriteFormated("PANIC! %s exception\r\n", ExceptionStrings[regs->int_num]);			// No
 			DbgWriteFormated("       EIP: 0x%x\r\n", regs->eip);

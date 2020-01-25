@@ -1,12 +1,12 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 18:42 BRT
-// Last edited on January 23 of 2020, at 22:02 BRT
+// Last edited on January 24 of 2020, at 11:30 BRT
 
 #include <chicago/mm.h>
 
 PMmPageRegion MmPageRegions = Null;
-PUIntPtr MmPageReferences = Null;
+PUInt8 MmPageReferences = Null;
 UIntPtr MmPageRegionCount = 0;
 UIntPtr MmUsedBytes = 0;
 UIntPtr MmMaxBytes = 0;

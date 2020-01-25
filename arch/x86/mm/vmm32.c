@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 19:19 BRT
-// Last edited on January 23 of 2020, at 21:30 BRT
+// Last edited on January 25 of 2020, at 12:08 BRT
 
 #include <chicago/arch/vmm.h>
 
@@ -12,9 +12,9 @@ UIntPtr MmGetPhys(UIntPtr virt) {
 	if ((MmGetPDE(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																			// The page table exists?
 		return 0;																													// No, so just return 0
 	} else if ((MmGetPDE(virt) & PAGE_HUGE) == PAGE_HUGE) {																			// 4MiB page?
-		return (MmGetPDE(virt) & PAGE_MASK) + (virt & 0x3FFFFF);																	// Yes, return!
+		return (MmGetPDE(virt) & MM_PAGE_MASK) + (virt & 0x3FFFFF);																	// Yes, return!
 	} else {
-		return (MmGetPTE(virt) & PAGE_MASK) + (virt & 0xFFF);																		// Return!
+		return (MmGetPTE(virt) & MM_PAGE_MASK) + (virt & 0xFFF);																	// Return!
 	}
 }
 
@@ -43,8 +43,8 @@ UInt32 MmQuery(UIntPtr virt) {
 		ret |= MM_MAP_KERNEL;
 	}
 	
-	if ((page & PAGE_AOR) == PAGE_AOR) {
-		ret |= MM_MAP_AOR;
+	if ((page & PAGE_COW) == PAGE_COW) {
+		ret |= MM_MAP_COW;
 	}
 	
 	return ret;
@@ -231,66 +231,6 @@ Status MmUnmap(UIntPtr virt) {
 	}
 }
 
-Status MmPrepareMapFile(UIntPtr start, UIntPtr end) {
-	if ((start % MM_PAGE_SIZE) != 0) {																								// Align everything to page size
-		start -= start % MM_PAGE_SIZE;
-	}
-	
-	for (UIntPtr i = start; i < end; i += MM_PAGE_SIZE) {																			// First, let's check everything...
-		if ((MmGetPDE(i) & PAGE_PRESENT) != PAGE_PRESENT) {																			// This page table exists?
-			return STATUS_NOT_MAPPED;																								// Nope...
-		} else if ((MmGetPDE(i) & PAGE_HUGE) == PAGE_HUGE) {																		// We don't support handling 4MiB pages here yet...
-			return STATUS_MAPFILE_FAILED;
-		}
-		
-		UIntPtr page = MmGetPTE(i);																									// Get the PTE entry
-		
-		if ((page & PAGE_PRESENT) != PAGE_PRESENT && (page & PAGE_AOR) != PAGE_AOR) {												// Not mapped (or already mapped to another mapped file)...
-			return STATUS_NOT_MAPPED;
-		} else if ((page & PAGE_OTHER) == PAGE_OTHER) {																				// Already mapped to another file?
-			return STATUS_ALREADY_MAPPED;																							// Yup...
-		}
-	}
-	
-	for (; start < end; start += MM_PAGE_SIZE) {																					// Now, let's just set the PAGE_OTHER flag in everything, and also unset the present flag in everything
-		UIntPtr page = MmGetPTE(start);
-		MmSetPTE(start, page & PAGE_MASK, ((page & 0xFFF) | PAGE_OTHER) & ~PAGE_PRESENT);
-		MmInvlpg(start);
-	}
-	
-	return STATUS_SUCCESS;
-}
-
-Status MmPrepareUnmapFile(UIntPtr start, UIntPtr end) {
-	if ((start % MM_PAGE_SIZE) != 0) {																								// Align everything to page size
-		start -= start % MM_PAGE_SIZE;
-	}
-	
-	for (UIntPtr i = start; i < end; i += MM_PAGE_SIZE) {																			// First, let's check everything...
-		if ((MmGetPDE(i) & PAGE_PRESENT) != PAGE_PRESENT) {																			// This page table exists?
-			return STATUS_NOT_MAPPED;																								// Nope...
-		} else if ((MmGetPDE(i) & PAGE_HUGE) == PAGE_HUGE) {																		// We don't support handling 4MiB pages here yet...
-			return STATUS_UNMAPFILE_FAILED;
-		}
-		
-		UIntPtr page = MmGetPTE(i);																									// Get the PTE entry
-		
-		if ((page & PAGE_PRESENT) != PAGE_PRESENT && (page & PAGE_OTHER) != PAGE_OTHER) {											// Not mapped...
-			return STATUS_NOT_MAPPED;
-		} else if ((page & PAGE_OTHER) != PAGE_OTHER) {																				// Not mapped to any file?
-			return STATUS_UNMAPFILE_FAILED;																							// Yup...
-		}
-	}
-	
-	for (; start < end; start += MM_PAGE_SIZE) {																					// Now, let's just unset the PAGE_OTHER flag in everything, and also set the present flag (if required)
-		UIntPtr page = MmGetPTE(start);
-		MmSetPTE(start, page & PAGE_MASK, ((page & 0xFFF) & ~PAGE_OTHER) | (((page & PAGE_AOR) != PAGE_AOR) ? PAGE_PRESENT : 0));
-		MmInvlpg(start);
-	}
-	
-	return STATUS_SUCCESS;
-}
-
 UIntPtr MmCreateDirectory(Void) {
 	UIntPtr ret;																													// Allocate one physical page
 	PUInt32 dir = Null;
@@ -308,7 +248,7 @@ UIntPtr MmCreateDirectory(Void) {
 		if (((MmGetPDE(i << 22) & PAGE_PRESENT) != PAGE_PRESENT) || (i < 768) || (i == 1022)) {										// Non-present, user or temp?
 			dir[i] = 0;																												// Yes, so just zero it
 		} else if (i == 1023) {																										// Recursive mapping entry?
-			dir[i] = (ret & PAGE_MASK) | 3;																							// Yes
+			dir[i] = (ret & MM_PAGE_MASK) | 3;																						// Yes
 		} else {																													// Normal kernel entry?
 			dir[i] = MmGetPDE(i << 22);																								// Yes
 		}
@@ -334,11 +274,11 @@ Void MmFreeDirectory(UIntPtr dir) {
 	for (UInt32 i = 0; i < 768; i++) {																								// Let's free the user tables
 		if ((tmp[i] & PAGE_PRESENT) == PAGE_PRESENT) {																				// Present?
 			if ((tmp[i] & PAGE_HUGE) == PAGE_HUGE) {																				// Yes, 4MiB page?
-				MmDereferenceSinglePage(tmp[i] & PAGE_MASK);																		// Yes, free it!
+				MmDereferenceSinglePage(tmp[i] & MM_PAGE_MASK);																		// Yes, free it!
 				continue;
 			}
 			
-			UIntPtr tabpa = tmp[i] & PAGE_MASK;																						// Yes
+			UIntPtr tabpa = tmp[i] & MM_PAGE_MASK;																					// Yes
 			PUInt32 tabta = Null;
 			
 			if ((tabta = (PUInt32)MmMapTemp(tabpa, MM_MAP_KDEF)) == 0) {
@@ -348,7 +288,7 @@ Void MmFreeDirectory(UIntPtr dir) {
 			
 			for (UInt32 j = 0; j < 1024; j++) {
 				if ((tabta[j] & PAGE_PRESENT) == PAGE_PRESENT) {																	// Present?
-					MmDereferenceSinglePage(tabta[j] & PAGE_MASK);																	// Yes, just use the dereference function
+					MmDereferenceSinglePage(tabta[j] & MM_PAGE_MASK);																// Yes, just use the dereference function
 				}				
 			}
 			

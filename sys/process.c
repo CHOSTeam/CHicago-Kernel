@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 27 of 2018, at 14:59 BRT
-// Last edited on January 21 of 2020, at 23:24 BRT
+// Last edited on January 25 of 2020, at 13:18 BRT
 
 #define __CHICAGO_PROCESS__
 
@@ -118,6 +118,7 @@ Status PsCreateProcessInt(PWChar name, UInt8 prio, UIntPtr entry, UIntPtr dir, P
 	StrSetMemory(&proc->threads, 0, sizeof(List));																								// Init all the lists
 	StrSetMemory(&proc->shm_mapped_sections, 0, sizeof(List));
 	StrSetMemory(&proc->handles, 0, sizeof(List));
+	MmInitMappingTree(proc);
 	proc->last_handle_id = 0;
 	
 	PThread th;

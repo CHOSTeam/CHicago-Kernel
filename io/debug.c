@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 27 of 2018, at 14:19 BRT
-// Last edited on January 01 of 2020, at 18:59 BRT
+// Last edited on January 25 of 2020, at 14:16 BRT
 
 #include <chicago/console.h>
 #include <chicago/debug.h>
@@ -64,7 +64,7 @@ Void DbgWriteString(PChar data) {
 
 static Void DbgWriteIntegerInt(UIntPtr data, UInt8 base) {
 	if (data == 0) {
-		DbgWriteCharacterInt('0');
+		DbgWriteCharacterInt2('0');
 		return;
 	}
 	

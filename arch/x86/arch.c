@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:21 BRT
-// Last edited on January 24 of 2020, at 09:17 BRT
+// Last edited on January 25 of 2020, at 12:09 BRT
 
 #include <chicago/arch/ahci.h>
 #include <chicago/arch/bootmgr.h>
@@ -63,7 +63,7 @@ Void ArchInitVMM(Void) {
 		ArchHalt();																								// Halt
 	}
 	
-	MmSetP4(0xFFFF808000000000, phys & PAGE_MASK, 0x03);														// Pre alloc this P4 entry for the kernel heap
+	MmSetP4(0xFFFF808000000000, phys & MM_PAGE_MASK, 0x03);														// Pre alloc this P4 entry for the kernel heap
 	MmInvlpg((UIntPtr)(&MmGetP4(0xFFFF808000000000)));															// Invalidate the TLB
 	HeapInit(0xFFFF808000000000, 0xFFFF810000000000);															// 512 GiB heap, starts at 0xFFFF808000000000 and ends at 0xFFFF810000000000
 }
