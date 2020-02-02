@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on April 18 of 2019, at 12:04 BRT
-// Last edited on December 07 of 2020, at 10:33 BRT
+// Last edited on February 02 of 2020, at 13:41 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/display.h>
@@ -602,7 +602,7 @@ Void ImgWriteCharacter(PImage img, Boolean cursor, PUIntPtr x, PUIntPtr y, UIntP
 		break;
 	}
 	case '\r': {																												// Carriage return
-		*x++ = 0;
+		*x = 0;
 		break;
 	}
 	case '\t': {																												// Tab

@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 18:42 BRT
-// Last edited on January 24 of 2020, at 11:30 BRT
+// Last edited on February 02 of 2020, at 13:08 BRT
 
 #include <chicago/mm.h>
 
@@ -56,6 +56,8 @@ static Status MmAllocPage(UIntPtr count, PUIntPtr ret) {
 		return STATUS_OUT_OF_MEMORY;
 	}
 	
+	PsLockTaskSwitch(old);																																// Lock task switching
+	
 	for (UIntPtr i = 0; i < MmPageRegionCount; i++) {																									// Let's iterate through the regions
 		if (MmPageRegions[i].free < count) {																											// Do we have enough free pages here?
 			continue;																																	// Nope... continue searching in the next region
@@ -69,10 +71,13 @@ static Status MmAllocPage(UIntPtr count, PUIntPtr ret) {
 				MmPageRegions[i].free -= count;
 				MmUsedBytes += count * MM_PAGE_SIZE;
 				*ret = (i * MM_PAGE_SIZE * 1024) + (j * MM_PAGE_SIZE * sizeof(UIntPtr) * 8) + (bit * MM_PAGE_SIZE);
+				PsUnlockTaskSwitch(old);																												// Unlock task switching
 				return STATUS_SUCCESS;
 			}
 		}
 	}
+	
+	PsUnlockTaskSwitch(old);
 	
 	return STATUS_OUT_OF_MEMORY;																														// We couldn't a region with enough pages...
 }
@@ -86,9 +91,12 @@ static Status MmFreePage(UIntPtr addr, UIntPtr count) {
 		return STATUS_INVALID_ARG;
 	}
 	
+	PsLockTaskSwitch(old);																																// Lock task switching
+	
 	UIntPtr i = addr >> 22;																																// Get the region index
 	
 	if (MmPageRegions[i].free < count) {																												// More one sanity check
+		PsUnlockTaskSwitch(old);
 		return STATUS_INVALID_ARG;
 	}
 	
@@ -98,6 +106,8 @@ static Status MmFreePage(UIntPtr addr, UIntPtr count) {
 	MmPageRegions[i].pages[j] &= ~(UINTPTR_MAX >> ~(k + count));																						// Unset all the bits that we need to
 	MmPageRegions[i].free -= count;																														// Update the free counter on the region
 	MmUsedBytes -= count * MM_PAGE_SIZE;																												// Finally, update the used bytes counter
+	
+	PsUnlockTaskSwitch(old);																															// Unlock task switching
 	
 	return STATUS_SUCCESS;
 }
@@ -171,8 +181,12 @@ Status MmReferenceSinglePage(UIntPtr addr, PUIntPtr ret) {
 		return STATUS_INVALID_ARG;
 	}
 	
+	PsLockTaskSwitch(old);																																// Lock task switching
+	
 	MmPageReferences[addr >> MM_PAGE_SIZE_SHIFT]++;
 	*ret = addr;
+	
+	PsUnlockTaskSwitch(old);																															// Unlock task switching
 	
 	return STATUS_SUCCESS;
 }
@@ -235,11 +249,15 @@ Status MmDereferenceSinglePage(UIntPtr addr) {
 		return STATUS_INVALID_ARG;
 	}
 	
+	PsLockTaskSwitch(old);																																// Lock task switching
+	
 	MmPageReferences[addr >> MM_PAGE_SIZE_SHIFT]--;																										// Decrease the reference counter
 	
 	if (MmPageReferences[addr >> MM_PAGE_SIZE_SHIFT] == 0) {																							// Was this the last reference?
 		MmFreeSinglePage(addr);																															// Yeah, so we can free it
 	}
+	
+	PsUnlockTaskSwitch(old);																															// Unlock task switching
 	
 	return STATUS_SUCCESS;
 }
@@ -287,7 +305,11 @@ UIntPtr MmGetReferences(UIntPtr addr) {
 		addr -= addr % MM_PAGE_SIZE;																													// No, so let's align it!
 	}
 	
-	return MmPageReferences[addr >> MM_PAGE_SIZE_SHIFT];
+	PsLockTaskSwitch(old);																																// Lock task switching
+	UIntPtr ret = MmPageReferences[addr >> MM_PAGE_SIZE_SHIFT];
+	PsUnlockTaskSwitch(old);																															// Unlock task switching
+	
+	return ret;
 }
 
 UIntPtr MmGetSize(Void) {
@@ -295,9 +317,15 @@ UIntPtr MmGetSize(Void) {
 }
 
 UIntPtr MmGetUsage(Void) {
-	return MmUsedBytes;
+	PsLockTaskSwitch(old);																																// Lock task switching
+	UIntPtr ret = MmUsedBytes;
+	PsUnlockTaskSwitch(old);
+	return ret;
 }
 
 UIntPtr MmGetFree(Void) {
-	return MmMaxBytes - MmUsedBytes;
+	PsLockTaskSwitch(old);																																// Lock task switching
+	UIntPtr ret = MmMaxBytes - MmUsedBytes;
+	PsUnlockTaskSwitch(old);																															// Unlock task switching
+	return ret;
 }

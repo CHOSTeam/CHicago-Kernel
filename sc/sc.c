@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:14 BRT
-// Last edited on January 27 of 2020, at 22:38 BRT
+// Last edited on February 02 of 2020, at 12:00 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/console.h>
@@ -25,9 +25,6 @@ static Boolean ScCheckPointer(PVoid ptr) {
 Void ScFreeHandle(UInt8 type, PVoid data) {
 	if (type == HANDLE_TYPE_FILE) {																															// If it's a file, we need to close it
 		FsCloseFile((PFsNode)data);
-	} else if (type == HANDLE_TYPE_LOCK) {																													// If it's a lock, we just need to unlock and free it
-		PsUnlock((PLock)data);
-		MemFree((UIntPtr)data);
 	} else if (type == HANDLE_TYPE_IPC_RESPONSE_PORT) {																										// If it's a IPC response port, we just need to free it
 		IpcFreeResponsePort((PIpcResponsePort)data);
 	}
@@ -175,73 +172,6 @@ Status ScPsWait(IntPtr handle, PUIntPtr ret) {
 	}
 	
 	return STATUS_WRONG_HANDLE;																																// None of the above, so this is not a process nor a thread...
-}
-
-Status ScPsCreateLock(PIntPtr ret) {
-	if (!ScCheckPointer(ret)) {
-		return STATUS_INVALID_ARG;
-	}
-	
-	PLock lock = (PLock)MemAllocate(sizeof(Lock));																											// Let's alloc our lock
-	
-	if (lock == Null) {
-		return STATUS_OUT_OF_MEMORY;
-	}
-	
-	lock->count = 0;																																		// Clean it
-	lock->locked = False;
-	lock->owner = Null;
-	
-	*ret = ScAppendHandle(HANDLE_TYPE_LOCK, lock);																											// And create the handle!
-	
-	if (*ret == -1) {
-		MemFree((UIntPtr)lock);																																// Failed...
-		return STATUS_OUT_OF_MEMORY;
-	}
-	
-	return STATUS_SUCCESS;
-}
-
-Status ScPsLock(IntPtr handle) {
-	if (handle >= PsCurrentProcess->last_handle_id) {																										// Check if the handle is valid
-		return STATUS_INVALID_ARG;
-	}
-	
-	PHandle hndl = ListGet(&PsCurrentProcess->handles, handle);																								// Try to get the handle data
-	
-	if (hndl == Null || hndl->type != HANDLE_TYPE_LOCK) {
-		return STATUS_WRONG_HANDLE;
-	}
-	
-	return PsLock((PLock)hndl->data);																														// Now we just need to redirect
-}
-
-Status ScPsTryLock(IntPtr handle) {
-	if (handle >= PsCurrentProcess->last_handle_id) {																										// Check if the handle is valid
-		return STATUS_INVALID_ARG;
-	}
-	
-	PHandle hndl = ListGet(&PsCurrentProcess->handles, handle);																								// Try to get the handle data
-	
-	if (hndl == Null || hndl->type != HANDLE_TYPE_LOCK) {
-		return STATUS_WRONG_HANDLE;
-	}
-	
-	return PsTryLock((PLock)hndl->data);																													// Redirect
-}
-
-Status ScPsUnlock(IntPtr handle) {
-	if (handle >= PsCurrentProcess->last_handle_id) {																										// Check if the handle is valid
-		return STATUS_INVALID_ARG;
-	}
-	
-	PHandle hndl = ListGet(&PsCurrentProcess->handles, handle);																								// Try to get the handle data
-	
-	if (hndl == Null || hndl->type != HANDLE_TYPE_LOCK) {
-		return STATUS_WRONG_HANDLE;
-	}
-	
-	return PsUnlock((PLock)hndl->data);																														// Now we just need to redirect
 }
 
 Void ScPsExitThread(UIntPtr ret) {

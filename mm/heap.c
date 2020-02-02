@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 29 of 2018, at 22:30 BRT
-// Last edited on January 24 of 2020, at 09:15 BRT
+// Last edited on February 02 of 2020, at 13:04 BRT
 
 #include <chicago/mm.h>
 
@@ -11,7 +11,10 @@ UIntPtr HeapCurrent = 0;
 UIntPtr HeapCurrentAligned = 0;
 
 UIntPtr HeapGetCurrent(Void) {
-	return HeapCurrent;
+	PsLockTaskSwitch(old);																	// Lock task switching
+	UIntPtr ret = HeapCurrent;
+	PsUnlockTaskSwitch(old);																// Unlock task switching
+	return ret;
 }
 
 UIntPtr HeapGetStart(Void) {
@@ -29,6 +32,8 @@ Boolean HeapIncrement(UIntPtr amount) {
 		return False;																		// Yes
 	}
 	
+	PsLockTaskSwitch(old);																	// Lock task switching
+	
 	UIntPtr new = HeapCurrent + amount;
 	UIntPtr old = HeapCurrentAligned;
 	
@@ -43,6 +48,8 @@ Boolean HeapIncrement(UIntPtr amount) {
 			
 			HeapCurrentAligned = old;
 			
+			PsUnlockTaskSwitch(old);
+			
 			return False;
 		}
 		
@@ -56,11 +63,15 @@ Boolean HeapIncrement(UIntPtr amount) {
 			
 			HeapCurrentAligned = old;
 			
+			PsUnlockTaskSwitch(old);
+			
 			return False;
 		}
 	}
 	
 	HeapCurrent = new;
+	
+	PsUnlockTaskSwitch(old);																// Unlock task switching
 	
 	return True;
 }
@@ -72,6 +83,8 @@ Boolean HeapDecrement(UIntPtr amount) {
 		return False;																		// Yes
 	}
 	
+	PsLockTaskSwitch(old);																	// Lock task switching
+	
 	HeapCurrent -= amount;																	// Decrement the unaligned pointer
 	
 	while ((HeapCurrentAligned - MM_PAGE_SIZE) > HeapCurrent) {								// And the aligned one
@@ -79,6 +92,8 @@ Boolean HeapDecrement(UIntPtr amount) {
 		MmDereferenceSinglePage(MmGetPhys(HeapCurrentAligned));								// Dereference the physical page
 		MmUnmap(HeapCurrentAligned);														// And unmap
 	}
+	
+	PsUnlockTaskSwitch(old);																// Unlock task switching
 	
 	return True;
 }

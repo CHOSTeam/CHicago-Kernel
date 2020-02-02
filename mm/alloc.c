@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 13 of 2018, at 00:44 BRT
-// Last edited on December 31 of 2019, at 13:59 BRT
+// Last edited on February 02 of 2020, at 13:02 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/alloc-int.h>
@@ -89,6 +89,8 @@ UIntPtr MemAllocate(UIntPtr size) {
 		return 0;
 	}
 	
+	PsLockTaskSwitch(old);																										// Lock task switching
+	
 	PAllocBlock block = Null;
 	
 	if ((size % sizeof(UIntPtr)) != 0) {																						// Align size to UIntPtr
@@ -110,16 +112,20 @@ UIntPtr MemAllocate(UIntPtr size) {
 			block = MemAllocateCreateBlock(last, size);																			// No, so let's (try to) create a new block
 			
 			if (block == Null) {
-				return 0;																										// Failed...
+				PsUnlockTaskSwitch(old);																						// Failed...
+				return 0;
 			}
 		}
 	} else {
 		block = MemAllocateBase = MemAllocateCreateBlock(Null, size);															// Yes, so let's (try to) init
 		
 		if (block == Null) {
+			PsUnlockTaskSwitch(old);																							// Failed...
 			return 0;
 		}
 	}
+	
+	PsUnlockTaskSwitch(old);																									// Unlock task switch
 	
 	return block->start;
 }
@@ -133,10 +139,13 @@ UIntPtr MemAAllocate(UIntPtr size, UIntPtr align) {
 		return 0;
 	}
 	
+	PsLockTaskSwitch(old);																										// Lock task switching
+	
 	UIntPtr p0 = MemAllocate(size + align);																						// Alloc the memory
 	
 	if (p0 == 0) {
-		return 0;																												// Failed/Out of memory :(
+		PsUnlockTaskSwitch(old);																								// Failed/Out of memory :(
+		return 0;
 	}
 	
 	MemFree(p0);																												// Free the allocated memory
@@ -144,11 +153,14 @@ UIntPtr MemAAllocate(UIntPtr size, UIntPtr align) {
 	UIntPtr p1 = MemAllocate(size + align + ((p0 + (align - (p0 % align))) - p0));												// Now, let's alloc the real amount of bytes that we're going to use
 	
 	if (p1 == 0) {
-		return 0;																												// Failed
+		PsUnlockTaskSwitch(old);																								// Failed
+		return 0;
 	}
 	
 	PUIntPtr p2 = (PUIntPtr)(p1 + (align - (p1 % align)));
 	p2[-1] = p1;
+	
+	PsUnlockTaskSwitch(old);																									// Unlock task switching
 	
 	return (UIntPtr)p2;
 }
@@ -162,9 +174,12 @@ Void MemFree(UIntPtr block) {
 		return;
 	}
 	
+	PsLockTaskSwitch(old);																										// Lock task switching
+	
 	PAllocBlock blk = (PAllocBlock)(block - sizeof(AllocBlock));																// Let's get the block struct
 	
 	if (blk->free) {																											// Make sure that we haven't freed it before
+		PsUnlockTaskSwitch(old);
 		return;
 	}
 	
@@ -185,6 +200,8 @@ Void MemFree(UIntPtr block) {
 		
 		HeapDecrement(blk->size + sizeof(AllocBlock));																			// Now let's decrement the heap!
 	}
+	
+	PsUnlockTaskSwitch(old);																									// Unlock task switching
 }
 
 Void MemAFree(UIntPtr block) {

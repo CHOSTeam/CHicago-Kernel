@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 27 of 2018, at 14:59 BRT
-// Last edited on February 02 of 2020, at 11:05 BRT
+// Last edited on February 02 of 2020, at 13:30 BRT
 
 #define __CHICAGO_PROCESS__
 
@@ -38,7 +38,7 @@ List PsProcessList = { Null, Null, 0, False };
 List PsSleepList = { Null, Null, 0, False };
 List PsWaittList = { Null, Null, 0, False };
 List PsWaitpList = { Null, Null, 0, False };
-List PsWaitlList = { Null, Null, 0, False };
+List PsWaitaList = { Null, Null, 0, False };
 List PsKillList = { Null, Null, 0, False };
 
 UIntPtr PsNextID = 0;
@@ -66,7 +66,7 @@ Status PsCreateThreadInt(UInt8 prio, UIntPtr entry, UIntPtr userstack, Boolean u
 	th->time = (prio + 1) * 5 - 1;																												// Set the quantum
 	th->wtime = 0;																																// We're not waiting anything (for now)
 	th->parent = Null;																															// No parent (for now)
-	th->waitl = Null;																															// We're not waiting anything (for now)
+	th->waita = Null;																															// We're not waiting anything (for now)
 	th->waitp = Null;
 	th->waitt = Null;
 	th->killp = False;
@@ -311,91 +311,82 @@ Status PsWaitProcess(UIntPtr id, PUIntPtr ret) {
 	return STATUS_SUCCESS;
 }
 
-Status PsLock(PLock lock) {
-	if ((lock == Null) || (PsCurrentThread == Null)) {																							// Sanity checks
+Status PsWaitForAddress(UIntPtr addr, UIntPtr value, UIntPtr new, UIntPtr ms) {
+	if (PsCurrentThread == Null || addr == 0) {																									// Make sure that the address is valid
 		return STATUS_INVALID_ARG;
 	}
 	
-	PsLockTaskSwitch(old);																														// Lock (the task switching)
+	PsLockTaskSwitch(old);																														// Lock task switching
 	
-	if (!lock->locked || lock->owner == PsCurrentThread) {																						// We need to add it to the waitl list?
-		lock->count++;																															// Nope, increase the counter, set it as locked and return!
-		lock->locked = True;
-		lock->owner = PsCurrentThread;
-		PsUnlockTaskSwitch(old);
+	if (*((PUIntPtr)addr) == value) {																											// Do we really need to lock?
+		*((PUIntPtr)addr) = new;																												// No, we don't! Set the new value
+		PsUnlockTaskSwitch(old);																												// Unlock task switching
 		return STATUS_SUCCESS;
 	}
 	
-	if (!ListAdd(&PsWaitlList, PsCurrentThread)) {																								// Try to add it to the waitl list
-		PsUnlockTaskSwitch(old);																												// Failed, but let's keep on trying!
-		return PsLock(lock);
+	PWaitingForAddress waiting = (PWaitingForAddress)MemAllocate(sizeof(WaitingForAddress));													// Alloc the waiting for address struct
+	
+	if (waiting == Null) {
+		PsUnlockTaskSwitch(old);
+		return STATUS_OUT_OF_MEMORY;
 	}
 	
-	PsCurrentThread->waitl = lock;
+	waiting->addr = addr;																														// Setup all the fields
+	waiting->value = value;
+	waiting->new = new;
 	
-	PsUnlockTaskSwitch(old);																													// Unlock
+	if (!ListAdd(&PsWaitaList, PsCurrentThread)) {																								// Add the thread to the waiting list
+		MemFree((UIntPtr)waiting);
+		PsUnlockTaskSwitch(old);
+		return STATUS_OUT_OF_MEMORY;
+	} else if (ms && !ListAdd(&PsSleepList, PsCurrentThread)) {																					// Add the thread to the sleep list (if required)
+		UIntPtr idx;
+		
+		if (ListSearch(&PsWaitaList, PsCurrentThread, &idx)) {
+			ListRemove(&PsWaitaList, idx);
+		}
+		
+		MemFree((UIntPtr)waiting);
+		PsUnlockTaskSwitch(old);
+	}
+	
+	PsCurrentThread->wtime = ms;																												// Set the sleep time
+	PsCurrentThread->waita = waiting;																											// And the waiting for address struct
+	
+	PsUnlockTaskSwitch(old);																													// Unlock task switching
 	PsSwitchTask(PsDontRequeue);																												// Remove it from the queue and go to the next thread
 	
 	return STATUS_SUCCESS;
 }
 
-Status PsTryLock(PLock lock) {
-	if ((lock == Null) || (PsCurrentThread == Null)) {																							// Sanity checks
+Status PsWakeAddress(UIntPtr addr) {
+	if (PsCurrentThread == Null || addr == 0) {																									// Make sure that the address is valid
 		return STATUS_INVALID_ARG;
 	}
 	
-	Status ret = STATUS_TRYLOCK_FAILED;
+	PsLockTaskSwitch(old);																														// Lock task switching
 	
-	PsLockTaskSwitch(old);																														// Lock (the task switching)
+	UIntPtr value = *((PUIntPtr)addr);																											// Get the value that this address is holding at the moment
 	
-	if (!lock->locked || lock->owner == PsCurrentThread) {																						// We can lock?
-		lock->count++;																															// Yes!
-		lock->locked = True;
-		lock->owner = PsCurrentThread;
-		ret = True;
-	}
-	
-	PsUnlockTaskSwitch(old);																													// Unlock (the task switch)
-	
-	return ret;
-}
-
-Status PsUnlock(PLock lock) {
-	if ((lock == Null) || (PsCurrentThread == Null)) {																							// Sanity checks
-		return STATUS_INVALID_ARG;
-	} else if (!lock->locked || (lock->owner != PsCurrentThread)) {																				// We're the owner of this lock? We really need to unlock it?
-		return STATUS_NOT_OWNER;																												// Nope >:(
-	}
-	
-	PsLockTaskSwitch(old);																														// Lock (the task switching)
-	
-	lock->count--;																																// Decrease the counter
-	
-	if (lock->count > 0) {																														// We can fully unlock it for other threads?
-		return STATUS_SUCCESS;																													// Nope...
-	}
-	
-	lock->locked = False;																														// Unlock it and remove the owner (set it to Null)
-	lock->owner = Null;
-	
-	ListForeach(&PsWaitlList, i) {																												// Let's try to wakeup any thread that is waiting for this lock
+	ListForeach(&PsWaitaList, i) {																												// Let's see all the threads that are waiting for this address to change
 		PThread th = (PThread)i->data;
 		
-		if (th->waitl == lock) {
-			PsWakeup(&PsWaitlList, th);																											// Found one!
+		if (th->waita->addr == addr && th->waita->value == value) {																				// Is this thread waiting for this address to change to its current value?
+			UIntPtr new = th->waita->new;																										// Yes! Save the new value
 			
-			lock->count++;																														// Let's lock, set the counter, set the lock owner, and force switch to it!
-			lock->locked = True;
-			lock->owner = th;
+			MemFree((UIntPtr)th->waita);																										// Free the waiting struct
+			PsWakeup(&PsWaitaList, th);																											// Wake up the thread
 			
-			PsUnlockTaskSwitch(old);
-			PsSwitchTask(Null);
+			*((PUIntPtr)addr) = new;																											// Write the new value into the address
+			
+			PsUnlockTaskSwitch(old);																											// Unlock task switching
+			PsSwitchTask(Null);																													// And switch into the next task (should be the woke up thread, or a thread with more priority than it... maybe we should change this later?)
 			
 			return STATUS_SUCCESS;
 		}
 	}
 	
-	PsUnlockTaskSwitch(old);																													// Unlock (the task switching)
+	PsUnlockTaskSwitch(old);																													// No thread to wake up! Just unlock task switching and return
 	
 	return STATUS_SUCCESS;
 }
@@ -524,9 +515,9 @@ Void PsExitProcess(UIntPtr ret) {
 				}
 			}
 			
-			ListForeach(&PsWaitlList, j) {																										// Let's remove any of our threads from the waitl list
+			ListForeach(&PsWaitaList, j) {																										// Let's remove any of our threads from the waitl list
 				if (j->data == th) {																											// Found?
-					PsWakeup2(&PsWaitlList, th);																								// Yes :)
+					PsWakeup2(&PsWaitaList, th);																								// Yes :)
 				}
 			}
 			
@@ -591,10 +582,16 @@ Void PsWakeup(PList list, PThread th) {
 	
 	ListRemove(list, idx);																														// Remove th from list
 	
+	if (list == &PsSleepList) {																													// Are we waking up a thread?
+		if (ListSearch(&PsWaitaList, th, &idx)) {																								// Yeah, let's see it was a WaitOnAddress tiemout...
+			MemFree((UIntPtr)((PThread)ListRemove(&PsWaitaList, idx))->waita);																	// Yeah, it was...
+		}
+	}
+	
 	th->cprio = th->prio;																														// Let's queue it back!
 	th->time = (th->cprio + 1) * 5;
 	th->wtime = 0;
-	th->waitl = Null;
+	th->waita = Null;
 	th->waitt = Null;
 	th->waitp = Null;
 	

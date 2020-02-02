@@ -1,14 +1,14 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 20 of 2018, at 15:20 BRT
-// Last edited on January 01 of 2020, at 18:59 BRT
+// Last edited on January 02 of 2020, at 13:35 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/display.h>
 #include <chicago/process.h>
 #include <chicago/string.h>
 
-Lock ConLock = { 0, False, Null };
+PThread ConLockOwner = Null;
 UIntPtr ConCursorX = 0;
 UIntPtr ConCursorY = 0;
 UIntPtr ConSurfaceX = 0;
@@ -21,9 +21,23 @@ Boolean ConCursorEnabled = True;
 UIntPtr ConBackColor = 0xFF000000;
 UIntPtr ConForeColor = 0xFFAAAAAA;
 
+static Void ConLock(Void) {
+	if (PsCurrentThread == Null) {																									// If threading isn't initialized, we don't need to do anything
+		return;
+	}
+	
+	PsWaitForAddress((UIntPtr)&ConLockOwner, 0, PsCurrentThread, 0);																// Wait until the ConLockOwner is Null
+}
+
+static Void ConUnlock(Void) {
+	if (PsCurrentThread != Null && ConLockOwner == PsCurrentThread) {																// Is threading initialized? If yes, are we the owners?
+		ConLockOwner = Null;																										// Yeah, set it to Null, and wake any thread that is waiting for us
+		PsWakeAddress((UIntPtr)&ConLockOwner);
+	}
+}
+
 Void ConAcquireLock(Void) {
-	ConLock.locked = False;																											// Reset the lock
-	ConLock.owner = Null;
+	ConLockOwner = Null;																											// Reset the lock
 	ConRefresh = True;																												// And the console attributes
 	ConCursorEnabled = True;
 	ConBackColor = 0xFF000000;
@@ -41,7 +55,7 @@ Void ConSetSurface(PImage img, Boolean disp, Boolean free, UIntPtr x, UIntPtr y)
 		return;
 	}
 	
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	
 	if (ConSurfaceFree) {																											// Free the old surface?
 		MemFree((UIntPtr)ConSurface);																								// Yes
@@ -57,24 +71,24 @@ Void ConSetSurface(PImage img, Boolean disp, Boolean free, UIntPtr x, UIntPtr y)
 	ConBackColor = 0xFF000000;
 	ConForeColor = 0xFFAAAAAA;
 	
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 }
 
 Void ConSetRefresh(Boolean s) {
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	ConRefresh = s;																													// Set the automatic refresh prop
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 }
 
 Boolean ConGetRefresh(Void) {
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	Boolean s = ConRefresh;																											// Save the automatic refresh prop
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 	return s;																														// Return it
 }
 
 Void ConSetCursorEnabled(Boolean e) {
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	
 	if (e && !ConCursorEnabled) {																									// Draw the new cursor?
 		ImgFillRectangle(ConSurface, ConCursorX * 8, ConCursorY * 16, 8, 16, ConForeColor);											// Yes
@@ -84,37 +98,37 @@ Void ConSetCursorEnabled(Boolean e) {
 	
 	ConCursorEnabled = e;																											// Set the cursor enabled prop
 	
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 }
 
 Boolean ConGetCursorEnabled(Void) {
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	Boolean s = ConCursorEnabled;																									// Save the cursor enabled prop
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 	return s;																														// Return it
 }
 
 Void ConSetColor(UIntPtr bg, UIntPtr fg) {
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	ConBackColor = bg;																												// Set the background of the console
 	ConForeColor = fg;																												// Set the foreground of the console
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 }
 
 Void ConSetBackground(UIntPtr c) {
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	ConBackColor = c;																												// Set the background of the console
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 }
 
 Void ConSetForeground(UIntPtr c) {
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	ConForeColor = c;																												// Set the foreground of the console
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 }
 
 Void ConGetColor(PUIntPtr bg, PUIntPtr fg) {
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	
 	if (bg != Null) {																												// We should save the bg?
 		*bg = ConBackColor;																											// Yes
@@ -124,44 +138,44 @@ Void ConGetColor(PUIntPtr bg, PUIntPtr fg) {
 		*fg = ConForeColor;																											// Yes
 	}
 	
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 }
 
 UIntPtr ConGetBackground(Void) {
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	IntPtr bg = ConBackColor;																										// Save the bg
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 	return bg;																														// Return it
 }
 
 UIntPtr ConGetForeground(Void) {
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	IntPtr fg = ConForeColor;																										// Save the fg
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 	return fg;																														// Return it
 }
 
 Void ConSetCursor(UIntPtr x, UIntPtr y) {
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	ConCursorX = x;																													// Set the x position of the cursor
 	ConCursorY = y;																													// Set the y position of the cursor
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 }
 
 Void ConSetCursorX(UIntPtr pos) {
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	ConCursorX = pos;																												// Set the x position of the cursor
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 }
 
 Void ConSetCursorY(UIntPtr pos) {
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	ConCursorY = pos;																												// Set the y position of the cursor
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 }
 
 Void ConGetCursor(PUIntPtr x, PUIntPtr y) {
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	
 	if (x != Null) {																												// We should save the x?
 		*x = ConCursorX;																											// Yes
@@ -171,20 +185,20 @@ Void ConGetCursor(PUIntPtr x, PUIntPtr y) {
 		*y = ConCursorY;																											// Yes
 	}
 	
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 }
 
 UIntPtr ConGetCursorX(Void) {
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	IntPtr x = ConCursorX;																											// Save the x
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 	return x;																														// Return it
 }
 
 UIntPtr ConGetCursorY(Void) {
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	IntPtr y = ConCursorY;																											// Save the y
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 	return y;																														// Return it
 }
 
@@ -199,7 +213,7 @@ Void ConRefreshScreen(Void) {
 }
 
 Void ConClearScreen(Void) {
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	ImgClear(ConSurface, ConBackColor);																								// Clear the screen
 	ConCursorX = ConCursorY = 0;																									// Move the cursor to 0, 0
 	
@@ -208,7 +222,7 @@ Void ConClearScreen(Void) {
 	}
 	
 	ConRefreshScreen();																												// Refresh the screen
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 }
 
 static Void ConWriteCharacterInt(WChar data, Boolean cursor) {
@@ -216,7 +230,7 @@ static Void ConWriteCharacterInt(WChar data, Boolean cursor) {
 }
 
 Void ConWriteCharacter(WChar data) {
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	
 	if (data != '\n' && ConCursorEnabled) {																							// Erase the old cursor?
 		ImgFillRectangle(ConSurface, ConCursorX * 8, ConCursorY * 16, 8, 16, ConBackColor);											// Yes
@@ -229,7 +243,7 @@ Void ConWriteCharacter(WChar data) {
 	}
 	
 	ConRefreshScreen();																												// Refresh the screen
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 }
 
 static Void ConWriteStringInt(PWChar data, Boolean cursor) {
@@ -241,10 +255,10 @@ static Void ConWriteStringInt(PWChar data, Boolean cursor) {
 }
 
 Void ConWriteString(PWChar data) {
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	ConWriteStringInt(data, ConCursorEnabled);																						// Write the string
 	ConRefreshScreen();																												// Refresh the screen
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 }
 
 static Void ConWriteIntegerInt(UIntPtr data, UInt8 base, Boolean cursor) {
@@ -252,10 +266,10 @@ static Void ConWriteIntegerInt(UIntPtr data, UInt8 base, Boolean cursor) {
 }
 
 Void ConWriteInteger(UIntPtr data, UInt8 base) {
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	ConWriteIntegerInt(data, base, ConCursorEnabled);																				// Write the integer
 	ConRefreshScreen();																												// Refresh the screen
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 }
 
 Void ConWriteFormated(PWChar data, ...) {
@@ -263,7 +277,7 @@ Void ConWriteFormated(PWChar data, ...) {
 		return;
 	}
 	
-	PsLock(&ConLock);																												// Lock
+	ConLock();																														// Lock
 	
 	if (ConCursorEnabled) {																											// Erase the old cursor?
 		ImgFillRectangle(ConSurface, ConCursorX * 8, ConCursorY * 16, 8, 16, ConBackColor);											// Yes
@@ -324,5 +338,5 @@ Void ConWriteFormated(PWChar data, ...) {
 	}
 	
 	ConRefreshScreen();																												// Refresh the screen
-	PsUnlock(&ConLock);																												// Unlock
+	ConUnlock();																													// Unlock
 }

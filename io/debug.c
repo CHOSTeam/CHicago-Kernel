@@ -1,40 +1,55 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 27 of 2018, at 14:19 BRT
-// Last edited on January 25 of 2020, at 14:16 BRT
+// Last edited on February 02 of 2020, at 13:14 BRT
 
 #include <chicago/console.h>
 #include <chicago/debug.h>
 #include <chicago/process.h>
 
-Lock DbgLock = { 0, False, Null };
+PThread DbgLockOwner = Null;
 Boolean DbgRedirect = False;
 
+static Void DbgLock(Void) {
+	if (PsCurrentThread == Null) {													// If threading isn't initialized, we don't need to do anything
+		return;
+	}
+	
+	PsWaitForAddress((UIntPtr)&DbgLockOwner, 0, (UIntPtr)PsCurrentThread, 0);		// Wait until the DbgLockOwner is Null
+}
+
+static Void DbgUnlock(Void) {
+	if (PsCurrentThread != Null && DbgLockOwner == PsCurrentThread) {				// Is threading initialized? If yes, are we the owners?
+		DbgLockOwner = Null;														// Yeah, set it to Null, and wake any thread that is waiting for us
+		PsWakeAddress((UIntPtr)&DbgLockOwner);
+	}
+}
+
 Void DbgSetRedirect(Boolean red) {
-	PsLock(&DbgLock);														// Lock
-	DbgRedirect = red;														// Set the redirect prop
-	PsUnlock(&DbgLock);														// Unlock
+	DbgLock();																		// Lock
+	DbgRedirect = red;																// Set the redirect prop
+	DbgUnlock();																	// Unlock
 }
 
 Boolean DbgGetRedirect(Void) {
-	PsLock(&DbgLock);														// Lock
-	Boolean red = DbgRedirect;												// Save the redirect prop
-	PsUnlock(&DbgLock);														// Unlock
+	DbgLock();																		// Lock
+	Boolean red = DbgRedirect;														// Save the redirect prop
+	DbgUnlock();																	// Unlock
 	return red;
 }
 
 static Void DbgWriteCharacterInt2(Char data) {
-	DbgWriteCharacterInt(data);												// Write the character
+	DbgWriteCharacterInt(data);														// Write the character
 	
-	if (DbgRedirect) {														// Redirect to the console (maybe)
+	if (DbgRedirect) {																// Redirect to the console (maybe)
 		ConWriteCharacter(data);
 	}
 }
 
 Void DbgWriteCharacter(Char data) {
-	PsLock(&DbgLock);														// Lock
-	DbgWriteCharacterInt2(data);											// Write the character
-	PsUnlock(&DbgLock);														// Unlock
+	DbgLock();																		// Lock
+	DbgWriteCharacterInt2(data);													// Write the character
+	DbgUnlock();																	// Unlock
 }
 
 static Void DbgWriteStringInt(PChar data) {
@@ -44,22 +59,22 @@ static Void DbgWriteStringInt(PChar data) {
 }
 
 Void DbgWriteString(PChar data) {
-	PsLock(&DbgLock);														// Lock!
+	DbgLock();																		// Lock!
 	
 	Boolean refresh = ConGetRefresh();
 	
-	if (DbgRedirect && refresh) {											// Redirect to the console?
-		ConSetRefresh(False);												// Yes, disable the refresh
+	if (DbgRedirect && refresh) {													// Redirect to the console?
+		ConSetRefresh(False);														// Yes, disable the refresh
 	}
 	
-	DbgWriteStringInt(data);												// Write the string
+	DbgWriteStringInt(data);														// Write the string
 	
 	if (DbgRedirect && refresh) {
-		ConSetRefresh(True);												// Enable the refresh
-		ConRefreshScreen();													// And refresh
+		ConSetRefresh(True);														// Enable the refresh
+		ConRefreshScreen();															// And refresh
 	}
 	
-	PsUnlock(&DbgLock);														// Unlock
+	DbgUnlock();																	// Unlock
 }
 
 static Void DbgWriteIntegerInt(UIntPtr data, UInt8 base) {
@@ -79,58 +94,58 @@ static Void DbgWriteIntegerInt(UIntPtr data, UInt8 base) {
 }
 
 Void DbgWriteInteger(UIntPtr data, UInt8 base) {
-	PsLock(&DbgLock);														// Lock!
+	DbgLock();																		// Lock!
 	
 	Boolean refresh = ConGetRefresh();
 	
-	if (DbgRedirect && refresh) {											// Redirect to the console?
-		ConSetRefresh(False);												// Yes, disable the refresh
+	if (DbgRedirect && refresh) {													// Redirect to the console?
+		ConSetRefresh(False);														// Yes, disable the refresh
 	}
 	
-	DbgWriteIntegerInt(data, base);											// Write the integer
+	DbgWriteIntegerInt(data, base);													// Write the integer
 	
 	if (DbgRedirect && refresh) {
-		ConSetRefresh(True);												// Enable the refresh
-		ConRefreshScreen();													// And refresh
+		ConSetRefresh(True);														// Enable the refresh
+		ConRefreshScreen();															// And refresh
 	}
 	
-	PsUnlock(&DbgLock);														// Unlock
+	DbgUnlock();																	// Unlock
 }
 
 Void DbgWriteFormated(PChar data, ...) {
-	PsLock(&DbgLock);														// Lock!
+	DbgLock();																		// Lock!
 	
 	VariadicList va;
-	VariadicStart(va, data);												// Let's start our va list with the arguments provided by the user (if any)
+	VariadicStart(va, data);														// Let's start our va list with the arguments provided by the user (if any)
 	
 	Boolean refresh = ConGetRefresh();
 	
-	if (DbgRedirect && refresh) {											// Redirect to the console?
-		ConSetRefresh(False);												// Yes, disable the refresh
+	if (DbgRedirect && refresh) {													// Redirect to the console?
+		ConSetRefresh(False);														// Yes, disable the refresh
 	}
 	
 	for (UInt32 i = 0; data[i] != '\0'; i++) {
-		if (data[i] != '%') {												// It's an % (integer, string, character or other)?
-			DbgWriteCharacterInt2(data[i]);									// Nope
+		if (data[i] != '%') {														// It's an % (integer, string, character or other)?
+			DbgWriteCharacterInt2(data[i]);											// Nope
 		} else {
-			switch (data[++i]) {											// Yes! So let's parse it!
-			case 's': {														// String
+			switch (data[++i]) {													// Yes! So let's parse it!
+			case 's': {																// String
 				DbgWriteStringInt((PChar)VariadicArg(va, PChar));
 				break;
 			}
-			case 'c': {														// Character
+			case 'c': {																// Character
 				DbgWriteCharacterInt2((Char)VariadicArg(va, Int));
 				break;
 			}
-			case 'd': {														// Decimal Number
+			case 'd': {																// Decimal Number
 				DbgWriteIntegerInt((UIntPtr)VariadicArg(va, UIntPtr), 10);
 				break;
 			}
-			case 'x': {														// Hexadecimal Number
+			case 'x': {																// Hexadecimal Number
 				DbgWriteIntegerInt((UIntPtr)VariadicArg(va, UIntPtr), 16);
 				break;
 			}
-			default: {														// None of the others...
+			default: {																// None of the others...
 				DbgWriteCharacterInt2(data[i]);
 				break;
 			}
@@ -139,10 +154,10 @@ Void DbgWriteFormated(PChar data, ...) {
 	}
 	
 	if (DbgRedirect && refresh) {
-		ConSetRefresh(True);												// Enable the refresh
-		ConRefreshScreen();													// And refresh
+		ConSetRefresh(True);														// Enable the refresh
+		ConRefreshScreen();															// And refresh
 	}
 	
 	VariadicEnd(va);
-	PsUnlock(&DbgLock);														// Unlock
+	DbgUnlock();																	// Unlock
 }

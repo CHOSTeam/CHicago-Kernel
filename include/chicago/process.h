@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 27 of 2018, at 14:42 BRT
-// Last edited on January 29 of 2020, at 19:48 BRT
+// Last edited on February 02 of 2020, at 12:34 BRT
 
 #ifndef __CHICAGO_PROCESS_H__
 #define __CHICAGO_PROCESS_H__
@@ -27,10 +27,10 @@
 struct ThreadStruct;
 
 typedef struct {
-	UIntPtr count;
-	Volatile Boolean locked;
-	struct ThreadStruct *owner;
-} Lock, *PLock;
+	UIntPtr addr;
+	UIntPtr value;
+	UIntPtr new;
+} WaitingForAddress, *PWaitingForAddress;
 
 typedef struct {
 	UIntPtr id;
@@ -56,7 +56,7 @@ typedef struct ThreadStruct {
 	UIntPtr time;
 	UIntPtr wtime;
 	PProcess parent;
-	PLock waitl;
+	PWaitingForAddress waita;
 	PProcess waitp;
 	Boolean killp;
 	struct ThreadStruct *waitt;
@@ -75,7 +75,7 @@ extern List PsProcessList;
 extern List PsSleepList;
 extern List PsWaittList;
 extern List PsWaitpList;
-extern List PsWaitlList;
+extern List PsWaitaList;
 #endif
 
 Status PsCreateThreadInt(UInt8 prio, UIntPtr entry, UIntPtr userstack, Boolean user, PThread *ret);
@@ -93,9 +93,8 @@ Void PsExitProcess(UIntPtr ret);
 Void PsSleep(UIntPtr ms);
 Status PsWaitThread(UIntPtr id, PUIntPtr ret);
 Status PsWaitProcess(UIntPtr id, PUIntPtr ret);
-Status PsLock(PLock lock);
-Status PsTryLock(PLock lock);
-Status PsUnlock(PLock lock);
+Status PsWaitForAddress(UIntPtr addr, UIntPtr value, UIntPtr new, UIntPtr ms);
+Status PsWakeAddress(UIntPtr addr);
 Void PsWakeup(PList list, PThread th);
 Void PsWakeup2(PList list, PThread th);
 PContext PsCreateContext(UIntPtr entry, UIntPtr userstack, Boolean user);
