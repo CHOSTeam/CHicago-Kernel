@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:14 BRT
-// Last edited on February 02 of 2020, at 12:00 BRT
+// Last edited on February 02 of 2020, at 15:54 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/console.h>
@@ -109,6 +109,46 @@ Status ScSysCloseHandle(IntPtr handle) {
 	return STATUS_SUCCESS;
 }
 
+Status ScMmAllocAddress(PWChar name, UIntPtr size, UInt32 flags, PUIntPtr ret) {
+	if (size == 0 || (name != Null && !ScCheckPointer(name)) || !ScCheckPointer(ret)) {																		// Some sanity checks
+		return STATUS_INVALID_ARG;
+	}
+	
+	return MmAllocAddress(name, size, flags, ret);																											// And redirect
+}
+
+Status ScMmFreeAddress(UIntPtr start) {
+	if (!ScCheckPointer(start)) {																															// Sanity check
+		return STATUS_INVALID_ARG;
+	}
+	
+	return MmFreeAddress(start);																															// And redirect
+}
+
+Status ScMmSyncMemory(UIntPtr start, UIntPtr size, UIntPtr inval) {
+	if (size == 0 || !ScCheckPointer(start)) {																												// Sanity checks
+		return STATUS_INVALID_ARG;
+	}
+	
+	return MmSyncMemory(start, size, (Boolean)inval);																										// And redirect
+}
+
+Status ScMmGiveHint(UIntPtr start, UIntPtr size, UInt32 hint) {
+	if (size == 0 || !ScCheckPointer(start)) {																												// Sanity check
+		return STATUS_INVALID_ARG;
+	}
+	
+	return MmGiveHint(start, size, (UInt8)hint);																											// And redirect
+}
+
+Status ScMmChangeProtection(UIntPtr start, UInt32 prot) {
+	if (!ScCheckPointer(start)) {																															// Sanity check
+		return STATUS_INVALID_ARG;
+	}
+	
+	return MmChangeProtection(start, prot);																													// And redirect
+}
+
 Status ScPsCreateThread(UIntPtr entry, PIntPtr ret) {
 	if (!ScCheckPointer(ret)) {																																// Sanity check
 		return STATUS_INVALID_ARG;	
@@ -172,6 +212,22 @@ Status ScPsWait(IntPtr handle, PUIntPtr ret) {
 	}
 	
 	return STATUS_WRONG_HANDLE;																																// None of the above, so this is not a process nor a thread...
+}
+
+Status ScPsWaitForAddress(UIntPtr addr, UIntPtr value, UIntPtr new, UIntPtr ms) {
+	if (!ScCheckPointer(addr)) {																															// Sanity check
+		return STATUS_INVALID_ARG;
+	}
+	
+	return PsWaitForAddress(addr, value, new, ms);																											// And redirect
+}
+
+Status ScPsWakeAddress(UIntPtr addr) {
+	if (!ScCheckPointer(addr)) {																															// Sanity check
+		return STATUS_INVALID_ARG;
+	}
+	
+	return PsWakeAddress(addr);																																// And redirect
 }
 
 Void ScPsExitThread(UIntPtr ret) {
@@ -344,6 +400,28 @@ Status ScFsControlFile(IntPtr handle, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf) {
 	}
 	
 	return FsControlFile((PFsNode)hndl->data, cmd, ibuf, obuf);																								// And redirect
+}
+
+Status ScFsMapFile(IntPtr handle, UIntPtr start, UIntPtr off) {
+	if ((handle >= PsCurrentProcess->last_handle_id) || !ScCheckPointer(start)) {																			// Sanity checks
+		return STATUS_INVALID_ARG;
+	}
+	
+	PHandle hndl = ListGet(&PsCurrentProcess->handles, handle);																								// Get the handle data
+	
+	if (hndl == Null || hndl->type != HANDLE_TYPE_FILE) {
+		return STATUS_WRONG_HANDLE;
+	}
+	
+	return FsMapFile((PFsNode)hndl->data, start, off);																										// And redirect
+}
+
+Status ScFsUnmapFile(UIntPtr start) {
+	if (!ScCheckPointer(start)) {																															// Sanity check
+		return STATUS_INVALID_ARG;
+	}
+	
+	return FsUnmapFile(start);																																// Redirect
 }
 
 Status ScFsGetFileSize(IntPtr handle, PUIntPtr ret) {

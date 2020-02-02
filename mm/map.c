@@ -1,11 +1,13 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on January 25 of 2020, at 13:35 BRT
-// Last edited on February 02 of 2020, at 10:54 BRT
+// Last edited on February 02 of 2020, at 15:54 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/mm.h>
 #include <chicago/string.h>
+
+extern List FsMappedFiles;
 
 PAvlNode MmGetMapping(UIntPtr addr, UIntPtr size, Boolean exact) {
 	MmKey key = { addr, size };																													// Create the key struct on the stack
@@ -99,6 +101,7 @@ Status MmMapMemory(PWChar name, UIntPtr virt, PUIntPtr phys, UIntPtr size, UInt3
 	region->file = Null;																														// No file is mapped yet
 	region->prot = flags & MM_FLAGS_PROT;																										// Save the protection
 	region->flgs = flags & ~MM_FLAGS_PROT;																										// And the flags (just the flags, no protection)
+	region->th = PsCurrentThread;																												// Save the current thread
 	
 	if (!AvlInsert(&PsCurrentProcess->mappings, &region->key, region)) {																		// And insert the region
 		for (UIntPtr i = 0; i < size; i += MM_PAGE_SIZE) {																						// Oh, it failed... unmap everything...
@@ -112,6 +115,31 @@ Status MmMapMemory(PWChar name, UIntPtr virt, PUIntPtr phys, UIntPtr size, UInt3
 	}
 	
 	return STATUS_SUCCESS;
+}
+
+static PMmMappedFile FsGetFileMappingList(PFsNode file) {
+	ListForeach(&FsMappedFiles, i) {																											// Let's foreach our mapping list
+		if (((PMmMappedFile)i->data)->file == file) {
+			return (PMmMappedFile)i->data;																										// We found it!
+		}
+	}
+	
+	return Null;																																// Not found...
+}
+
+static Void FsRemoveFileMapping(PFsNode file, PMmRegion region) {
+	PMmMappedFile list = FsGetFileMappingList(file);																							// Try to get the file mapping list for the file
+	UIntPtr idx;
+	
+	if (list == Null) {
+		return;																																	// ...
+	} else if (ListSearch(&list->mappings, region, &idx)) {																						// Try to find the memory region
+		ListRemove(&list->mappings, idx);																										// And remove it
+	}
+	
+	if (list->mappings.length == 0 && ListSearch(&FsMappedFiles, list, &idx)) {																	// Do we have any more regions on this list? No? So we can remove it
+		ListRemove(&FsMappedFiles, idx);
+	}
 }
 
 Status MmUnmapMemory(UIntPtr start) {
@@ -128,10 +156,12 @@ Status MmUnmapMemory(UIntPtr start) {
 	}
 	
 	PMmRegion region = node->value;																												// Convert the void pointer into the region pointer
-	Status status = MmSyncMemory(start, start + region->key.size);																				// Sync if it is a file
+	Status status = MmSyncMemory(start, start + region->key.size, True);																		// Sync if it is a file
 	
 	if (status != STATUS_SUCCESS) {
 		return status;
+	} else if (region->file != Null) {																											// Remove us from the file mapping list...
+		FsRemoveFileMapping(region->file, region);
 	}
 	
 	AvlRemove(&PsCurrentProcess->mappings, &region->key);																						// Remove the region
@@ -155,7 +185,7 @@ Status MmUnmapMemory(UIntPtr start) {
 	return STATUS_SUCCESS;
 }
 
-Status MmSyncMemory(UIntPtr start, UIntPtr size) {
+Status MmSyncMemory(UIntPtr start, UIntPtr size, Boolean inval) {
 	if (start == 0 || size == 0 || start >= MM_USER_END || (start & ~MM_PAGE_MASK) != 0 || (size & ~MM_PAGE_MASK) != 0) {						// The virtual address should NEVER be zero/outside of the userspace, the size also shouldn't be zero, and both should be page aligned
 		return STATUS_INVALID_ARG;
 	} else if (PsCurrentThread == Null) {																										// Oh, also, tasking should be initialized before calling us
@@ -174,10 +204,18 @@ Status MmSyncMemory(UIntPtr start, UIntPtr size) {
 		return STATUS_INVALID_ARG;																												// Yeah it is...
 	} else if (region->file == Null) {																											// If this isn't mapped to a file, we don't have anything to do here...
 		return STATUS_SUCCESS;
+	} else if ((region->flgs & MM_FLAGS_PRIVATE) == MM_FLAGS_PRIVATE) {																			// Make sure that it isn't a private mappings
+		return STATUS_SUCCESS;
 	} else if ((region->prot & MM_FLAGS_WRITE) != MM_FLAGS_WRITE || (region->file->flags & FS_FLAG_WRITE) != FS_FLAG_WRITE) {					// Make sure that we need/can sync it back
 		return STATUS_SUCCESS;
 	} else if (region->file->sync != Null) {																									// Does this file have a specific sync function?
-		return region->file->sync(region->file, region->off, start, size);																		// Yup...
+		Status status = region->file->sync(region->file, region->off, start, size);																// Yup...
+		
+		if (status != STATUS_SUCCESS) {
+			return status;
+		}
+		
+		goto e;																																	// Ok, we still need to do some stuff...
 	}
 	
 	UIntPtr astart = start - region->key.start;																									// Get the actual start address
@@ -194,6 +232,44 @@ Status MmSyncMemory(UIntPtr start, UIntPtr size) {
 			return status;																														// And it failed...
 		}
 	}
+	
+e:	if (!inval) {																																// Ok... should we invalidate all the other mappings (even on other processes)?
+		return STATUS_SUCCESS;																													// Nope, so just return success
+	}
+	
+	PMmMappedFile list = FsGetFileMappingList(region->file);																					// Get the file mapping list
+	
+	if (list == Null) {
+		return STATUS_SUCCESS;																													// Oh... well, let's return success, instead of failing and discarding everything we've done (that's not even possible anymore)
+	}
+	
+	PsLockTaskSwitch(old);																														// Lock task switching
+	
+	PProcess oproc = PsCurrentProcess;																											// Save some stuff
+	UIntPtr odir = MmGetCurrentDirectory();
+	
+	ListForeach(&list->mappings, i) {																											// Let's foreach the list
+		PMmRegion reg = i->data;																												// Get the region
+		
+		if (PsCurrentProcess != reg->th->parent) {																								// Switch the process structs?
+			PsCurrentProcess = reg->th->parent;																									// Yeah
+			MmSwitchDirectory(PsCurrentProcess->dir);
+		}
+		
+		for (UIntPtr j = 0; j < reg->key.size; j += MM_PAGE_SIZE) {																				// Now, let's dereference and unmap everything (setting all of it as AOR)...
+			if (MmGetPhys(reg->key.start + j) != 0) {
+				MmDereferenceSinglePage(MmGetPhys(reg->key.start + j));
+				MmMap(start + j, 0, reg->prot | MM_MAP_AOR);
+			}
+		}
+	}
+	
+	if (PsCurrentProcess != oproc) {																											// Switch the process structs back
+		PsCurrentProcess = oproc;
+		MmSwitchDirectory(odir);
+	}
+	
+	PsUnlockTaskSwitch(old);																													// Unlock task switching
 	
 	return STATUS_SUCCESS;
 }
@@ -277,7 +353,7 @@ Status MmGiveHint(UIntPtr start, UIntPtr size, UInt8 hint) {
 	}
 	case MM_HINT_FREE: {																														// Sync and free
 		if (region->file != Null) {																												// Is this mapped to a file?
-			Status status = MmSyncMemory(start, size);																							// Yeah, sync the memory
+			Status status = MmSyncMemory(start, size, True);																					// Yeah, sync the memory
 			
 			if (status != STATUS_SUCCESS) {
 				return status;

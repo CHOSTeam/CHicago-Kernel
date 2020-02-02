@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on January 18 of 2020, at 13:40 BRT
-// Last edited on February 02 of 2020, at 12:01 BRT
+// Last edited on February 02 of 2020, at 14:15 BRT
 
 // To define a new syscall you just need to put the name here somewhere
 // There is no need to explicitly put the number, as the makefile will automatically do its magic and determine the number based on the position of the syscall here
@@ -12,11 +12,18 @@
 
 Status SysGetVersion
 Status SysCloseHandle
+Status MmAllocAddress
+Status MmFreeAddress
+Status MmSyncMemory
+Status MmGiveHint
+Status MmChangeProtection
 Status PsCreateThread
 IntPtr PsGetCurrentThread
 IntPtr PsGetCurrentProcess
 Void PsSleep
 Status PsWait
+Status PsWaitForAddress
+Status PsWakeAddress
 Void PsExitThread
 Void PsExitProcess
 Status FsOpenFile
@@ -27,6 +34,8 @@ Status FsUmountFile
 Status FsReadDirectoryEntry
 Status FsFindInDirectory
 Status FsControlFile
+Status FsMapFile
+Status FsUnmapFile
 Status FsGetFileSize
 Status FsGetPosition
 Status FsSetPosition
