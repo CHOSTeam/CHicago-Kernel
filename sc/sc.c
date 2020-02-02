@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on November 16 of 2018, at 01:14 BRT
-// Last edited on January 24 of 2020, at 09:20 BRT
+// Last edited on January 27 of 2020, at 22:38 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/console.h>
@@ -112,49 +112,13 @@ Status ScSysCloseHandle(IntPtr handle) {
 	return STATUS_SUCCESS;
 }
 
-Status ScVirtAllocAddress(UIntPtr addr, UIntPtr size, UInt32 flags, PUIntPtr ret) {
-	if (!ScCheckPointer(ret)) {																																// Sanity check
-		return STATUS_INVALID_ARG;
-	}
-	
-	return VirtAllocAddress(addr, size, flags, ret);																										// Just redirect
-}
-
-Status ScVirtFreeAddress(UIntPtr addr, UIntPtr size) {
-	if (!ScCheckPointer(addr)) {
-		return STATUS_INVALID_ARG;
-	}
-	
-	return VirtFreeAddress(addr, size);																														// Just redirect
-}
-
-UInt32 ScVirtQueryProtection(UIntPtr addr) {
-	if (!ScCheckPointer(addr)) {
-		return STATUS_INVALID_ARG;
-	}
-	
-	return VirtQueryProtection(addr);																														// Just redirect
-}
-
-Status ScVirtChangeProtection(UIntPtr addr, UIntPtr size, UInt32 flags) {
-	if (!ScCheckPointer(addr)) {
-		return STATUS_INVALID_ARG;
-	}
-	
-	return VirtChangeProtection(addr, size, flags);																											// Just redirect
-}
-
-UIntPtr ScVirtGetUsage(Void) {
-	return VirtGetUsage();																																	// Just redirect
-}
-
 Status ScPsCreateThread(UIntPtr entry, PIntPtr ret) {
 	if (!ScCheckPointer(ret)) {																																// Sanity check
 		return STATUS_INVALID_ARG;	
 	}
 	
 	UIntPtr stack;
-	Status status = VirtAllocAddress(0, 0x100000, VIRT_PROT_READ | VIRT_PROT_WRITE | VIRT_FLAGS_HIGHEST, &stack);											// Alloc the stack
+	Status status = MmAllocAddress(Null, 0x100000, MM_FLAGS_READ | MM_FLAGS_WRITE | MM_FLAGS_HIGHEST, &stack);												// Alloc the stack
 	
 	if (status != STATUS_SUCCESS) {
 		return status;
@@ -164,7 +128,7 @@ Status ScPsCreateThread(UIntPtr entry, PIntPtr ret) {
 	status = PsCreateThread(PS_PRIORITY_NORMAL, entry, stack + 0x100000 - sizeof(UIntPtr), True, &th);														// Create a new user thread
 	
 	if (status != STATUS_SUCCESS) {
-		VirtFreeAddress(stack, 0x100000);																													// Failed
+		MmUnmapMemory(stack);																																// Failed
 		return status;
 	}
 	

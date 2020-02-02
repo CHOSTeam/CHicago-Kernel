@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 16 of 2018, at 18:18 BRT
-// Last edited on January 20 of 2020, at 22:01 BRT
+// Last edited on February 02 of 2020, at 10:48 BRT
 
 #ifndef __CHICAGO_FILE_H__
 #define __CHICAGO_FILE_H__
@@ -31,12 +31,14 @@ typedef struct FsNodeStruct {
 	UIntPtr offset;
 	Status (*read)(struct FsNodeStruct *, UIntPtr, UIntPtr, PUInt8, PUIntPtr);
 	Status (*write)(struct FsNodeStruct *, UIntPtr, UIntPtr, PUInt8, PUIntPtr);
-	Boolean (*open)(struct FsNodeStruct *);
+	Status (*open)(struct FsNodeStruct *);
 	Void (*close)(struct FsNodeStruct *);
 	Status (*readdir)(struct FsNodeStruct *, UIntPtr, PWChar *);
 	Status (*finddir)(struct FsNodeStruct *, PWChar, struct FsNodeStruct **);
 	Status (*create)(struct FsNodeStruct *, PWChar, UIntPtr);
 	Status (*control)(struct FsNodeStruct *, UIntPtr, PUInt8, PUInt8);
+	Status (*map)(struct FsNodeStruct *, UIntPtr, UIntPtr, UInt32);
+	Status (*sync)(struct FsNodeStruct *, UIntPtr, UIntPtr, UIntPtr);
 } FsNode, *PFsNode;
 
 typedef struct {
@@ -68,6 +70,8 @@ Status FsUmountFile(PWChar path);
 Status FsReadDirectoryEntry(PFsNode dir, UIntPtr entry, PWChar *ret);
 Status FsFindInDirectory(PFsNode dir, PWChar name, PFsNode *ret);
 Status FsControlFile(PFsNode file, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf);
+Status FsMapFile(PFsNode file, UIntPtr start, UIntPtr off);
+Status FsUnmapFile(UIntPtr start);
 PFsMountPoint FsGetMountPoint(PWChar path, PWChar *outp);
 PFsType FsGetType(PWChar type);
 Boolean FsAddMountPoint(PWChar path, PWChar type, PFsNode root);

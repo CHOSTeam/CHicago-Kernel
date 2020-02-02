@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on January 25 of 2020, at 13:35 BRT
-// Last edited on January 25 of 2020, at 14:13 BRT
+// Last edited on February 02 of 2020, at 10:54 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/mm.h>
@@ -45,7 +45,7 @@ static UInt32 MmConvertFlags(UInt32 flags) {
 }
 
 Status MmMapMemory(PWChar name, UIntPtr virt, PUIntPtr phys, UIntPtr size, UInt32 flags) {
-	if (virt == 0 || virt + size >= MM_USER_END || (phys == Null && (flags & MM_FLAGS_ALLOC_NOW) == MM_FLAGS_ALLOC_NOW)) {						// The virtual address should NEVER be zero/outside of the userspace, and the physical address array shouldn't be a Null pointer (unless we're going to AOR the virt)
+	if (virt == 0 || virt + size > MM_USER_END || (phys == Null && (flags & MM_FLAGS_ALLOC_NOW) == MM_FLAGS_ALLOC_NOW)) {						// The virtual address should NEVER be zero/outside of the userspace, and the physical address array shouldn't be a Null pointer (unless we're going to AOR the virt)
 		return STATUS_INVALID_ARG;
 	} else if (PsCurrentThread == Null) {																										// Oh, also, tasking should be initialized before calling us
 		return STATUS_INVALID_ARG;
@@ -98,6 +98,7 @@ Status MmMapMemory(PWChar name, UIntPtr virt, PUIntPtr phys, UIntPtr size, UInt3
 	region->name = nam;																															// Set the name
 	region->file = Null;																														// No file is mapped yet
 	region->prot = flags & MM_FLAGS_PROT;																										// Save the protection
+	region->flgs = flags & ~MM_FLAGS_PROT;																										// And the flags (just the flags, no protection)
 	
 	if (!AvlInsert(&PsCurrentProcess->mappings, &region->key, region)) {																		// And insert the region
 		for (UIntPtr i = 0; i < size; i += MM_PAGE_SIZE) {																						// Oh, it failed... unmap everything...
@@ -108,6 +109,230 @@ Status MmMapMemory(PWChar name, UIntPtr virt, PUIntPtr phys, UIntPtr size, UInt3
 		MemFree((UIntPtr)region);
 		
 		return STATUS_OUT_OF_MEMORY;
+	}
+	
+	return STATUS_SUCCESS;
+}
+
+Status MmUnmapMemory(UIntPtr start) {
+	if (start == 0 || start >= MM_USER_END || (start & ~MM_PAGE_MASK) != 0) {																	// The virtual address should NEVER be zero/outside of the userspace, and it should be page aligned
+		return STATUS_INVALID_ARG;
+	} else if (PsCurrentThread == Null) {																										// Oh, also, tasking should be initialized before calling us
+		return STATUS_INVALID_ARG;
+	}
+	
+	PAvlNode node = MmGetMapping(start, 0, True);																								// Try to get the mapping...
+	
+	if (node != Null) {
+		return STATUS_NOT_MAPPED;																												// Not mapped, or this isn't the exact start address...
+	}
+	
+	PMmRegion region = node->value;																												// Convert the void pointer into the region pointer
+	Status status = MmSyncMemory(start, start + region->key.size);																				// Sync if it is a file
+	
+	if (status != STATUS_SUCCESS) {
+		return status;
+	}
+	
+	AvlRemove(&PsCurrentProcess->mappings, &region->key);																						// Remove the region
+	
+	for (UIntPtr i = 0; i < region->key.size; i += MM_PAGE_SIZE) {																				// Unmap everything
+		UIntPtr phys = MmGetPhys(start + i);																									// Try to get the physical address
+		
+		if (phys != 0) {																														// If it is 0, it's an AOR page, so we don't need to dereference it
+			MmDereferenceSinglePage(phys);
+		}
+		
+		MmUnmap(start + i);
+	}
+	
+	if (region->name != Null) {																													// Free the name
+		MemFree((UIntPtr)region->name);
+	}
+	
+	MemFree((UIntPtr)region);																													// And free the region struct
+	
+	return STATUS_SUCCESS;
+}
+
+Status MmSyncMemory(UIntPtr start, UIntPtr size) {
+	if (start == 0 || size == 0 || start >= MM_USER_END || (start & ~MM_PAGE_MASK) != 0 || (size & ~MM_PAGE_MASK) != 0) {						// The virtual address should NEVER be zero/outside of the userspace, the size also shouldn't be zero, and both should be page aligned
+		return STATUS_INVALID_ARG;
+	} else if (PsCurrentThread == Null) {																										// Oh, also, tasking should be initialized before calling us
+		return STATUS_INVALID_ARG;
+	}
+	
+	PAvlNode node = MmGetMapping(start, size, False);																							// Try to get the mapping...
+	
+	if (node != Null) {
+		return STATUS_NOT_MAPPED;																												// Not mapped...
+	}
+	
+	PMmRegion region = node->value;																												// Convert the void pointer into the region pointer
+	
+	if (start + size > region->key.start + region->key.size) {																					// Is the size too big?
+		return STATUS_INVALID_ARG;																												// Yeah it is...
+	} else if (region->file == Null) {																											// If this isn't mapped to a file, we don't have anything to do here...
+		return STATUS_SUCCESS;
+	} else if ((region->prot & MM_FLAGS_WRITE) != MM_FLAGS_WRITE || (region->file->flags & FS_FLAG_WRITE) != FS_FLAG_WRITE) {					// Make sure that we need/can sync it back
+		return STATUS_SUCCESS;
+	} else if (region->file->sync != Null) {																									// Does this file have a specific sync function?
+		return region->file->sync(region->file, region->off, start, size);																		// Yup...
+	}
+	
+	UIntPtr astart = start - region->key.start;																									// Get the actual start address
+	
+	for (UIntPtr i = 0; i < size; i += MM_PAGE_SIZE) {																							// Let's sync everything that the user asked into the file!
+		if (MmGetPhys(start + i) == 0) {																										// Is this region still AOR?
+			continue;																															// Yeah, so we don't need to do anything...
+		}
+		
+		UIntPtr write;																															// Write the region into the file!
+		Status status = FsWriteFile(region->file, region->off + astart + i, MM_PAGE_SIZE, (PUInt8)(start + i), &write);
+		
+		if (status != STATUS_SUCCESS) {
+			return status;																														// And it failed...
+		}
+	}
+	
+	return STATUS_SUCCESS;
+}
+
+static UInt32 GetProt(UInt32 prot) {
+	UInt32 ret = MM_MAP_USER;																													// Just convert the MmMapMemory protection into MmMap protection...
+	
+	if ((prot & MM_FLAGS_READ) == MM_FLAGS_READ) {
+		ret |= MM_MAP_READ;
+	}
+	
+	if ((prot & MM_FLAGS_WRITE) == MM_FLAGS_WRITE) {
+		ret |= MM_MAP_WRITE;
+	}
+	
+	if ((prot & MM_FLAGS_EXEC) == MM_FLAGS_EXEC) {
+		ret |= MM_MAP_EXEC;
+	}
+	
+	return ret;
+}
+
+Status MmGiveHint(UIntPtr start, UIntPtr size, UInt8 hint) {
+	if (start == 0 || size == 0 || start >= MM_USER_END || (start & ~MM_PAGE_MASK) != 0 || (size & ~MM_PAGE_MASK) != 0) {						// The virtual address should NEVER be zero/outside of the userspace, the size also shouldn't be zero, and both should be page aligned
+		return STATUS_INVALID_ARG;
+	} else if (PsCurrentThread == Null) {																										// Oh, also, tasking should be initialized before calling us
+		return STATUS_INVALID_ARG;
+	}
+	
+	PAvlNode node = MmGetMapping(start, size, False);																							// Try to get the mapping...
+	
+	if (node != Null) {
+		return STATUS_NOT_MAPPED;																												// Not mapped...
+	}
+	
+	PMmRegion region = node->value;																												// Convert the void pointer into the region pointer
+	
+	if (start + size > region->key.start + region->key.size) {																					// Is the size too big?
+		return STATUS_INVALID_ARG;																												// Yeah it is...
+	}
+	
+	UIntPtr astart = start - region->key.start;																									// Get the actual start address
+	
+	switch (hint) {																																// And let's parse the hint
+	case MM_HINT_READ_AHEAD: {																													// Read ahead/prealloc pages
+		if (region->file != Null) {																												// Can we use the DoMapFile function?
+			for (UIntPtr i = 0; i < size; i += MM_PAGE_SIZE) {																					// Yeah!
+				if (MmGetPhys(start + i) != 0) {																								// Skip already read/allocated pages
+					continue;
+				}
+				
+				Status status = MmPageFaultDoMapFile(region->file, start + i, region->off + astart + i, GetProt(region->prot));					// Do it!
+				
+				if (status != STATUS_SUCCESS) {
+					return status;																												// And we failed...
+				}
+			}
+			
+			return STATUS_SUCCESS;
+		}
+		
+		for (UIntPtr i = 0; i < size; i += MM_PAGE_SIZE) {																						// Oh well, so let's just apply AOR or COW into the pages (yeah, we also handle both here)
+			if (MmGetPhys(start + i) == 0) {																									// AOR?
+				Status status = MmPageFaultDoAOR(start + i, GetProt(region->prot));																// Yeah, do it
+				
+				if (status != STATUS_SUCCESS) {
+					return status;
+				}
+			} else if ((MmQuery(start + i) & MM_MAP_COW) != MM_MAP_COW) {																		// COW?
+				continue;																														// Nope, so we don't have anything to do...
+			}
+			
+			Status status = MmPageFaultDoCOW(start + i, GetProt(region->prot));
+			
+			if (status != STATUS_SUCCESS) {
+				return status;
+			}
+		}
+		
+		break;
+	}
+	case MM_HINT_FREE: {																														// Sync and free
+		if (region->file != Null) {																												// Is this mapped to a file?
+			Status status = MmSyncMemory(start, size);																							// Yeah, sync the memory
+			
+			if (status != STATUS_SUCCESS) {
+				return status;
+			}
+		}
+		
+		for (UIntPtr i = 0; i < size; i += MM_PAGE_SIZE) {																						// Now, let's dereference and unmap everything...
+			if (MmGetPhys(start + i) != 0) {
+				MmDereferenceSinglePage(MmGetPhys(start + i));
+				MmMap(start + i, 0, region->prot | MM_MAP_AOR);
+			}
+		}
+		
+		break;
+	}
+	default: {																																	// Invalid hint
+		return STATUS_INVALID_ARG;
+	}
+	}
+	
+	return STATUS_SUCCESS;
+}
+
+Status MmChangeProtection(UIntPtr start, UInt32 prot) {
+	if (start == 0 || start >= MM_USER_END || (start & ~MM_PAGE_MASK) != 0) {																	// The virtual address should NEVER be zero/outside of the userspace, and it should be page aligned
+		return STATUS_INVALID_ARG;
+	} else if (PsCurrentThread == Null) {																										// Oh, also, tasking should be initialized before calling us
+		return STATUS_INVALID_ARG;
+	}
+	
+	PAvlNode node = MmGetMapping(start, 0, True);																								// Try to get the mapping...
+	
+	if (node != Null) {
+		return STATUS_NOT_MAPPED;																												// Not mapped, or this isn't the exact start address...
+	}
+	
+	PMmRegion region = node->value;																												// Convert the void pointer into the region pointer
+	
+	region->prot = prot & MM_FLAGS_PROT;																										// Set the new protection
+	
+	for (UIntPtr i = start; i < start + region->key.size; i += MM_PAGE_SIZE) {																	// And let's change the protection
+		UIntPtr phys = MmGetPhys(i);
+		Status status;
+		
+		if (phys == 0) {																														// Was this originally an unallocated AOR page?
+			status = MmMap(i, 0, region->prot | MM_MAP_AOR);
+		} else if ((MmQuery(i) & MM_MAP_COW) == MM_MAP_COW) {																					// Or a COW page?
+			status = MmMap(i, phys, region->prot | MM_MAP_COW);
+		} else {
+			status = MmMap(i, phys, region->prot);																								// Just remap without any special flags...
+		}
+		
+		if (status != STATUS_SUCCESS) {
+			return status;																														// And we failed...
+		}
 	}
 	
 	return STATUS_SUCCESS;

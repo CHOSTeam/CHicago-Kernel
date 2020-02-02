@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 19:19 BRT
-// Last edited on January 25 of 2020, at 12:08 BRT
+// Last edited on February 02 of 2020, at 11:17 BRT
 
 #include <chicago/arch/vmm.h>
 
@@ -66,192 +66,6 @@ UInt32 MmQuery(UIntPtr virt) {
 	return ret;
 }
 
-static Boolean MmIsAvaliable(UIntPtr page) {
-	return ((page & PAGE_PRESENT) != PAGE_PRESENT) && ((page & PAGE_AOR) != PAGE_AOR);
-}
-
-UIntPtr MmFindFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count) {
-	if (start % MM_PAGE_SIZE != 0) {																							// Page align the start
-		start -= count % MM_PAGE_SIZE;
-	}
-	
-	if (end % MM_PAGE_SIZE != 0) {																								// Page align the end
-		end += MM_PAGE_SIZE - (end % MM_PAGE_SIZE);
-	}
-	
-	if (count % MM_PAGE_SIZE != 0) {																							// Page align the count
-		count += MM_PAGE_SIZE - (count % MM_PAGE_SIZE);
-	}
-	
-	UIntPtr c = 0;
-	UIntPtr p = start;
-	
-	for (UIntPtr i = start; i < end; i += 0x8000000000) {																		// Let's try to find the first free virtual address!
-		if (MmIsAvaliable(MmGetP4(i))) {																						// This P4 is allocated?
-			c += 0x8000000000;																									// No!
-			
-			if (i < 0x8000000000) {																								// 0x00000000?
-				c -= MM_PAGE_SIZE;																								// Yes, but it's reserved...
-				p += MM_PAGE_SIZE;
-			}
-			
-			if (c >= count) {																									// We need more memory?
-				return p;																										// No, so return!
-			}
-			
-			continue;
-		}
-		
-		for (UIntPtr j = 0; j < 0x8000000000; j += 0x40000000) {																// Let's check the P3s
-			if (MmIsAvaliable(MmGetP3(i + j))) {																				// This P3 is allocated?
-				c += 0x40000000;																								// No!
-				
-				if ((i < 0x8000000000) && (j < 0x40000000)) {																	// 0x00000000?
-					c -= MM_PAGE_SIZE;																							// Yes, but it's reserved...
-					p += MM_PAGE_SIZE;
-				}
-				
-				if (c >= count) {																								// We need more memory?
-					return p;																									// No, so return!
-				}
-				
-				continue;
-			} else if ((MmGetP3(i + j) & PAGE_HUGE) == PAGE_HUGE) {																// 1GiB P3 instead of 2MiB P2 (or 4KiB P1)?
-				c = 0;																											// Yes :(
-				p = i + j + 0x40000000;
-				continue;
-			}
-			
-			for (UIntPtr k = 0; k < 0x40000000; k += 0x200000) {																// Let's check the P2s
-				if (MmIsAvaliable(MmGetP2(i + j + k))) {																		// This P2 is allocated?
-					c += 0x200000;																								// No!
-					
-					if ((i < 0x8000000000) && (j < 0x40000000) && (k < 0x200000)) {												// 0x00000000?
-						c -= MM_PAGE_SIZE;																						// Yes, but it's reserved...
-						p += MM_PAGE_SIZE;
-					}
-					
-					if (c >= count) {																							// We need more memory?
-						return p;																								// No, so return!
-					}
-
-					continue;
-				} else if ((MmGetP2(i + j + k) & PAGE_HUGE) == PAGE_HUGE) {														// 2MiB P2 instead of 4KiB P1?
-					c = 0;																										// Yes :(
-					p = i + j + k + 0x200000;
-					continue;
-				}
-				
-				for (UIntPtr l = 0; l < 0x200000; l += 0x1000) {																// Let's check the P1s
-					if (((i == 0) && (j == 0) && (k == 0) && (l == 0)) || !MmIsAvaliable(MmGetP1(i + j + k + l))) {				// This P1 is allocated?
-						c = 0;																									// Yes :(
-						p = i + j + k + l + 0x1000;
-						continue;
-					}
-					
-					c += 0x1000;																								// It's free, so we can use it!
-					
-					if (c >= count) {																							// We need more memory?
-						return p;																								// No, so return!
-					}
-				}
-			}
-		}
-	}
-	
-	return 0;																													// We failed
-}
-
-UIntPtr MmFindHighestFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count) {
-	if (start % MM_PAGE_SIZE != 0) {																							// Page align the start
-		start -= count % MM_PAGE_SIZE;
-	}
-	
-	if (end % MM_PAGE_SIZE != 0) {																								// Page align the end
-		end += MM_PAGE_SIZE - (end % MM_PAGE_SIZE);
-	}
-	
-	if (count % MM_PAGE_SIZE != 0) {																							// Page align the count
-		count += MM_PAGE_SIZE - (count % MM_PAGE_SIZE);
-	}
-	
-	UIntPtr c = 0;
-	UIntPtr p = end;
-	
-	for (UIntPtr i = end - 0x8000000000; i > start; i -= 0x8000000000) {														// Let's try to find the first free virtual address!
-		if (MmIsAvaliable(MmGetP4(i))) {																						// This P4 is allocated?
-			c += 0x8000000000;																									// No!
-			
-			if (i == 0) {																										// 0x00000000?
-				c -= MM_PAGE_SIZE;																								// Yes, but it's reserved...
-			}
-			
-			if (c >= count) {																									// We need more memory?
-				return p - count;																								// No, so return!
-			}
-			
-			continue;
-		}
-		
-		for (UIntPtr j = 0x7FC0000000; j > 0; j -= 0x40000000) {																// Alright, so let's check the P3s!
-			if (MmIsAvaliable(MmGetP3(i + j))) {																				// This P3 is allocated?
-				c += 0x40000000;																								// No!
-				
-				if ((i == 0) && (j == 0)) {																						// 0x00000000?
-					c -= MM_PAGE_SIZE;																							// Yes, but it's reserved...
-				}
-				
-				if (c >= count) {																								// We need more memory?
-					return p - count;																							// No, so return!
-				}
-				
-				continue;
-			} else if ((MmGetP3(i + j) & PAGE_HUGE) == PAGE_HUGE) {																// 1GiB P3 instead of 2MiB P2 (or 4KiB P1)?
-				c = 0;																											// Yes :(
-				p = i + j - 0x40000000;
-			}
-			
-			for (UIntPtr k = 0x3FE00000; k > 0; k -= 0x200000) {																// Let's check the P2s
-				if (MmIsAvaliable(MmGetP2(i + j + k))) {																		// This P2 is allocated?
-					c += 0x200000;																								// No!
-					
-					if ((i == 0) && (j == 0) && (k == 0)) {																		// 0x00000000?
-						c -= MM_PAGE_SIZE;																						// Yes, but it's reserved...
-					}
-					
-					if (c >= count) {																							// We need more memory?
-						return p - count;																						// No, so return!
-					}
-					
-					continue;
-				} else if ((MmGetP2(i + j + k) & PAGE_HUGE) == PAGE_HUGE) {														// 2MiB P2 instead of 4KiB P1?
-					c = 0;																										// Yes :(
-					p = i + j + k - 0x200000;
-				}
-				
-				for (UIntPtr l = 0x200000; l > 0; l -= 0x1000) {																// Let's check the P1s
-					if ((i == start) && (j == 0) && (k == 0) && (l == 0)) {														// curr == start?
-						return 0;																								// Yes, we failed :(
-					} else if (MmIsAvaliable(MmGetP1(i + j + k + l - 1))) {														// This P1 is allocated?
-						c += 0x1000;																							// No!
-						
-						if (c >= count) {																						// We need more memory?
-							return p - count;																					// No, so return!
-						}
-						
-						continue;
-					}
-					
-					c = 0;																										// Yes :(
-					p = i + j + k + l - 0x1000;
-				}
-			}
-		}
-	}
-	
-	return 0;																													// We failed
-}
-
 UIntPtr MmMapTemp(UIntPtr phys, UInt32 flags) {
 	for (UIntPtr i = 0xFFFFFF0000000000; i < 0xFFFFFF8000000000; i += MM_PAGE_SIZE) {											// Let's try to find an free temp address
 		if (MmQuery(i) == 0) {																									// Free?
@@ -283,6 +97,11 @@ Status MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags) {
 		flags2 |= PAGE_USER;																									// Yes
 	} else if ((flags & MM_MAP_USER) == MM_MAP_USER) {
 		flags2 |= PAGE_USER;																									// ^
+	}
+	
+	if ((flags & MM_MAP_COW) == MM_MAP_COW) {
+		flags2 |= PAGE_COW;
+		flags2 &= ~PAGE_WRITE;
 	}
 	
 	if ((flags & MM_MAP_EXEC) != MM_MAP_EXEC) {																					// Enable code execution?
@@ -361,12 +180,64 @@ Status MmUnmap(UIntPtr virt) {
 		return STATUS_NOT_MAPPED;																								// Nope
 	} else if ((MmGetP2(virt) & PAGE_HUGE) == PAGE_HUGE) {																		// This P2 entry is a huge one? (2MiB page)
 		return STATUS_UNMAP_ERROR;																								// Yes, but sorry, we don't support mapping it YET
-	} else if ((MmGetP1(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																// This P1 entry exists?
+	} else if (((MmGetP1(virt) & PAGE_PRESENT) != PAGE_PRESENT) || ((MmGetP1(virt) & PAGE_AOR) != PAGE_AOR)) {					// This P1 entry exists?
 		return STATUS_NOT_MAPPED;																								// Nope
 	} else {
 		MmSetP1(virt, 0, 0);																									// Yes, so unmap the virt addr
 		MmInvlpg(virt);																											// Update the TLB
 		return STATUS_SUCCESS;
+	}
+}
+
+Void MmPrepareMapFile(UIntPtr start, UIntPtr end) {
+	for (; start < end; start += MM_PAGE_SIZE) {																				// Let's just unset the present flag in everything
+		if ((MmGetP4(start) & PAGE_PRESENT) != PAGE_PRESENT) {
+			continue;
+		} else if ((MmGetP3(start) & PAGE_PRESENT) != PAGE_PRESENT) {
+			continue;
+		} else if ((MmGetP3(start) & PAGE_HUGE) == PAGE_HUGE) {
+			continue;
+		} else if ((MmGetP2(start) & PAGE_PRESENT) != PAGE_PRESENT) {
+			continue;
+		} else if ((MmGetP2(start) & PAGE_HUGE) == PAGE_HUGE) {
+			continue;
+		}
+		
+		UIntPtr page = MmGetP1(start);
+		
+		if ((page & PAGE_PRESENT) != PAGE_PRESENT) {
+			continue;
+		}
+		
+		MmDereferenceSinglePage(page & MM_PAGE_MASK);
+		MmSetP1(start, page & MM_PAGE_MASK, (page & 0xFFF) & ~PAGE_PRESENT);
+		MmInvlpg(start);
+	}
+}
+
+Void MmPrepareUnmapFile(UIntPtr start, UIntPtr end) {
+	for (; start < end; start += MM_PAGE_SIZE) {																				// Let's just make everything AOR
+		if ((MmGetP4(start) & PAGE_PRESENT) != PAGE_PRESENT) {
+			continue;
+		} else if ((MmGetP3(start) & PAGE_PRESENT) != PAGE_PRESENT) {
+			continue;
+		} else if ((MmGetP3(start) & PAGE_HUGE) == PAGE_HUGE) {
+			continue;
+		} else if ((MmGetP2(start) & PAGE_PRESENT) != PAGE_PRESENT) {
+			continue;
+		} else if ((MmGetP2(start) & PAGE_HUGE) == PAGE_HUGE) {
+			continue;
+		}
+		
+		UIntPtr page = MmGetP1(start);
+		
+		if ((page & PAGE_COW) == PAGE_COW || (page & PAGE_AOR) == PAGE_AOR) {
+			continue;
+		}
+		
+		MmDereferenceSinglePage(page & MM_PAGE_MASK);
+		MmSetP1(start, 0, ((page & 0xFFF) & ~PAGE_PRESENT) | PAGE_AOR);
+		MmInvlpg(start);
 	}
 }
 

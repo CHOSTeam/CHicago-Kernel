@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 27 of 2018, at 14:59 BRT
-// Last edited on January 25 of 2020, at 13:18 BRT
+// Last edited on February 02 of 2020, at 11:05 BRT
 
 #define __CHICAGO_PROCESS__
 
@@ -71,16 +71,6 @@ Status PsCreateThreadInt(UInt8 prio, UIntPtr entry, UIntPtr userstack, Boolean u
 	th->waitt = Null;
 	th->killp = False;
 	
-	Status status = user ? VirtAllocAddress(0, MM_PAGE_SIZE, VIRT_PROT_READ | VIRT_PROT_WRITE, &th->tls) : STATUS_SUCCESS;						// Init the TLS (if we need to)
-	
-	if (status != STATUS_SUCCESS) {
-		PsFreeContext(th->ctx);																													// Failed
-		MemFree((UIntPtr)th);
-		return status;
-	} else if (user) {
-		StrSetMemory((PUInt8)th->tls, 0, MM_PAGE_SIZE);																							// Clean the TLS
-	}
-	
 	*ret = th;
 	
 	return STATUS_SUCCESS;
@@ -119,13 +109,23 @@ Status PsCreateProcessInt(PWChar name, UInt8 prio, UIntPtr entry, UIntPtr dir, P
 	StrSetMemory(&proc->shm_mapped_sections, 0, sizeof(List));
 	StrSetMemory(&proc->handles, 0, sizeof(List));
 	MmInitMappingTree(proc);
-	proc->last_handle_id = 0;
 	
-	PThread th;
-	Status status = PsCreateThreadInt(prio, entry, 0, False, &th);																				// Create the first thread
+	Status status = MmInitVirtualAddressAllocTree(proc);
 	
 	if (status != STATUS_SUCCESS) {
 		MmFreeDirectory(proc->dir);
+		MemFree((UIntPtr)proc->name);
+		MemFree((UIntPtr)proc);
+		return status;
+	}
+	
+	proc->last_handle_id = 0;
+	
+	PThread th;
+	
+	if ((status = PsCreateThreadInt(prio, entry, 0, False, &th)) !=  STATUS_SUCCESS) {															// Create the first thread
+		MmFreeDirectory(proc->dir);
+		MemFree((UIntPtr)proc->vaddresses_head);
 		MemFree((UIntPtr)proc->name);
 		MemFree((UIntPtr)proc);
 		return status;
@@ -138,6 +138,7 @@ Status PsCreateProcessInt(PWChar name, UInt8 prio, UIntPtr entry, UIntPtr dir, P
 		PsFreeContext(th->ctx);																													// Failed...
 		MemFree((UIntPtr)th);
 		MmFreeDirectory(proc->dir);
+		MemFree((UIntPtr)proc->vaddresses_head);
 		MemFree((UIntPtr)proc->name);
 		MemFree((UIntPtr)proc);
 		return STATUS_OUT_OF_MEMORY;
@@ -454,6 +455,14 @@ Void PsExitProcess(UIntPtr ret) {
 	}
 	
 	PsLockTaskSwitch(old);																														// Lock
+	
+	AvlClean(&PsCurrentProcess->mappings);																										// Clean the mappings tree
+	
+	while (PsCurrentProcess->vaddresses_head != Null) {																							// Clean the free virtual address tree
+		PMmVirtualRange cur = PsCurrentProcess->vaddresses_head;
+		PsCurrentProcess->vaddresses_head = cur->next;
+		MemFree((UIntPtr)cur);
+	}
 	
 	ListForeach(&PsCurrentProcess->shm_mapped_sections, i) {																					// Unmap and dereference all the mapped shm sections
 		ShmUnmapSection(((PShmMappedSection)i->data)->shm->key);

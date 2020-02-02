@@ -1,14 +1,14 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 17 of 2018, at 16:10 BRT
-// Last edited on January 18 of 2020, at 16:16 BRT
+// Last edited on February 01 of 2020, at 17:24 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/file.h>
 #include <chicago/iso9660.h>
 #include <chicago/string.h>
 
-Status Iso9660ReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf, PUIntPtr read) {
+static Status Iso9660ReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf, PUIntPtr read) {
 	if (file == Null || len == 0 || buf == Null || read == Null) {													// Let's do some null pointer checks first!
 		return STATUS_INVALID_ARG;
 	} else if ((file->priv == Null) || (file->inode == 0)) {
@@ -41,15 +41,17 @@ Status Iso9660ReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf, PUInt
 	return dev->read(dev, (entry->extent_lba_lsb * 2048) + off, end - off, buf, read);								// And let's read!
 }
 
-Boolean Iso9660OpenFile(PFsNode node) {
+static Status Iso9660OpenFile(PFsNode node) {
 	if (node == Null) {																								// Trying to open an null pointer?
-		return False;																								// Yes (probably someone called this function directly... or the kernel have some fatal bug)
-	} else {
-		return True;
+		return STATUS_INVALID_ARG;																					// Yes (probably someone called this function directly... or the kernel have some fatal bug)
+	} else if ((node->flags & FS_FLAG_WRITE) == FS_FLAG_WRITE) {													// We can't write to cdroms...
+		return STATUS_CANT_WRITE;
 	}
+	
+	return STATUS_SUCCESS;
 }
 
-Void Iso9660CloseFile(PFsNode node) {
+static Void Iso9660CloseFile(PFsNode node) {
 	if (node == Null) {																								// Null pointer?
 		return;																										// Yes
 	} else if (StrCompare(node->name, L"/")) {																		// Root directory?
@@ -61,7 +63,7 @@ Void Iso9660CloseFile(PFsNode node) {
 	MemFree((UIntPtr)node);
 }
 
-Status Iso9660ReadDirectoryEntry(PFsNode dir, UIntPtr entry, PWChar *ret) {
+static Status Iso9660ReadDirectoryEntry(PFsNode dir, UIntPtr entry, PWChar *ret) {
 	if (dir == Null || ret == Null) {																				// I already did this comment (null pointer check) so many times... if you want, take a look in the other functions
 		return STATUS_INVALID_ARG;
 	} else if ((dir->priv == Null) || (dir->inode == 0)) {
@@ -160,7 +162,7 @@ Status Iso9660ReadDirectoryEntry(PFsNode dir, UIntPtr entry, PWChar *ret) {
 	return STATUS_FILE_DOESNT_EXISTS;
 }
 
-Status Iso9660FindInDirectory(PFsNode dir, PWChar name, PFsNode *ret) {
+static Status Iso9660FindInDirectory(PFsNode dir, PWChar name, PFsNode *ret) {
 	if ((dir == Null) || (name == Null) || (ret == Null)) {															// The first part of this function IS EXACTLY EQUAL TO THE first part of ReadDirectoryEntry, if you want, take a look at it
 		return STATUS_INVALID_ARG;
 	} else if ((dir->priv == Null) || (dir->inode == 0)) {
@@ -278,6 +280,8 @@ Status Iso9660FindInDirectory(PFsNode dir, PWChar name, PFsNode *ret) {
 					node->close = Iso9660CloseFile;
 					node->create = Null;
 					node->control = Null;
+					node->map = Null;
+					node->sync = Null;
 					
 					MemFree((UIntPtr)data);																			// Free the allocated/readed directory data
 					
@@ -298,7 +302,7 @@ Status Iso9660FindInDirectory(PFsNode dir, PWChar name, PFsNode *ret) {
 	return STATUS_FILE_DOESNT_EXISTS;
 }
 
-Boolean Iso9660Probe(PFsNode file) {
+static Boolean Iso9660Probe(PFsNode file) {
 	if (file == Null) {																								// Some checks (null pointer? file? HAVE THE READ FUNCTION???????????)
 		return False;
 	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {
@@ -333,7 +337,7 @@ Boolean Iso9660Probe(PFsNode file) {
 	return False;
 }
 
-Status Iso9660Mount(PFsNode file, PWChar path, PFsMountPoint *ret) {
+static Status Iso9660Mount(PFsNode file, PWChar path, PFsMountPoint *ret) {
 	if ((file == Null) || (path == Null) || (ret == Null)) {
 		return STATUS_INVALID_ARG;
 	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {
@@ -352,7 +356,7 @@ Status Iso9660Mount(PFsNode file, PWChar path, PFsMountPoint *ret) {
 	for (UInt32 i = 0x10; !found && i < 0x15; i++) {
 		UIntPtr read;
 		
-		if (file->read(file, i * 2048, 2048, (PUInt8)pvd, &read) != STATUS_SUCCESS) {								// Let's try to read this sector
+		if (file->read(file, i * 2048, 2048, (PUInt8)pvd, &read) == STATUS_SUCCESS) {								// Let's try to read this sector
 			if ((pvd->type == 0x01) && (StrCompareMemory(pvd->cd001, "CD001", 5)) && (pvd->version == 0x01)) {		// It's the PVD?
 				found = True;																						// Yes!
 			} else if (pvd->type == 0xFF) {																			// It's the terminator...
@@ -439,13 +443,15 @@ Status Iso9660Mount(PFsNode file, PWChar path, PFsMountPoint *ret) {
 	mp->root->finddir = Iso9660FindInDirectory;
 	mp->root->create = Null;
 	mp->root->control = Null;
+	mp->root->map = Null;
+	mp->root->sync = Null;
 	
 	*ret = mp;
 	
 	return STATUS_SUCCESS;
 }
 
-Boolean Iso9660Umount(PFsMountPoint mp) {
+static Boolean Iso9660Umount(PFsMountPoint mp) {
 	if (mp == Null) {																								// Sanity checks
 		return False;
 	} else if (mp->root == Null) {

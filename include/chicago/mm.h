@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 18:48 BRT
-// Last edited on January 25 of 2020, at 13:41 BRT
+// Last edited on February 02 of 2020, at 11:05 BRT
 
 #ifndef __CHICAGO_MM_H__
 #define __CHICAGO_MM_H__
@@ -77,8 +77,17 @@ typedef struct MmRegionStruct {
 	MmKey key;
 	PWChar name;
 	PFsNode file;
+	UIntPtr off;
 	UInt32 prot;
+	UInt32 flgs;
 } MmRegion, *PMmRegion;
+
+typedef struct MmVirtualRangeStruct {
+	UIntPtr start;
+	UIntPtr size;
+	struct MmVirtualRangeStruct *next;
+	struct MmVirtualRangeStruct *prev;
+} MmVirtualRange, *PMmVirtualRange;
 
 extern UIntPtr MmKernelDirectoryInt;
 
@@ -108,14 +117,26 @@ UIntPtr MmFindHighestFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count);
 UIntPtr MmMapTemp(UIntPtr phys, UInt32 flags);
 Status MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags);
 Status MmUnmap(UIntPtr virt);
+Void MmPrepareMapFile(UIntPtr start, UIntPtr end);
+Void MmPrepareUnmapFile(UIntPtr start, UIntPtr end);
 UIntPtr MmCreateDirectory(Void);
 Void MmFreeDirectory(UIntPtr dir);
 UIntPtr MmGetCurrentDirectory(Void);
 Void MmSwitchDirectory(UIntPtr dir);
 
+Status MmPageFaultDoAOR(UIntPtr addr, UInt32 prot);
+Status MmPageFaultDoCOW(UIntPtr addr, UInt32 prot);
+Status MmPageFaultDoMapFile(PFsNode file, UIntPtr addr, UIntPtr off, UInt32 prot);
 Status MmPageFaultHandler(PMmRegion region, PVoid arch, UIntPtr addr, UInt32 flags, UInt8 reason);
 PAvlNode MmGetMapping(UIntPtr addr, UIntPtr size, Boolean exact);
 Status MmMapMemory(PWChar name, UIntPtr virt, PUIntPtr phys, UIntPtr size, UInt32 flags);
+Status MmAllocAddress(PWChar name, UIntPtr size, UInt32 flags, PUIntPtr ret);
+Status MmUnmapMemory(UIntPtr start);
+Status MmFreeAddress(UIntPtr start);
+Status MmSyncMemory(UIntPtr start, UIntPtr size);
+Status MmGiveHint(UIntPtr start, UIntPtr size, UInt8 hint);
+Status MmChangeProtection(UIntPtr start, UInt32 prot);
 Void MmInitMappingTree(PProcess proc);
+Status MmInitVirtualAddressAllocTree(PProcess proc);
 
 #endif		// __CHICAGO_MM_H__

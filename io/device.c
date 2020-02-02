@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 14 of 2018, at 22:35 BRT
-// Last edited on January 21 of 2020, at 23:07 BRT
+// Last edited on February 02 of 2020, at 10:52 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -44,7 +44,7 @@ Status FsControlDevice(PDevice dev, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf) {
 	}
 }
 
-Boolean FsAddDevice(PWChar name, PVoid priv, Status (*read)(PDevice, UIntPtr, UIntPtr, PUInt8, PUIntPtr), Status (*write)(PDevice, UIntPtr, UIntPtr, PUInt8, PUIntPtr), Status (*control)(PDevice, UIntPtr, PUInt8, PUInt8)) {
+Boolean FsAddDevice(PWChar name, PVoid priv, Status (*read)(PDevice, UIntPtr, UIntPtr, PUInt8, PUIntPtr), Status (*write)(PDevice, UIntPtr, UIntPtr, PUInt8, PUIntPtr), Status (*control)(PDevice, UIntPtr, PUInt8, PUInt8), Status (*map)(PDevice, UIntPtr, UIntPtr, UInt32), Status (*sync)(PDevice, UIntPtr, UIntPtr, UIntPtr)) {
 	PDevice dev = (PDevice)MemAllocate(sizeof(Device));							// Allocate memory for the dev struct
 	
 	if (dev == Null) {															// Failed?
@@ -56,6 +56,8 @@ Boolean FsAddDevice(PWChar name, PVoid priv, Status (*read)(PDevice, UIntPtr, UI
 	dev->read = read;
 	dev->write = write;
 	dev->control = control;
+	dev->map = map;
+	dev->sync = sync;
 	
 	if (!ListAdd(&FsDeviceList, dev)) {											// Try to add to the list
 		MemFree((UIntPtr)dev);													// Failed, so let's free the dev struct
@@ -76,7 +78,7 @@ Boolean FsAddHardDisk(PVoid priv, Status (*read)(PDevice, UIntPtr, UIntPtr, PUIn
 	
 	StrFormat(name, L"HardDisk%d", count - 1);									// Format the name string!
 	
-	if (!FsAddDevice(name, priv, read, write, control)) {						// Try to add it!
+	if (!FsAddDevice(name, priv, read, write, control, Null, Null)) {			// Try to add it!
 		MemFree((UIntPtr)name);													// Failed, free the name and return
 		return False;
 	}
@@ -95,7 +97,7 @@ Boolean FsAddCdRom(PVoid priv, Status (*read)(PDevice, UIntPtr, UIntPtr, PUInt8,
 	
 	StrFormat(name, L"CdRom%d", count - 1);										// Format the name string!
 	
-	if (!FsAddDevice(name, priv, read, write, control)) {						// Try to add it!
+	if (!FsAddDevice(name, priv, read, write, control, Null, Null)) {			// Try to add it!
 		MemFree((UIntPtr)name);													// Failed, free the name and return
 		return False;
 	}

@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 16 of 2018, at 18:29 BRT
-// Last edited on January 18 of 2020, at 16:06 BRT
+// Last edited on February 02 of 2020, at 10:55 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -10,9 +10,11 @@
 #include <chicago/panic.h>
 #include <chicago/string.h>
 
-Status DevFsControlFile(PFsNode file, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf);
+static Status DevFsControlFile(PFsNode file, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf);
+static Status DevFsMapFile(PFsNode file, UIntPtr off, UIntPtr addr, UInt32 prot);
+static Status DevFsSyncFile(PFsNode file, UIntPtr off, UIntPtr start, UIntPtr size);
 
-Status DevFsReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf, PUIntPtr read) {
+static Status DevFsReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf, PUIntPtr read) {
 	if (file == Null || len == 0 || buf == Null || read == Null) {								// Any null pointer?
 		return STATUS_INVALID_ARG;																// Yes, so we can't continue
 	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {									// We're trying to read raw bytes in an... Directory?
@@ -28,7 +30,7 @@ Status DevFsReadFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf, PUIntPt
 	return FsReadDevice(dev, off, len, buf, read);												// Redirect to the FsReadDevice function
 }
 
-Status DevFsWriteFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf, PUIntPtr write) {
+static Status DevFsWriteFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf, PUIntPtr write) {
 	if (file == Null || len == 0 || buf == Null || write == Null) {								// Any null pointer?
 		return STATUS_INVALID_ARG;																// Yes, so we can't continue
 	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {									// We're trying to write raw bytes to an... Directory?
@@ -44,15 +46,27 @@ Status DevFsWriteFile(PFsNode file, UIntPtr off, UIntPtr len, PUInt8 buf, PUIntP
 	return FsWriteDevice(dev, off, len, buf, write);											// Redirect to the FsWriteDevice function
 }
 
-Boolean DevFsOpenFile(PFsNode node) {
+static Status DevFsOpenFile(PFsNode node) {
 	if (node == Null) {																			// Null pointer?
-		return False;																			// Yes
-	} else {
-		return True;
+		return STATUS_INVALID_ARG;																// Yes
+	} else if (StrCompare(L"/", node->name)) {													// Root?
+		return STATUS_SUCCESS;																	// Yes
 	}
+	
+	PDevice dev = FsGetDevice(node->name);														// Get the device using the name
+	
+	if (dev == Null) {																			// Failed for some unknown reason?
+		return STATUS_INVALID_ARG;																// Yes
+	} else if (dev->read == Null && (node->flags & FS_FLAG_READ) == FS_FLAG_READ) {				// We can't read from the device, but the user wants to read it?
+		return STATUS_CANT_READ;
+	} else if (dev->write == Null && (node->flags & FS_FLAG_WRITE) == FS_FLAG_WRITE) {			// We can't write from the device, but the user wants to write it?
+		return STATUS_CANT_WRITE;
+	}
+	
+	return STATUS_SUCCESS;
 }
 
-Void DevFsCloseFile(PFsNode node) {
+static Void DevFsCloseFile(PFsNode node) {
 	if (node == Null) {																			// Null pointer?
 		return;																					// Yes
 	} else if (StrCompare(node->name, L"/")) {													// Root directory?
@@ -63,7 +77,7 @@ Void DevFsCloseFile(PFsNode node) {
 	MemFree((UIntPtr)node);
 }
 
-Status DevFsReadDirectoryEntry(PFsNode dir, UIntPtr entry, PWChar *ret) {
+static Status DevFsReadDirectoryEntry(PFsNode dir, UIntPtr entry, PWChar *ret) {
 	if (dir == Null || ret == Null) {															// Any null pointer?
 		return STATUS_INVALID_ARG;																// Yes, so we can't continue
 	} else if ((dir->flags & FS_FLAG_DIR) != FS_FLAG_DIR) {										// We're trying to do ReadDirectoryEntry in an... File?
@@ -87,7 +101,7 @@ Status DevFsReadDirectoryEntry(PFsNode dir, UIntPtr entry, PWChar *ret) {
 	}
 }
 
-Status DevFsFindInDirectory(PFsNode dir, PWChar name, PFsNode *ret) {
+static Status DevFsFindInDirectory(PFsNode dir, PWChar name, PFsNode *ret) {
 	if ((dir == Null) || (name == Null) || (ret == Null)) {										// Any null pointer?
 		return STATUS_INVALID_ARG;																// Yes, so we can't continue
 	} else if ((dir->flags & FS_FLAG_DIR) != FS_FLAG_DIR) {										// We're trying to do FindInDirectory in an... File?
@@ -132,13 +146,15 @@ Status DevFsFindInDirectory(PFsNode dir, PWChar name, PFsNode *ret) {
 	node->finddir = Null;
 	node->create = Null;
 	node->control = DevFsControlFile;
+	node->map = dev->map == Null ? Null : DevFsMapFile;
+	node->sync = dev->sync == Null ? Null : DevFsSyncFile;
 	
 	*ret = node;
 	
 	return STATUS_SUCCESS;
 }
 
-Status DevFsControlFile(PFsNode file, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf) {
+static Status DevFsControlFile(PFsNode file, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf) {
 	if (file == Null) {																			// Any null pointer?
 		return STATUS_INVALID_ARG;																// Yes, so we can't continue
 	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {									// ... We're trying to use the control in an directory?
@@ -152,6 +168,42 @@ Status DevFsControlFile(PFsNode file, UIntPtr cmd, PUInt8 ibuf, PUInt8 obuf) {
 	}
 	
 	return FsControlDevice(dev, cmd, ibuf, obuf);												// Redirect to the FsControlDevice function
+}
+
+static Status DevFsMapFile(PFsNode file, UIntPtr off, UIntPtr addr, UInt32 prot) {
+	if (file == Null) {																			// Any null pointer?
+		return STATUS_INVALID_ARG;																// Yes, so we can't continue
+	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {									// ... We're trying to map an directory?
+		return STATUS_NOT_FILE;																	// Yes (Why?)
+	}
+	
+	PDevice dev = FsGetDevice(file->name);														// Get the device using the name
+	
+	if (dev == Null) {																			// Failed for some unknown reason?
+		return STATUS_MAPFILE_FAILED;															// Yes
+	} else if (dev->map == Null) {																// Do we have the map function?
+		return STATUS_MAPFILE_FAILED;															// No, we don't...
+	}
+	
+	return dev->map(dev, off, addr, prot);														// Redirect
+}
+
+static Status DevFsSyncFile(PFsNode file, UIntPtr off, UIntPtr start, UIntPtr size) {
+	if (file == Null) {																			// Any null pointer?
+		return STATUS_INVALID_ARG;																// Yes, so we can't continue
+	} else if ((file->flags & FS_FLAG_FILE) != FS_FLAG_FILE) {									// ... We're trying to map an directory?
+		return STATUS_NOT_FILE;																	// Yes (Why?)
+	}
+	
+	PDevice dev = FsGetDevice(file->name);														// Get the device using the name
+	
+	if (dev == Null) {																			// Failed for some unknown reason?
+		return STATUS_INVALID_ARG;																// Yes
+	} else if (dev->sync == Null) {																// Do we have the map function?
+		return STATUS_INVALID_ARG;																// No, we don't...
+	}
+	
+	return dev->sync(dev, off, start, size);													// Redirect
 }
 
 Void DevFsInit(Void) {
@@ -195,6 +247,8 @@ Void DevFsInit(Void) {
 	root->readdir = DevFsReadDirectoryEntry;
 	root->finddir = DevFsFindInDirectory;
 	root->control = Null;
+	root->map = Null;
+	root->sync = Null;
 	
 	if (!FsAddMountPoint(path, type, root)) {													// Try to add this device
 		DbgWriteFormated("PANIC! Couldn't mount /Devices\r\n");									// Failed (same as above)

@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on January 18 of 2020, at 13:40 BRT
-// Last edited on January 20 of 2020, at 22:05 BRT
+// Last edited on January 26 of 2020, at 13:39 BRT
 
 // To define a new syscall you just need to put the name here somewhere
 // There is no need to explicitly put the number, as the makefile will automatically do its magic and determine the number based on the position of the syscall here
@@ -12,11 +12,6 @@
 
 Status SysGetVersion
 Status SysCloseHandle
-Status VirtAllocAddress
-Status VirtFreeAddress
-UInt32 VirtQueryProtection
-Status VirtChangeProtection
-UIntPtr VirtGetUsage
 Status PsCreateThread
 IntPtr PsGetCurrentThread
 IntPtr PsGetCurrentProcess

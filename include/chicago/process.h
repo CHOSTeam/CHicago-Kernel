@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 27 of 2018, at 14:42 BRT
-// Last edited on January 25 of 2020, at 13:16 BRT
+// Last edited on January 29 of 2020, at 19:48 BRT
 
 #ifndef __CHICAGO_PROCESS_H__
 #define __CHICAGO_PROCESS_H__
@@ -39,6 +39,8 @@ typedef struct {
 	List threads;
 	UIntPtr last_tid;
 	AvlTree mappings;
+	PVoid vaddresses_head;
+	PVoid vaddresses_tail;
 	UIntPtr mem_usage;
 	List shm_mapped_sections;
 	List handles;
@@ -57,7 +59,6 @@ typedef struct ThreadStruct {
 	PLock waitl;
 	PProcess waitp;
 	Boolean killp;
-	UIntPtr tls;
 	struct ThreadStruct *waitt;
 } Thread, *PThread;
 

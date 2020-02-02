@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:14 BRT
-// Last edited on January 20 of 2020, at 23:15 BRT
+// Last edited on January 26 of 2020, at 13:40 BRT
 
 #include <chicago/arch.h>
 #include <chicago/console.h>
@@ -16,7 +16,6 @@
 #include <chicago/string.h>
 #include <chicago/timer.h>
 #include <chicago/version.h>
-#include <chicago/virt.h>
 
 Void KernelMain(Void) {
 	ArchInitDebug();																															// Init the architecture-dependent debugging method

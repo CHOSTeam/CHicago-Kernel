@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on June 28 of 2018, at 19:19 BRT
-// Last edited on January 25 of 2020, at 12:08 BRT
+// Last edited on January 31 of 2020, at 22:09 BRT
 
 #include <chicago/arch/vmm.h>
 
@@ -50,117 +50,6 @@ UInt32 MmQuery(UIntPtr virt) {
 	return ret;
 }
 
-static Boolean MmIsAllocated(UIntPtr page) {
-	return (page & PAGE_PRESENT) == PAGE_PRESENT || (page & PAGE_AOR) == PAGE_AOR;
-}
-
-UIntPtr MmFindFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count) {
-	if (start % MM_PAGE_SIZE != 0) {																								// Page align the start
-		start -= count % MM_PAGE_SIZE;
-	}
-	
-	if (end % MM_PAGE_SIZE != 0) {																									// Page align the end
-		end += MM_PAGE_SIZE - (end % MM_PAGE_SIZE);
-	}
-	
-	if (count % MM_PAGE_SIZE != 0) {																								// Page align the count
-		count += MM_PAGE_SIZE - (count % MM_PAGE_SIZE);
-	}
-	
-	UIntPtr c = 0;
-	UIntPtr p = start;
-	
-	for (UIntPtr i = start; i < end; i += MM_PAGE_SIZE * 1024) {																	// Let's try to find the first free virtual address!
-		if (MmIsAllocated(MmGetPDE(i))) {																							// This PDE is allocated?
-			if ((MmGetPDE(i) & PAGE_HUGE) == PAGE_HUGE) {																			// Yes! 4MiB page?
-				c = 0;																												// Yes :(
-				p = i + 0x400000;
-			} else {
-				for (UIntPtr j = 0; j < MM_PAGE_SIZE * 1024; j += MM_PAGE_SIZE) {													// Nope! Let's check the PTEs
-					if (((i == 0) && (j == 0)) || MmIsAllocated(MmGetPTE(i + j))) {													// Allocated?
-						c = 0;																										// Yes :(
-						p = i + j + MM_PAGE_SIZE;
-					} else {
-						c += MM_PAGE_SIZE;																							// No! (+4KB)
-
-						if (c >= count) {																							// We need more memory?
-							return p;																								// No, so return!
-						}
-					}
-				}
-			}
-		} else {
-			c += MM_PAGE_SIZE * 1024;																								// No! (+4MB)
-			
-			if (i < MM_PAGE_SIZE * 1024) {																							// 0x00000000?
-				c -= MM_PAGE_SIZE;																									// Yes, but it's reserved...
-				p += MM_PAGE_SIZE;
-			}
-			
-			if (c >= count) {																										// We need more memory?
-				return p;																											// No, so return!
-			}
-		}
-	}
-	
-	return 0;																														// We failed :(
-}
-
-UIntPtr MmFindHighestFreeVirt(UIntPtr start, UIntPtr end, UIntPtr count) {
-	if (start % MM_PAGE_SIZE != 0) {																								// Page align the start
-		start -= count % MM_PAGE_SIZE;
-	}
-	
-	if (end % MM_PAGE_SIZE != 0) {																									// Page align the end
-		end += MM_PAGE_SIZE - (end % MM_PAGE_SIZE);
-	}
-	
-	if (count % MM_PAGE_SIZE != 0) {																								// Page align the count
-		count += MM_PAGE_SIZE - (count % MM_PAGE_SIZE);
-	}
-	
-	UIntPtr c = 0;
-	UIntPtr p = end;
-	
-	for (UIntPtr i = end - (MM_PAGE_SIZE * 1024); i > start; i -= MM_PAGE_SIZE * 1024) {											// Let's try to find the highest free virtual address!
-		if (MmIsAllocated(MmGetPDE(i))) {																							// This PDE is allocated?
-			if ((MmGetPDE(i) & PAGE_HUGE) == PAGE_HUGE) {																			// Yes! 4MiB page?
-				c = 0;																												// Yes :(
-				p = i - 0x400000;
-			} else {
-				for (UIntPtr j = MM_PAGE_SIZE * 1024; j > 0; j -= MM_PAGE_SIZE) {													// Nope! Let's check the PTEs
-					UIntPtr rj = j - 1;
-
-					if ((i == start) && (j == 0)) {																					// curr == start?
-						return 0;																									// Yes, we failed :(
-					} else if (MmIsAllocated(MmGetPTE(i + rj))) {																	// Allocated?
-						c = 0;																										// Yes :(
-						p = i + j - MM_PAGE_SIZE;
-					} else {
-						c += MM_PAGE_SIZE;																							// No! (+4KB)
-
-						if (c >= count) {																							// We need more memory?
-							return p - count;																						// No, so return!
-						}
-					}
-				}
-			}
-		} else {
-			c += MM_PAGE_SIZE * 1024;																								// No! (+4MB)
-			
-			if (i == 0) {																											// 0x00000000?
-				c -= MM_PAGE_SIZE;																									// Yes...
-			}
-			
-			if (c >= count) {																										// We need more memory?
-				return p - count;																									// No, so return!
-			}
-		}
-	}
-	
-	return 0;																														// We failed :(
-}
-
 UIntPtr MmMapTemp(UIntPtr phys, UInt32 flags) {
 	for (UIntPtr i = 0xFF800000; i < 0xFFC00000; i += MM_PAGE_SIZE) {																// Let's try to find an free temp address
 		if (MmQuery(i) == 0) {																										// Free?
@@ -190,6 +79,11 @@ Status MmMap(UIntPtr virt, UIntPtr phys, UInt32 flags) {
 	
 	if ((flags & MM_MAP_WRITE) == MM_MAP_WRITE) {
 		flags2 |= PAGE_WRITE;
+	}
+	
+	if ((flags & MM_MAP_COW) == MM_MAP_COW) {
+		flags2 |= PAGE_COW;
+		flags2 &= ~PAGE_WRITE;
 	}
 	
 	if ((MmGetPDE(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																			// This page table exists?
@@ -222,12 +116,39 @@ Status MmUnmap(UIntPtr virt) {
 		return STATUS_NOT_MAPPED;																									// No...
 	} else if ((MmGetPDE(virt) & PAGE_HUGE) == PAGE_HUGE) {																			// 4MiB page?
 		return STATUS_UNMAP_ERROR;																									// Yes, but sorry, we don't support mapping it YET
-	} else if ((MmGetPTE(virt) & PAGE_PRESENT) != PAGE_PRESENT) {																	// Same as above
+	} else if (((MmGetPTE(virt) & PAGE_PRESENT) != PAGE_PRESENT) && ((MmGetPTE(virt) & PAGE_AOR) != PAGE_AOR)) {					// Same as above
 		return STATUS_NOT_MAPPED;																									// No...
 	} else {
 		MmSetPTE(virt, 0, 0);																										// Yes, so unmap the virt addr
 		MmInvlpg(virt);																												// Refresh the TLB
 		return STATUS_SUCCESS;
+	}
+}
+
+Void MmPrepareMapFile(UIntPtr start, UIntPtr end) {
+	for (; start < end; start += MM_PAGE_SIZE) {																					// Let's just unset the present flag in everything
+		UIntPtr page = MmGetPTE(start);
+		
+		if ((page & PAGE_PRESENT) != PAGE_PRESENT) {
+			continue;
+		}
+		
+		MmSetPTE(start, page & MM_PAGE_MASK, (page & 0xFFF) & ~PAGE_PRESENT);
+		MmInvlpg(start);
+	}
+}
+
+Void MmPrepareUnmapFile(UIntPtr start, UIntPtr end) {
+	for (; start < end; start += MM_PAGE_SIZE) {																					// Let's just make everything AOR
+		UIntPtr page = MmGetPTE(start);
+		
+		if ((page & PAGE_COW) == PAGE_COW || (page & PAGE_AOR) == PAGE_AOR) {
+			continue;
+		}
+		
+		MmDereferenceSinglePage(page & MM_PAGE_MASK);
+		MmSetPTE(start, 0, ((page & 0xFFF) & ~PAGE_PRESENT) | PAGE_AOR);
+		MmInvlpg(start);
 	}
 }
 

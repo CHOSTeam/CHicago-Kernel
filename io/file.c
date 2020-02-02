@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 16 of 2018, at 18:28 BRT
-// Last edited on January 21 of 2020, at 23:12 BRT
+// Last edited on January 26 of 2020, at 12:59 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/debug.h>
@@ -342,6 +342,7 @@ c:		if (status != STATUS_SUCCESS) {
 	
 	ListFree(parts);																													// Finally, free the list
 	
+	cur->flags |= flgs;																													// Set the flags
 	*ret = cur;																															// And return!
 	
 	return STATUS_SUCCESS;
@@ -378,6 +379,8 @@ Status FsMountFile(PWChar path, PWChar file, PWChar type) {
 	if ((status != STATUS_SUCCESS) && (!StrCompare(path, L"/"))) {																		// Failed (and we aren't trying to mount the root directory)?
 		FsCloseFile(src);																												// Yes, close the src file
 		return STATUS_MOUNT_FAILED;																										// And return
+	} else if (status != STATUS_SUCCESS) {
+		dest = Null;
 	} else if (status == STATUS_SUCCESS) {
 		if (!StrCompare(path, L"/")) {																									// Trying to mount the root directory?
 			if ((dest->flags & FS_FLAG_DIR) != FS_FLAG_DIR) {																			// No, so we need to check if the dest is an directory!
@@ -436,10 +439,11 @@ Status FsMountFile(PWChar path, PWChar file, PWChar type) {
 		return status;
 	}
 	
-	FsCloseFile(dest);																													// Let's close our files, we don't need them anymore!
+	FsCloseFile(dest);																													// Let's close our files, we don't need them anymore
 	
 	if (!FsAddMountPoint(mp->path, mp->type, mp->root)) {																				// And let's try to add this mount point
 		MemFree((UIntPtr)mp);																											// Failed, so return False
+		FsCloseFile(src);
 		return STATUS_OUT_OF_MEMORY;
 	} else {
 		MemFree((UIntPtr)mp);																											// Otherwise, return True
@@ -522,7 +526,9 @@ PFsMountPoint FsGetMountPoint(PWChar path, PWChar *outp) {
 	PWChar dup = StrDuplicate(path);																									// Let's duplicate the path, as we're going to change the string
 	UIntPtr ncurr = StrGetLength(dup) - 1;
 	
-	if (!StrCompare(dup, L"/")) {																										// We're trying to find the root mount point?
+	if (dup == Null) {
+		return Null;
+	} else if (!StrCompare(dup, L"/")) {																								// We're trying to find the root mount point?
 		while (dup[ncurr] == '/') {																										// No
 			dup[ncurr--] = '\0';
 		}
@@ -722,7 +728,7 @@ Void FsInit(Void) {
 		Panic(PANIC_KERNEL_INIT_FAILED);
 	}
 	
-	if (!FsMountFile(L"/", bdpath, Null)) {
+	if (FsMountFile(L"/", bdpath, Null) != STATUS_SUCCESS) {
 		DbgWriteFormated("PANIC! Couldn't mount the boot device\r\n");
 		Panic(PANIC_KERNEL_INIT_FAILED);
 	}

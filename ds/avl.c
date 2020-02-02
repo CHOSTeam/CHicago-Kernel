@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on January 21 of 2020, at 12:45 BRT
-// Last edited on January 23 of 2020, at 21:24 BRT
+// Last edited on February 02 of 2020, at 11:02 BRT
 
 #include <chicago/alloc.h>
 #include <chicago/avl.h>
@@ -23,6 +23,35 @@ PAvlTree AvlCreate(Int (*compare)(PVoid, PVoid), Void (*free_key)(PVoid), Void (
 	avl->free_value = free_value;
 	
 	return avl;
+}
+
+static PAvlNode AvlCleanInt(PAvlNode node, Void (*free_key)(PVoid), Void (*free_value)(PVoid)) {
+	if (node == Null) {																							// Check if the last node wasn't, uh, the last node (on a side of the tree)
+		return Null;
+	}
+	
+	node->left = AvlCleanInt(node->left, free_key, free_value);													// Clean our children
+	node->right = AvlCleanInt(node->right, free_key, free_value);
+	
+	if (free_key != Null) {																						// And free everything else
+		free_key(node->key);
+	}
+	
+	if (free_value != Null) {
+		free_value(node->value);
+	}
+	
+	MemFree((UIntPtr)node);
+	
+	return Null;
+}
+
+Void AvlClean(PAvlTree avl) {
+	if (avl == Null) {																							// Sanity check
+		return;
+	}
+	
+	avl->root = AvlCleanInt(avl->root, avl->free_key, avl->free_value);											// And clean the tree
 }
 
 static PAvlNode AvlSearchInt(PAvlNode node, PVoid key, Int (*compare)(PVoid, PVoid)) {
