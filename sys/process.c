@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 27 of 2018, at 14:59 BRT
-// Last edited on February 02 of 2020, at 13:30 BRT
+// Last edited on February 02 of 2020, at 17:51 BRT
 
 #define __CHICAGO_PROCESS__
 
@@ -59,6 +59,7 @@ Status PsCreateThreadInt(UInt8 prio, UIntPtr entry, UIntPtr userstack, Boolean u
 		return STATUS_OUT_OF_MEMORY;
 	}
 	
+	th->self = th;
 	th->id = 0;																																	// We're going to set the id and the parent process later
 	th->prio = prio;																															// Set the priority to the default one
 	th->cprio = prio;

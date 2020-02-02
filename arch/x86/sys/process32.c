@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 28 of 2018, at 01:09 BRT
-// Last edited on January 18 of 2020, at 12:08 BRT
+// Last edited on January 18 of 2020, at 19:18 BRT
 
 #define __CHICAGO_ARCH_PROCESS__
 
@@ -49,11 +49,11 @@ PContext PsCreateContext(UIntPtr entry, UIntPtr userstack, Boolean user) {
 	*kstack-- = 0;
 	*kstack-- = 0;
 	*kstack-- = user ? 0x23 : 0x10;
-	*kstack-- = user ? 0x23 : 0x10;
-	*kstack-- = user ? 0x23 : 0x10;
 	*kstack = user ? 0x23 : 0x10;
 	
 	ctx->esp = (UIntPtr)kstack;
+	ctx->fs = 0;
+	ctx->gs = 0;
 	
 	StrCopyMemory(ctx->fpu_state, PsFPUDefaultState, 512);															// Setup the default fpu state
 	
@@ -95,9 +95,15 @@ Void PsSwitchTaskForce(PRegisters regs) {
 		MmSwitchDirectory(PsCurrentProcess->dir);
 	}
 	
+	if (((old != Null) && (PsCurrentThread->ctx->fs != old->ctx->fs)) || (old == Null)) {							// Switch FS
+		GDTSetFS(PsCurrentThread->ctx->fs);
+	}
+	
+	if (((old != Null) && (PsCurrentThread->ctx->gs != old->ctx->gs)) || (old == Null)) {							// Switch GS
+		GDTSetGS(PsCurrentThread->ctx->gs);
+	}
+	
 	Asm Volatile("mov %%eax, %%esp" :: "a"(PsCurrentThread->ctx->esp));												// And let's switch!
-	Asm Volatile("pop %gs");
-	Asm Volatile("pop %fs");
 	Asm Volatile("pop %es");
 	Asm Volatile("pop %ds");
 	Asm Volatile("popa");
@@ -132,10 +138,16 @@ Void PsSwitchTaskTimer(PRegisters regs) {
 		MmSwitchDirectory(PsCurrentProcess->dir);
 	}
 	
+	if (PsCurrentThread->ctx->fs != old->ctx->fs) {																	// Switch FS
+		GDTSetFS(PsCurrentThread->ctx->fs);
+	}
+	
+	if (PsCurrentThread->ctx->gs != old->ctx->gs) {																	// Switch GS
+		GDTSetGS(PsCurrentThread->ctx->gs);
+	}
+	
 	PortOutByte(0x20, 0x20);																						// Send EOI
 	Asm Volatile("mov %%eax, %%esp" :: "a"(PsCurrentThread->ctx->esp));												// And let's switch!
-	Asm Volatile("pop %gs");
-	Asm Volatile("pop %fs");
 	Asm Volatile("pop %es");
 	Asm Volatile("pop %ds");
 	Asm Volatile("popa");

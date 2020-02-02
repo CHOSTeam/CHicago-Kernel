@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 28 of 2018, at 01:15 BRT
-// Last edited on November 07 of 2019, at 18:35 BRT
+// Last edited on February 02 of 2020, at 18:57 BRT
 
 #ifndef __CHICAGO_ARCH_PROCESS_H__
 #define __CHICAGO_ARCH_PROCESS_H__
@@ -17,6 +17,8 @@ typedef struct {
 	UInt8 kstack[PS_STACK_SIZE];
 	UInt8 fpu_state[512];
 	UIntPtr esp;
+	UIntPtr fs;
+	UIntPtr gs;
 } Context, *PContext;
 
 #ifndef __CHICAGO_ARCH_PROCESS__

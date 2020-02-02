@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 27 of 2018, at 21:48 BRT
-// Last edited on January 18 of 2020, at 10:10 BRT
+// Last edited on February of 2020, at 19:16 BRT
 
 #include <chicago/arch/registers.h>
 
@@ -53,6 +53,8 @@ Void ArchPanic(UInt32 err, PVoid priv) {
 		ConSetRefresh(False);																					// Disable the automatic screen refresh
 		PanicInt(err, False);																					// Print the "Sorry" message
 
+		UInt32 fs = GDTGetFS();																					// Get the FS base
+		UInt32 gs = GDTGetGS();																					// Get the GS base
 		UInt32 cr2 = 0;																							// Get the CR2
 		Asm Volatile("mov %%cr2, %0" : "=r"(cr2));
 
@@ -76,9 +78,9 @@ Void ArchPanic(UInt32 err, PVoid priv) {
 		ConWriteFormated(L"| CS:  "); ArchPanicWriteHex((UInt8)regs->cs); ConWriteFormated(L" | ");
 		ConWriteFormated(L"DS:  "); ArchPanicWriteHex((UInt8)regs->ds); ConWriteFormated(L" | ");
 		ConWriteFormated(L"ES:     "); ArchPanicWriteHex((UInt8)regs->es); ConWriteFormated(L" | ");
-		ConWriteFormated(L"FS:  "); ArchPanicWriteHex((UInt8)regs->fs); ConWriteFormated(L" |\r\n");
+		ConWriteFormated(L"FS:  "); ArchPanicWriteHex(fs); ConWriteFormated(L" |\r\n");
 
-		ConWriteFormated(L"| GS:  "); ArchPanicWriteHex((UInt8)regs->gs); ConWriteFormated(L" | ");
+		ConWriteFormated(L"| GS:  "); ArchPanicWriteHex(gs); ConWriteFormated(L" | ");
 		ConWriteFormated(L"SS:  "); ArchPanicWriteHex((UInt8)regs->ss); ConWriteFormated(L" | ");
 		ConWriteFormated(L"                   | ");
 		ConWriteFormated(L"                |\r\n");

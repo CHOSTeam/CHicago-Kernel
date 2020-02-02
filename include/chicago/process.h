@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on July 27 of 2018, at 14:42 BRT
-// Last edited on February 02 of 2020, at 12:34 BRT
+// Last edited on February 02 of 2020, at 17:51 BRT
 
 #ifndef __CHICAGO_PROCESS_H__
 #define __CHICAGO_PROCESS_H__
@@ -48,6 +48,7 @@ typedef struct {
 } Process, *PProcess;
 
 typedef struct ThreadStruct {
+	struct ThreadStruct *self;
 	UIntPtr id;
 	UInt8 prio;
 	UInt8 cprio;

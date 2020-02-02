@@ -11,6 +11,17 @@ echo -e "#define HANDLE_TYPE_FILE 0x00"
 echo -e "#define HANDLE_TYPE_THREAD 0x01"
 echo -e "#define HANDLE_TYPE_PROCESS 0x02"
 echo -e "#define HANDLE_TYPE_IPC_RESPONSE_PORT 0x04\n"
+
+cat $1 | sed '/^\/\// d' | (
+	NUM=0
+	while read ret name ; do
+		if [ "$ret" != "" ]; then
+			NUM=$((NUM+1))
+		fi
+	done
+	echo -e "#define SC_MAX $NUM\n"
+)
+
 echo -e "typedef struct {"
 echo -e "\tPUInt32 major;"
 echo -e "\tPUInt32 minor;"

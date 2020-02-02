@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:21 BRT
-// Last edited on December 31 of 2019, at 16:02 BRT
+// Last edited on February 02 of 2019, at 18:39 BRT
 
 .section .text
 
@@ -544,6 +544,65 @@ Panic:
 1:
 	pause
 	jmp 1b
+
+.global SCEntry
+SCEntry:
+	swapgs																												// Switch into the kernel GS
+	
+	mov %gs:0x18, %r12																									// Now gs is the PsCurrentThread struct, so we need to get ->ctx
+	mov %rsp, 0x10200(%r12)																								// Save the user RSP
+	mov %r12, %rsp																										// Set RSP to ->ctx->kstack
+	add $0x10000, %rsp																									// The stack starts at the top btw
+	
+	sti																													// Now we can reenable interrupts
+	
+	push %rcx																											// Save RCX and R11, as they are used by SYSCALL/SYSRET
+	push %r11
+	
+	push $0																												// Create the Registers struct
+	mov 0x10200(%r12), %r12
+	push %r12
+	push $0
+	push $0
+	push %rcx
+	push $0
+	push $0
+	push %rax
+	push $0
+	push $0
+	push %rdx
+	push %rsi
+	push %rdi
+	push $0
+	push %r8
+	push %r9
+	push %r10
+	push $0
+	push $0
+	push $0
+	push $0
+	push $0
+	push $0
+	push $0
+	
+	mov %rsp, %rdi																										// Set the first argument as the create Registers struct
+	call ArchScHandler																									// And call ArchScHandler...
+	
+	add $128, %rsp																										// Now, we should move the stack back to the saved RCX/R11, but first, we need to get RAX (the return value)
+	mov (%rsp), %rax
+	add $64, %rsp																										// Ok, now we can go to the right location (for RCX/R11)
+	
+	pop %r11																											// Restore R11
+	pop %rcx																											// Restore RCX
+	
+	cli																													// Disable interrupts again
+	
+	mov %gs:0x18, %r12																									// Get PsCurrentProcess->ctx
+	mov 0x10200(%r12), %rsp																								// Restore the original RSP
+	
+	swapgs																												// Swap GS back to the user GS
+	
+	sysretq
 
 .section .data
 

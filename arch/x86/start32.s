@@ -1,7 +1,7 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on May 11 of 2018, at 13:21 BRT
-// Last edited on December 31 of 2019, at 16:28 BRT
+// Last edited on February 02 of 2020, at 19:15 BRT
 
 .section .text
 
@@ -82,8 +82,6 @@ ArchUserJump:
 	mov $0x23, %ax																										// Setup the segments to 0x23 (user mode data segment)
 	mov %ax, %ds
 	mov %ax, %es
-	mov %ax, %fs
-	mov %ax, %gs
 	
 	mov 8(%ebp), %eax																									// Get the stack address, we're going to put the arguments into the stack!
 	
@@ -430,21 +428,15 @@ ISRCommonStub:
 	
 	push %ds
 	push %es
-	push %fs
-	push %gs
 	
 	mov $0x10, %ax
 	mov %ax, %ds
 	mov %ax, %es
-	mov %ax, %fs
-	mov %ax, %gs
 	
 	push %esp
 	call ISRDefaultHandler
 	add $4, %esp
 	
-	pop %gs
-	pop %fs
 	pop %es
 	pop %ds
 	
@@ -479,8 +471,6 @@ Panic:
 	
 	push %ds
 	push %es
-	push %fs
-	push %gs
 	
 	push %esp
 	push (PanicErrSave)

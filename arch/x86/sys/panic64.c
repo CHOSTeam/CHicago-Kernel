@@ -1,8 +1,9 @@
 // File author is Ítalo Lima Marconato Matias
 //
 // Created on October 27 of 2018, at 21:48 BRT
-// Last edited on January 18 of 2020, at 10:10 BRT
+// Last edited on February 02 of 2020, at 17:56 BRT
 
+#include <chicago/arch/msr.h>
 #include <chicago/arch/registers.h>
 
 #include <chicago/arch.h>
@@ -68,13 +69,16 @@ Void ArchPanic(UInt32 err, PVoid priv) {
 		ConAcquireLock();																						// Nope... we don't want a dead lock, right?
 		ConSetRefresh(False);																					// Disable the automatic screen refresh
 		PanicInt(err, False);																					// Print the "Sorry" message
-
+		
+		UInt64 fs = MsrRead(MSR_FS_BASE);																		// Get the FS
+		UInt64 gs = MsrRead(MSR_GS_BASE);																		// Get the GS
+		UInt64 kgs = MsrRead(MSR_KERNEL_GS_BASE);																// Get the kernel GS
 		UInt64 cr2 = 0;																							// Get the CR2
 		Asm Volatile("mov %%cr2, %0" : "=r"(cr2));
-
+		
 		PRegisters regs = (PRegisters)priv;																		// Cast the priv into the PRegisters struct
-
-		ConWriteFormated(L"| RAX:    "); ArchPanicWriteHex(regs->rax); ConWriteFormated(L" | ");					// Print the registers
+		
+		ConWriteFormated(L"| RAX:    "); ArchPanicWriteHex(regs->rax); ConWriteFormated(L" | ");				// Print the registers
 		ConWriteFormated(L"RBX: "); ArchPanicWriteHex(regs->rbx); ConWriteFormated(L" | ");
 		ConWriteFormated(L"RCX: "); ArchPanicWriteHex(regs->rcx); ConWriteFormated(L" |\r\n");
 		
@@ -100,14 +104,18 @@ Void ArchPanic(UInt32 err, PVoid priv) {
 		
 		ConWriteFormated(L"| RFLAGS: "); ArchPanicWriteHex(regs->rflags); ConWriteFormated(L" | ");
 		ConWriteFormated(L"                        |                         |\r\n");
-
+		
 		ConWriteFormated(L"| CS:     "); ArchPanicWriteHex((UInt8)regs->cs); ConWriteFormated(L" | ");
 		ConWriteFormated(L"DS:  "); ArchPanicWriteHex((UInt8)regs->ds); ConWriteFormated(L" | ");
 		ConWriteFormated(L"ES:  "); ArchPanicWriteHex((UInt8)regs->es); ConWriteFormated(L" |\r\n");
 		
+		ConWriteFormated(L"| FS:     "); ArchPanicWriteHex(fs); ConWriteFormated(L" | ");
+		ConWriteFormated(L"GS:  "); ArchPanicWriteHex(gs); ConWriteFormated(L" | ");
+		ConWriteFormated(L"KGS: "); ArchPanicWriteHex(kgs); ConWriteFormated(L" |\r\n");
+		
 		ConWriteFormated(L"| SS:     "); ArchPanicWriteHex((UInt8)regs->ss); ConWriteFormated(L" | ");
 		ConWriteFormated(L"                        |                         |\r\n");
-
+		
 		PanicInt(err, True);																					// Print the error code
 		DispRefresh();																							// Refresh the screen
 	}

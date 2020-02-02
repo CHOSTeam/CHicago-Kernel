@@ -1,3 +1,9 @@
 **/build
 **/sctable.c*
 **/sc.h*
+*.cflags*
+*.config*
+*.creator*
+*.cxxflags*
+*.files*
+*.includes*
