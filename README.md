@@ -1,20 +1,5 @@
-# CHicago Kernel
+# Build instructions
 
-## Building it
-
-For building it from scratch, you need:
-
-	An Unix-like environment
-	CHicago Toolchain in ../toolchain (instructions below)
-	Make
-
-To build it, go to the root directory and type:
-
-	make
-
-You can append ARCH=\<ARCH\> and SUBARCH=\<SUBARCH\> to change the system architecture, VERBOSE=true to enable verbose build (good for finding compilation errors) and DEBUG=yes to disable optimizations and make a debug build.
-The output will be inside of the build folder (chkrnl-\<ARCH\>_\<SUBARCH\>)
-
-## Toolchain
-
-The CHicago Toolchain is inside of the main repository (https://github.com/CHOSTeam/CHicago), clone it, go inside of the toolchain folder, and build it for the desired architecture. After building just copy/move the whole toolchain folder to ../toolchain (relative to the kernel folder).
+You need the build environment files that are included with the main repository (https://github.com/CHOSTeam/CHicago).
+The same instructions from the main repository are valid here, but if you want to only build the kernel, you need first to select into the kernel project (type 's kernel' in the build environment prompt).
+If you clone this repository into a folder with any other name than 'kernel', you need to change the command into 's [folder name]'.
