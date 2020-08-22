@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 03 of 2020, at 22:55 BRT
- * Last edited on August 11 of 2020, at 15:35 BRT */
+ * Last edited on August 22 of 2020, at 20:00 BRT */
 
 #include <chicago/arch/arch.hxx>
 #include <chicago/arch/mm.hxx>
@@ -575,7 +575,6 @@ Void VmmInit(Void) {
 	 * of the temp entries for that, it should only use around 1MiB of physical memory for that, so we still should have plently of
 	 * physical memory for us. */
 	
-	Status status;
 #ifdef ARCH_64
 	UIntPtr hend = 0xFFFFFF0000000000, esize = 0x8000000000, *ent = Null, lvl = 1,
 #else
@@ -583,12 +582,12 @@ Void VmmInit(Void) {
 #endif
 			hstart = (ArchImp.GetKernelEnd() + esize - 1) & -esize;
 	
-	for (UIntPtr i = hstart, p; i < hend; i += esize) {
-		if ((status = CheckPageTables(i, ent, lvl)) != Status::NotMapped || lvl != 1) {
+	for (UIntPtr i = hstart, p = 0; i < hend; i += esize) {
+		if (CheckPageTables(i, ent, lvl) != Status::NotMapped || lvl != 1) {
 			continue;
 		}
 		
-		if ((status = PhysMem::ReferenceSingle(0, p)) != Status::Success) {
+		if (PhysMem::ReferenceSingle(0, p) != Status::Success) {
 			Debug->Write("PANIC! Failed to initialize the virtual memory manager\n");
 			Arch->Halt();
 		}

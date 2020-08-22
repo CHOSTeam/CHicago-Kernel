@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 06 of 2020, at 11:15 BRT
- * Last edited on August 02 of 2020, at 14:29 BRT */
+ * Last edited on August 22 of 2020, at 20:02 BRT */
 
 #include <chicago/fs.hxx>
 #include <chicago/textout.hxx>
@@ -458,8 +458,7 @@ Status FileSys::Mount(const String &Dest, const String &Source, UInt8 Flags) {
 	UInt64 inode;
 	Void *priv;
 	
-	if ((status = Open(Dest, OPEN_READ, dst)) == Status::Success ||
-		(status = Open(Dest, OPEN_DIR | OPEN_READ, dst)) == Status::Success) {
+	if (Open(Dest, OPEN_READ, dst) == Status::Success || Open(Dest, OPEN_DIR | OPEN_READ, dst) == Status::Success) {
 		return Status::AlreadyMounted;
 	} else if ((status = Open(Source, Flags, src)) != Status::Success) {
 		return status;

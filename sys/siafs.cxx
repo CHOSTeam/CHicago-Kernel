@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 16 of 2020, at 09:24 BRT
- * Last edited on August 22 of 2020, at 11:54 BRT */
+ * Last edited on August 22 of 2020, at 20:03 BRT */
 
 #include <chicago/siafs.hxx>
 #include <chicago/textout.hxx>
@@ -230,7 +230,7 @@ Status SiaFs::MountRamFs(const String &Path, Void *Location, UInt64 Length) {
 #endif
 		delete fs;
 		delete priv;
-		return Status::OutOfMemory;
+		return status;
 	}
 	
 	return Status::Success;
@@ -350,10 +350,9 @@ Void SiaFs::Close(const Void *Priv, UInt64) {
 	/* The PrivData struct exists so we don't need to ->Read the file header all the time, we only need to free it, as
 	 * the FS struct is going to be freed later (on the unmount function). */
 	
-	Status status;
 	const SiaFs::PrivData *priv = Null;
 	
-	if ((status = CheckPrivData(Priv, priv)) == Status::Success && !String("/").Compare(priv->Hdr.Name)) {
+	if (CheckPrivData(Priv, priv) == Status::Success && !String("/").Compare(priv->Hdr.Name)) {
 		delete priv;
 	}
 }
@@ -599,7 +598,7 @@ Status SiaFs::Search(const Void *Priv, UInt64, const Char *Name, Void **OutPriv,
 	
 	if (*OutPriv != Null) {
 		StrCopyMemory(&((SiaFs::PrivData*)*OutPriv)->Hdr, &hdr, sizeof(hdr));
-		*OutLen = hdr.Flags & SIA_FLAGS_DIRECTORY ? 0 : hdr.Size;
+		*OutLen = (hdr.Flags & SIA_FLAGS_DIRECTORY) ? 0 : hdr.Size;
 	}
 	
 	return *OutPriv == Null ? Status::OutOfMemory : Status::Success;

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on July 22 of 2020, at 21:13 BRT */
+ * Last edited on August 22 of 2020, at 20:01 BRT */
 
 #include <chicago/mm.hxx>
 #include <chicago/string.hxx>
@@ -206,7 +206,7 @@ Status PhysMem::ReferenceContig(UIntPtr Start, UIntPtr Count, UIntPtr &Out) {
 	
 	Start &= MM_PAGE_MASK;
 	
-	for (UIntPtr i = 0, discard; i < Count; i++) {
+	for (UIntPtr i = 0, discard = 0; i < Count; i++) {
 		if ((status = ReferenceSingle(Start + i * MM_PAGE_SIZE, discard)) != Status::Success) {
 			DereferenceContig(Start, Count);
 			return status;
