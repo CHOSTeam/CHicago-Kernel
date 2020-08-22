@@ -1,3 +1,7 @@
+<p align=center>
+	<a href="https://www.codacy.com/manual/CHOSTeam/CHicago-Kernel?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=CHOSTeam/CHicago-Kernel&amp;utm_campaign=Badge_Grade"><img src="https://app.codacy.com/project/badge/Grade/7aaacd97d3fb4dc983105849412666ef"></img></a>
+</p>
+
 # Build instructions
 
 You need the build environment files that are included with the main repository (<https://github.com/CHOSTeam/CHicago>).
