@@ -1,14 +1,14 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 29 of 2020, at 11:24 BRT
- * Last edited on August 22 of 2020, at 12:25 BRT */
+ * Last edited on August 23 of 2020, at 17:01 BRT */
 
 #include <chicago/arch/desctables.hxx>
 #include <chicago/arch/port.hxx>
 #include <chicago/arch.hxx>
 #include <chicago/textout.hxx>
 
-static InterruptHandlerFunc InterruptHandlers[224];
+static InterruptHandlerFunc InterruptHandlers[224] = { Null };
 static UInt8 IdtEntries[256][2 * sizeof(UIntPtr)];
 static DescTablePointer IdtPointer;
 
@@ -50,11 +50,17 @@ static const Char *ExceptionStrings[32] = {
 extern "C" Void IdtDefaultHandler(Registers *Regs) {
 	/* 'regs' contains information about the interrupt that we received, we can determine whatever this is an exception or some
 	 * device interrupt using the interrupt number: 0-31 is ALWAYS exceptions (at least on the way that we configured the PIC;
-	 * 32-255 are device interrupts/OS interrupts (like system calls). */
+	 * 32-255 are device interrupts/OS interrupts (like system calls).
+	 * For interrupts 32-47 need to send the EOI to the PIC, and NOT crash if the handler isn't installed. For 48-255 we need
+	 * to crash if the handler isn't installed. */
 	
 	if (Regs->IntNum >= 32 && Regs->IntNum <= 47) {
 		/* Send the EOI signal to the master PIC (if the interrupt number is between 40-47, we need to send it to the slave PIC
 		 * as well). */
+		
+		if (InterruptHandlers[Regs->IntNum - 32] != Null) {
+			InterruptHandlers[Regs->IntNum - 32](Regs);
+		}
 		
 		if (Regs->IntNum >= 40) {
 			Port::OutByte(0xA0, 0x20);
@@ -73,9 +79,7 @@ extern "C" Void IdtDefaultHandler(Registers *Regs) {
 					 ExceptionStrings[Regs->IntNum], Regs->Eip, cr2);
 #endif
 		Arch->Halt();
-	}
-	
-	if (InterruptHandlers[Regs->IntNum - 32] != Null) {
+	} else if (InterruptHandlers[Regs->IntNum - 32] != Null) {
 		InterruptHandlers[Regs->IntNum - 32](Regs);
 	} else {
 		Debug->Write("PANIC! Unhandled interrupt 0x%02x\n", Regs->IntNum);
