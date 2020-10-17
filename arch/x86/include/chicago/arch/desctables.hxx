@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 29 of 2020, at 09:47 BRT
- * Last edited on August 22 of 2020, at 12:26 BRT */
+ * Last edited on October 09 of 2020, at 23:16 BRT */
 
 #ifndef __CHICAGO_ARCH_DESCTABLES_HXX__
 #define __CHICAGO_ARCH_DESCTABLES_HXX__
@@ -11,17 +11,9 @@
 struct packed TSSEntry {
 #ifdef ARCH_64
 	UInt32 Res0;
-	UInt64 Rsp0;
-	UInt64 Rsp1;
-	UInt64 Rsp2;
+	UInt64 Rsp0, Rsp1, Rsp2;
 	UInt64 Res1;
-	UInt64 Ist1;
-	UInt64 Ist2;
-	UInt64 Ist3;
-	UInt64 Ist4;
-	UInt64 Ist5;
-	UInt64 Ist6;
-	UInt64 Ist7;
+	UInt64 Ist1, Ist2, Ist3, Ist4, Ist5, Ist6, Ist7;
 	UInt64 Res2;
 	UInt16 Res3;
 #else
@@ -35,20 +27,8 @@ struct packed TSSEntry {
 	UInt32 Cr3;
 	UInt32 Eip;
 	UInt32 EFlags;
-	UInt32 Eax;
-	UInt32 Ecx;
-	UInt32 Edx;
-	UInt32 Ebx;
-	UInt32 Esp;
-	UInt32 Ebp;
-	UInt32 Esi;
-	UInt32 Edi;
-	UInt32 Es;
-	UInt32 Cs;
-	UInt32 Ss;
-	UInt32 Ds;
-	UInt32 Fs;
-	UInt32 Gs;
+	UInt32 Eax, Ecx, Edx, Ebx, Esp, Ebp, Esi, Edi;
+	UInt32 Es, Cs, Ss, Ds, Fs, Gs;
 	UInt32 Ldt;
 	UInt16 Rrap;
 #endif

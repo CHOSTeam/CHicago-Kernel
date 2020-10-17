@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on August 07 of 2020, at 19:20 BRT
- * Last edited on August 11 of 2020, at 15:35 BRT */
+ * Last edited on October 09 of 2020, at 22:12 BRT */
 
 #include <chicago/display.hxx>
 #include <chicago/textout.hxx>
@@ -9,10 +9,10 @@
 static ConsoleImpl ConsoleImp;
 
 Void ConsoleImpl::InitConsoleInterface(UInt32 Background, UInt32 Foreground, Boolean CursorEnabled) {
-	/* The console can be "initialized" multiple times, but you can also set the background, foreground and everything else
-	 * by just accessing the Console variable.
-	 * When we re-add processes/threads we should probably make this function reset the console ownership, because probably
-	 * the kernel wants to get exclusive access to the display to show the panic function. */
+	/* The console can be "initialized" multiple times, but you can also set the background, foreground
+	 * and everything else by just accessing the Console variable.
+	 * When we re-add processes/threads we should probably make this function reset the console ownership,
+	 * because probably the kernel wants to get exclusive access to the display to show the panic function. */
 	
 	ConsoleImp.Background = Background;
 	ConsoleImp.Foreground = Foreground;
@@ -41,8 +41,9 @@ Void ConsoleImpl::AfterWrite(Void) {
 }
 
 Void ConsoleImpl::WriteInt(Char Value) {
-	/* We always have to "undraw" the cursor in the beginning, but we only have to draw it in the end if the cursor is enabled.
-	 * Let's save the size of the font into a vector, and the display buffer as well, just to remove a bit of redundancy. */
+	/* We always have to "undraw" the cursor in the beginning, but we only have to draw it in the end if the
+	 * cursor is enabled. Let's save the size of the font into a vector, and the display buffer as well, just
+	 * to remove a bit of redundancy. */
 	
 	Vector2D<IntPtr> fsize(DefaultFontData.Width, DefaultFontData.Height);
 	Image &buf = Display::GetFrontBuffer();
@@ -51,8 +52,8 @@ Void ConsoleImpl::WriteInt(Char Value) {
 	
 	switch (Value) {
 	case '\b': {
-		/* Going backwards is just decreasing the X/Y variables, depending on if they are/aren't zero, and "undrawing" the
-		 * character that is at the position that we moved into. */
+		/* Going backwards is just decreasing the X/Y variables, depending on if they are/aren't zero, and
+		 * "undrawing" the character that is at the position that we moved into. */
 		
 		if (Position.X > 0) {
 			Position.X--;
@@ -66,8 +67,8 @@ Void ConsoleImpl::WriteInt(Char Value) {
 		break;
 	}
 	case '\n': {
-		/* New Line and Carriage Return are connected here (you only need \n to go to the next line), New Line increases the
-		 * Y position (as you may already imagine), and Carriage Return sets the X position to zero. */
+		/* New Line and Carriage Return are connected here (you only need \n to go to the next line), New Line
+		 * increases the Y position (as you may already imagine), and Carriage Return sets the X position to zero. */
 		
 		Position.Y++;
 	}
@@ -76,8 +77,8 @@ Void ConsoleImpl::WriteInt(Char Value) {
 		break;
 	}
 	case '\t': {
-		/* Tab size is 4, you can change it by changing the 4 into whatever value you want, and the 3 into the value you
-		 * choose - 1. */
+		/* Tab size is 4, you can change it by changing the 4 into whatever value you want, and the 3 into the
+		 * value you choose - 1. */
 		
 		Position.X = (Position.X + 4) & ~3;
 		

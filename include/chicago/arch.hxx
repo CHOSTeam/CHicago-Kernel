@@ -1,12 +1,12 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 25 of 2020, at 09:26 BRT
- * Last edited on August 22 of 2020, at 11:35 BRT */
+ * Last edited on October 17 of 2020, at 11:53 BRT */
 
 #ifndef __CHICAGO_ARCH_HXX__
 #define __CHICAGO_ARCH_HXX__
 
-#include <chicago/status.hxx>
+#include <chicago/elf.hxx>
 
 /* Maybe we should later we should move all the kernel classes into a namespace... */
 
@@ -16,8 +16,10 @@ public:
 	 * to halt etc.) */
 	
 	virtual Void Halt(Void) = 0;
+	virtual Status DoElfRelocation(UInt32, const Elf::SectHeader*, const UInt8*,
+								   const Elf::RelHeader*) = 0;
 	
-	/* virtual memory management. */
+	/* Virtual memory management. */
 	
 	virtual Status GetPhys(Void*, UIntPtr&) = 0;
 	virtual Status Query(Void*, UInt32&) = 0;

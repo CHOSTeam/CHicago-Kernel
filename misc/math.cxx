@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 11:31 BRT
- * Last edited on July 29 of 2020, at 09:56 BRT */
+ * Last edited on October 09 of 2020, at 20:27 BRT */
 
 #include <chicago/math.hxx>
 
@@ -25,23 +25,28 @@ IntPtr Math::Map(IntPtr SrcMin, IntPtr SrcMax, IntPtr DstMin, IntPtr DstMax, Int
 	return DstMin + (DstMax - DstMin) * ((Float)(Value - SrcMin) / (SrcMax - SrcMin));
 }
 
-Float Math::Pow(Float Value, UInt8 Power) {
-	/* The pow function raises one number to a specific power, this is not hard to implement,
-	 * and, with optimizations enabled, probably the compiler is going to optimize the hell
-	 * out of this function, even if it don't, this is at least faster than doing it on a
-	 * recursive way... */
+Float Math::Pow(Float Value, Int8 Power) {
+	/* Remember how I said that probably the compiler is going to optimize this function?
+	 * Forget that, I'm changing that O(Power) loop into a O(log(Power)) loop (using the
+	 * fact that x^(odd n) is x(x*x)^(n/2), and that x^(even n) is (x*x)^(n/2)). */
 	
 	if (Power == 0) {
 		return 1;
+	} else if (Power < 0) {
+		return 1.f / Pow(Value, -Power);
 	}
 	
-	Float ret = Value;
+	Float pref = 1;
 	
-	while (Power != 0 && --Power) {
-		ret *= Value;
+	for (; Power != 1; Power >>= 1) {
+		if (Power & 1) {
+			pref *= Value;
+		}
+		
+		Value *= Value;
 	}
 	
-	return ret;
+	return Value * pref;
 }
 
 Float Math::Sine(Float Value) {

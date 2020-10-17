@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 29 of 2020, at 10:17 BRT
- * Last edited on August 07 of 2020, at 19:59 BRT */
+ * Last edited on October 09 of 2020, at 20:48 BRT */
 
 #include <chicago/arch/desctables.hxx>
 #include <chicago/string.hxx>
@@ -16,8 +16,8 @@ static TSSEntry GdtTSSEntry;
 static DescTablePointer GdtPointer;
 
 no_inline static Void GdtSetGate(UInt8 Num, UIntPtr Base, UIntPtr Limit, UInt8 Type, UInt8 Granurality) {	
-	/* We could probably make a packed struct for this (like we're using for the TSS), but for now, let's encoding everything
-	 * manually, starting with the base and the limit. */
+	/* We could probably make a packed struct for this (like we're using for the TSS), but for now, let's
+	 * encode everything manually, starting with the base and the limit. */
 	
 	GdtEntries[Num][0] = Limit & 0xFF;
 	GdtEntries[Num][1] = (Limit >> 8) & 0xFF;
@@ -28,14 +28,15 @@ no_inline static Void GdtSetGate(UInt8 Num, UIntPtr Base, UIntPtr Limit, UInt8 T
 	GdtEntries[Num][4] = (Base >> 16) & 0xFF;
 	GdtEntries[Num][7] = (Base >> 24) & 0xFF;
 	
-	/* And... encode the type? It is just a normal byte that we're going to set, we don't exactly have anything to encode here... */
+	/* And... encode the type? It is just a normal byte that we're going to set, we don't exactly have
+	 * anything to encode here... */
 	
 	GdtEntries[Num][5] = Type;
 }
 
 no_inline static Void GdtSetTSS(UInt8 Num, UIntPtr Stack) {
-	/* We're supposed to only call this one time, if that is not the case, well, F***.
-	 * First, (subarch-specific) set the right GDT entry(ies). */
+	/* We're supposed to only call this one time, if that is not the case, well, F***. First, (subarch-specific)
+	 * set the right GDT entry(ies). */
 	
 	UIntPtr base = (UIntPtr)&GdtTSSEntry;
 	
@@ -49,8 +50,8 @@ no_inline static Void GdtSetTSS(UInt8 Num, UIntPtr Stack) {
 	GdtSetGate(Num, base, base + sizeof(TSSEntry), 0xE9, 0x00);
 #endif
 	
-	/* Now we can clean the TSS entry struct, and fill the fields we need (which again, those fields are subarch-specific, except
-	 * for the iomap_base). */
+	/* Now we can clean the TSS entry struct, and fill the fields we need (which again, those fields are
+	 * subarch-specific, except for the iomap_base). */
 	
 	StrSetMemory(&GdtTSSEntry, 0, sizeof(TSSEntry));
 	
@@ -65,8 +66,8 @@ no_inline static Void GdtSetTSS(UInt8 Num, UIntPtr Stack) {
 }
 
 Void GdtInit(Void) {
-	/* Setup all the GDT entries: 0 is the null entry, 1 is the kernel code entry, 2 is kernel date entry, 3 is the user code entry,
-	 * 4 is the user date entry and, finally, 5 (and 6 on x86-64) is the TSS entry. */
+	/* Setup all the GDT entries: 0 is the null entry, 1 is the kernel code entry, 2 is kernel date entry, 3 is the
+	 * user code entry, 4 is the user date entry and, finally, 5 (and 6 on x86-64) is the TSS entry. */
 	
 	GdtSetGate(0, 0, 0, 0, 0);
 	
@@ -86,7 +87,8 @@ Void GdtInit(Void) {
 	
 	GdtSetTSS(5, 0);
 	
-	/* Now, we just need to fill the GDT pointer, load the new GDT, reload all the segment registers, and flush the TSS. */
+	/* Now, we just need to fill the GDT pointer, load the new GDT, reload all the segment registers, and flush the
+	 * TSS. */
 	
 	GdtPointer.Limit = sizeof(GdtEntries) - 1;
 	GdtPointer.Base = (UIntPtr)GdtEntries;

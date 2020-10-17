@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 03 of 2020, at 22:55 BRT
- * Last edited on August 22 of 2020, at 20:00 BRT */
+ * Last edited on October 09 of 2020, at 20:45 BRT */
 
 #include <chicago/arch/arch.hxx>
 #include <chicago/arch/mm.hxx>
@@ -32,10 +32,11 @@ static inline Int8 CheckTableEntry(UIntPtr TableAddress, UIntPtr Index, UIntPtr 
 	
 	Entry = GetTableEntry(TableAddress, Index, IndexShift);
 	
-	/* Now, we need to check two things: first, if this isn't a present page, return -1 (error), if we're mapping a new virtual
-	 * address, the map function should manually create that entry, if it's any other function, it should return that the memory
-	 * address isn't mapped. If the entry is a huge page, it is already mapped, and the map function should fail, or whatever
-	 * function called us should know that the page is already mapped. */
+	/* Now, we need to check two things: first, if this isn't a present page, return -1 (error), if we're
+	 * mapping a new virtual address, the map function should manually create that entry, if it's any other
+	 * function, it should return that the memory address isn't mapped. If the entry is a huge page, it is
+	 * already mapped, and the map function should fail, or whatever function called us should know that
+	 * the page is already mapped. */
 	
 	if (!(*Entry & PAGE_PRESENT)) {
 		return -1;
@@ -65,8 +66,9 @@ static Status CheckPageTables(UIntPtr VirtAddr, UIntPtr *&OutEnt, UIntPtr &CurLv
 		return Status::InvalidArg;
 	}
 	
-	/* We need to check each level of the page tables, there are 4 different levels on x86-64, and 2 on x86-32. This checking may break
-	 * out early, if we find a huge page in any of the levels. Also, save the page indexes, as it makes the code a bit more readable. */
+	/* We need to check each level of the page tables, there are 4 different levels on x86-64, and 2 on x86-32.
+	 * This checking may break out early, if we find a huge page in any of the levels. Also, save the page indexes,
+	 * as it makes the code a bit more readable. */
 	
 	Int8 ret = -1;
 	
@@ -76,7 +78,8 @@ static Status CheckPageTables(UIntPtr VirtAddr, UIntPtr *&OutEnt, UIntPtr &CurLv
 	UIntPtr pml4e = (VirtAddr >> 39) & 0x1FF, pdpe = (VirtAddr >> 30) & 0x1FF,
 			pde = (VirtAddr >> 21) & 0x1FF, pte = (VirtAddr >> 12) & 0x1FF;
 	
-	/* For x86-64, we're also going to need some special values to add to the base table address (starting with the PDP entries). */
+	/* For x86-64, we're also going to need some special values to add to the base table address (starting with
+	 * the PDP entries). */
 	
 	UIntPtr pml4a = (VirtAddr >> 27) & 0x1FF000, pdpa = (VirtAddr >> 18) & 0x3FFFF000,
 			pda = (VirtAddr >> 9) & 0x7FFFFFF000;
@@ -134,7 +137,8 @@ static Status CheckPageTables(UIntPtr VirtAddr, UIntPtr *&OutEnt, UIntPtr &CurLv
 }
 
 Status ArchImpl::GetPhys(Void *VirtAddr, UIntPtr &Out) {
-	/* We can use the CheckPageTables function, as it will return the last entry (or an error status, if the memory is not mapped. */
+	/* We can use the CheckPageTables function, as it will return the last entry (or an error status, if the
+	 * memory is not mapped. */
 	
 	Status status;
 	UIntPtr *ent = Null, lvl = 1;
@@ -149,8 +153,8 @@ Status ArchImpl::GetPhys(Void *VirtAddr, UIntPtr &Out) {
 }
 
 Status ArchImpl::Query(Void *VirtAddr, UInt32 &Out) {
-	/* Here we can also use the CheckPageTables function! As it returns the whole entry, instead of returning only the physical
-	 * address! */
+	/* Here we can also use the CheckPageTables function! As it returns the whole entry, instead of returning
+	 * only the physical address! */
 	
 	Status status;
 	UIntPtr *ent = Null, lvl = 1;
@@ -167,8 +171,8 @@ Status ArchImpl::Query(Void *VirtAddr, UInt32 &Out) {
 	Out = MM_MAP_READ | MM_MAP_EXEC;
 #endif
 	
-	/* And let's parse the page flags, there are some flags that only exists on x86-64, and some flags that implicitly means that
-	 * another flag should also be set, so let's handle all of that. */
+	/* And let's parse the page flags, there are some flags that only exists on x86-64, and some flags that
+	 * implicitly means that another flag should also be set, so let's handle all of that. */
 	
 	if (*ent & PAGE_WRITE) {
 		Out |= MM_MAP_WRITE;
@@ -198,7 +202,8 @@ Status ArchImpl::Query(Void *VirtAddr, UInt32 &Out) {
 }
 
 Status ArchImpl::MapTemp(UIntPtr PhysAddr, UInt32 Flags, Void *&Out) {
-	/* We should probably try to implement a differnt way to do this later, but, for now, let's just brute force a free address. */
+	/* We should probably try to implement a different way to do this later, but, for now, let's just brute force
+	 * a free address. */
 	
 	UInt32 discard;
 	UIntPtr pz = (Flags & MM_MAP_HUGE) ? MM_HUGE_PAGE_SIZE : MM_PAGE_SIZE;
@@ -218,8 +223,9 @@ Status ArchImpl::MapTemp(UIntPtr PhysAddr, UInt32 Flags, Void *&Out) {
 }
 
 Status ArchImpl::Map(Void *VirtAddr, UIntPtr PhysAddr, UInt32 Flags) {
-	/* Before ANYTHING, we need to align the addresses, if the MM_MAP_HUGE flag is set, we need to align it to the huge page size,
-	 * if it is not set, just align it to the normal page size. After that, we need to convert the map flags into page flags. */
+	/* Before ANYTHING, we need to align the addresses, if the MM_MAP_HUGE flag is set, we need to align it to the
+	 * huge page size, if it is not set, just align it to the normal page size. After that, we need to convert the
+	 * map flags into page flags. */
 	
 	if (Flags & MM_MAP_HUGE) {
 		VirtAddr = (Void*)((UIntPtr)VirtAddr & MM_HUGE_PAGE_MASK);
@@ -251,8 +257,8 @@ Status ArchImpl::Map(Void *VirtAddr, UIntPtr PhysAddr, UInt32 Flags) {
 	}
 #endif
 	
-	/* Now, it's time to recursevely alloc all the page levels until we reach the one where we need to put the phys address we're
-	 * going to map. */
+	/* Now, it's time to recursevely alloc all the page levels until we reach the one where we need to put the
+	 * phys address we're going to map. */
 	
 	Status status;
 	
@@ -263,10 +269,10 @@ Status ArchImpl::Map(Void *VirtAddr, UIntPtr PhysAddr, UInt32 Flags) {
 #endif
 	
 	while ((status = CheckPageTables((UIntPtr)VirtAddr, ent, lvl)) != Status::Success) {
-		/* If we reached this code block, the current level doesn't exists, and we need to manually alloc it. We only need to alloc
-		 * the physical address, as it will automatically get a virtual address (thanks to the recursive mapping that we did).
-		 * But wait, do we really need to alloc it? If we are already at the wanted level, we don't need to manually alloc a new
-		 * physical address! */
+		/* If we reached this code block, the current level doesn't exists, and we need to manually alloc it. We
+		 * only need to alloc the physical address, as it will automatically get a virtual address (thanks to the
+		 * recursive mapping that we did). But wait, do we really need to alloc it? If we are already at the wanted
+		 * level, we don't need to manually alloc a new physical address! */
 		
 		if (lvl == dlvl) {
 			break;
@@ -305,8 +311,8 @@ Status ArchImpl::Map(Void *VirtAddr, UIntPtr PhysAddr, UInt32 Flags) {
 }
 
 Status ArchImpl::Unmap(Void *VirtAddr) {
-	/* Unmapping is pretty easy, check all the page table levels, if anything except for Status::Success is the return value, probably
-	 * this address is not mapped, else, unset the present bit on the entry. */
+	/* Unmapping is pretty easy, check all the page table levels, if anything except for Status::Success is the
+	 * return value, probably this address is not mapped, else, unset the present bit on the entry. */
 	
 	Status status;
 	UIntPtr *ent = Null, lvl = 1;
@@ -322,8 +328,8 @@ Status ArchImpl::Unmap(Void *VirtAddr) {
 }
 
 Status ArchImpl::CreateDirectory(UIntPtr &Out) {
-	/* We need to get the outer most page table level (PML4 on x86-64 and PD on x86-32), after saving that, we need to allocate one
-	 * physical page for the new directory, and temp map it into the memory. */
+	/* We need to get the outer most page table level (PML4 on x86-64 and PD on x86-32), after saving that, we need
+	 * to allocate one physical page for the new directory, and temp map it into the memory. */
 	
 #ifdef ARCH_64
 	UIntPtr *cdir = (UIntPtr*)0xFFFFFFFFFFFFF000;
@@ -340,9 +346,9 @@ Status ArchImpl::CreateDirectory(UIntPtr &Out) {
 		return status;
 	}
 	
-	/* Now, let's copy all the entries from the current directory into the new one, we have to remember that we SHOULDN'T copy the user
-	 * pages, that we should make the recursive page directory entry, and that we SHOULDN'T copy any of the pages that we use for temp
-	 * mappings. */
+	/* Now, let's copy all the entries from the current directory into the new one, we have to remember that we
+	 * SHOULDN'T copy the user pages, that we should make the recursive page directory entry, and that we SHOULDN'T
+	 * copy any of the pages that we use for temp mappings. */
 	
 #ifdef ARCH_64
 	UIntPtr max = 512;
@@ -370,19 +376,21 @@ Status ArchImpl::CreateDirectory(UIntPtr &Out) {
 	return Status::Success;
 }
 
-/* We could move this function into two files (one for x86-32 and one for x86-64), but, at least for now, let's implement all here. */
+/* We could move this function into two files (one for x86-32 and one for x86-64), but, at least for now, let's
+ * implement all here. */
 
 #ifdef ARCH_64
 Status ArchImpl::FreeDirectory(UIntPtr Directory) {
-	/* We need to check if the directory is valid, and if we're not trying to free the current directory, freeing the current directory
-	 * is unsupported (well, we could go into the kernel directory, but for now let's just return InvalidArg). */
+	/* We need to check if the directory is valid, and if we're not trying to free the current directory, freeing the
+	 * current directory is unsupported (well, we could go into the kernel directory, but for now let's just return
+	 * InvalidArg). */
 	
 	if (Directory == 0 || Directory == GetCurrentDirectory()) {
 		return Status::InvalidArg;
 	}
 	
-	/* We need to map the directory into memory, fortunally, we have a function that allow us to find a temp address to map it, we just
-	 * need to remember to unmap it later, else we may run out of temp space later on. */
+	/* We need to map the directory into memory, fortunally, we have a function that allow us to find a temp address to
+	 * map it, we just need to remember to unmap it later, else we may run out of temp space later on. */
 	
 	Status ret = Status::Success;
 	Status status;
@@ -392,9 +400,9 @@ Status ArchImpl::FreeDirectory(UIntPtr Directory) {
 		return status;
 	}
 	
-	/* Now there are somethings to take in consideration: The kernel starts at the page directory index 256, so we should only free things
-	 * below that index. Also, we need to free the temp mappings, and they are at the page directory index 510 (yes, x86-64 have half the
-	 * amount of entries per directory level, but double the amount of levels). */
+	/* Now there are somethings to take in consideration: The kernel starts at the page directory index 256, so we should
+	 * only free things below that index. Also, we need to free the temp mappings, and they are at the page directory index
+	 * 510 (yes, x86-64 have half the amount of entries per directory level, but double the amount of levels). */
 	
 	for (UIntPtr i = 0; i < 512; i++) {
 		if (i >= 256 && i != 510) {
@@ -403,7 +411,8 @@ Status ArchImpl::FreeDirectory(UIntPtr Directory) {
 			continue;
 		}
 		
-		/* Now that we're sure that this entry doesn't contain critical kernel data, and is actually present, let's go map its PDP. */
+		/* Now that we're sure that this entry doesn't contain critical kernel data, and is actually present, let's go map
+		 * its PDP. */
 		
 		UIntPtr *pdp = Null;
 		
@@ -417,8 +426,8 @@ Status ArchImpl::FreeDirectory(UIntPtr Directory) {
 		}
 		
 		for (UIntPtr j = 0; j < 512; j++) {
-			/* One extra check we need to do here (and in pretty much all the other level, except for the PT, and, of course, the PML4):
-			 * We need to check if this is a huge page, if it is, we don't need to iterate through it. */
+			/* One extra check we need to do here (and in pretty much all the other level, except for the PT, and, of
+			 * course, the PML4): We need to check if this is a huge page, if it is, we don't need to iterate through it. */
 			
 			if (!(pdp[j] & PAGE_PRESENT)) {
 				continue;
@@ -444,7 +453,8 @@ Status ArchImpl::FreeDirectory(UIntPtr Directory) {
 				if (!(pd[j] & PAGE_PRESENT)) {
 					continue;
 				} else if (pd[j] & PAGE_HUGE) {
-					/* And now we DO support huge PD pages (2MiB pages), so we actually have a macro to get the physical address. */
+					/* And now we DO support huge PD pages (2MiB pages), so we actually have a macro to get the physical
+					 * address. */
 					
 					PhysMem::DereferenceSingle(pd[k] & MM_HUGE_PAGE_MASK);
 					continue;
@@ -488,15 +498,16 @@ Status ArchImpl::FreeDirectory(UIntPtr Directory) {
 }
 #else
 Status ArchImpl::FreeDirectory(UIntPtr Directory) {
-	/* We need to check if the directory is valid, and if we're not trying to free the current directory, freeing the current directory
-	 * is unsupported (well, we could go into the kernel directory, but for now let's just return InvalidArg). */
+	/* We need to check if the directory is valid, and if we're not trying to free the current directory, freeing the
+	 * current directory is unsupported (well, we could go into the kernel directory, but for now let's just return
+	 * InvalidArg). */
 	
 	if (Directory == 0 || Directory == GetCurrentDirectory()) {
 		return Status::InvalidArg;
 	}
 	
-	/* We need to map the directory into memory, fortunally, we have a function that allow us to find a temp address to map it, we just
-	 * need to remember to unmap it later, else we may run out of temp space later on. */
+	/* We need to map the directory into memory, fortunally, we have a function that allow us to find a temp address to
+	 * map it, we just need to remember to unmap it later, else we may run out of temp space later on. */
 	
 	Status ret = Status::Success;
 	Status status;
@@ -506,8 +517,9 @@ Status ArchImpl::FreeDirectory(UIntPtr Directory) {
 		return status;
 	}
 	
-	/* Now there are somethings to take in consideration: The kernel starts at the page directory index 768, so we should only free things
-	 * below that index. Also, we need to free the temp mappings, and they are at the page directory index 1022. */
+	/* Now there are somethings to take in consideration: The kernel starts at the page directory index 768, so we
+	 * should only free things below that index. Also, we need to free the temp mappings, and they are at the page
+	 * directory index 1022. */
 	
 	for (UIntPtr i = 0; i < 1024; i++) {
 		if (i >= 768 && i != 1022) {
@@ -519,8 +531,8 @@ Status ArchImpl::FreeDirectory(UIntPtr Directory) {
 			continue;
 		}
 		
-		/* We need to make the page table into memory, but this time, if the mapping fail, we're not going to exit, let's just skip this
-		 * entry (but still remember what the status was, so we can return it later. */
+		/* We need to make the page table into memory, but this time, if the mapping fail, we're not going to exit,
+		 * let's just skip this entry (but still remember what the status was, so we can return it later. */
 		
 		UIntPtr *pt = Null;
 		
@@ -551,8 +563,8 @@ Status ArchImpl::FreeDirectory(UIntPtr Directory) {
 #endif
 
 UIntPtr ArchImpl::GetCurrentDirectory(Void) {
-	/* The physical address of the current page directory is (or at least should be) always be on the CR3 register. We can read it to get
-	 * the current page directory... */
+	/* The physical address of the current page directory is (or at least should be) always be on the CR3 register.
+	 * We can read it to get the current page directory... */
 	
 	UIntPtr ret;
 	asm volatile("mov %%cr3, %0" : "=r"(ret));
@@ -571,9 +583,9 @@ Void ArchImpl::SwitchDirectory(UIntPtr Directory) {
 }
 
 Void VmmInit(Void) {
-	/* We need to prealloc the PD/PML4 entries for the kernel heap, let's use all the memory from the end of the kernel until the start
-	 * of the temp entries for that, it should only use around 1MiB of physical memory for that, so we still should have plently of
-	 * physical memory for us. */
+	/* We need to prealloc the PD/PML4 entries for the kernel heap, let's use all the memory from the end of the kernel
+	 * until the start of the temp entries for that, it should only use around 1MiB of physical memory for that, so we
+	 * still should have plently of physical memory for us. */
 	
 #ifdef ARCH_64
 	UIntPtr hend = 0xFFFFFF0000000000, esize = 0x8000000000, *ent = Null, lvl = 1,

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 16 of 2020, at 09:24 BRT
- * Last edited on August 22 of 2020, at 20:03 BRT */
+ * Last edited on October 10 of 2020, at 13:26 BRT */
 
 #include <chicago/siafs.hxx>
 #include <chicago/textout.hxx>
@@ -23,12 +23,11 @@ const FsImpl SiaFs::Impl = {
 	"SiaFs"
 };
 
-MemFs::MemFs(Void *Location, UInt64 Length) :
-			 Location(Location), Length(Length) { }
+MemFs::MemFs(Void *Location, UInt64 Length) : Location(Location), Length(Length) { }
 
 Status MemFs::MakeFile(Void *Location, UInt64 Length, UInt8 Flags, File &Out) {
-	/* MemFs files are always going to be files, never directories, as said in the .hxx file, MemFs is mostly used for initrd
-	 * and things like that. You should ALWAYS call this function to mount MemFs files. */
+	/* MemFs files are always going to be files, never directories, as said in the .hxx file, MemFs is mostly
+	 * used for initrd and things like that. You should ALWAYS call this function to mount MemFs files. */
 	
 	if (Flags & OPEN_DIR) {
 		return Status::NotDirectory;
@@ -46,10 +45,11 @@ Status MemFs::MakeFile(Void *Location, UInt64 Length, UInt8 Flags, File &Out) {
 }
 
 Void MemFs::Close(const Void *Priv, UInt64) {
-	/* MakeFile allocates a new instance of the MemFs class, if we don't implement the ::Close function we can't free it.
-	 * 'Priv' contains the MemFs pointer casted into a void pointer, we still need to check it (just to make sure that
-	 * the kernel/user didn't went crazy).
-	 * I only discovered today (July 17 2020) that I can omit the variable name here to stop the unused variable warnings. */
+	/* MakeFile allocates a new instance of the MemFs class, if we don't implement the ::Close function we can't
+	 * free it. 'Priv' contains the MemFs pointer casted into a void pointer, we still need to check it (just to
+	 * make sure that the kernel/user didn't went crazy).
+	 * I only discovered today (July 17 2020) that I can omit the variable name here to stop the unused variable
+	 * warnings. */
 	
 	if (Priv != Null) {
 		delete (const MemFs*)Priv;
@@ -57,8 +57,8 @@ Void MemFs::Close(const Void *Priv, UInt64) {
 }
 
 Status MemFs::Read(const Void *Priv, UInt64, UInt64 Offset, UInt64 Length, Void *Buffer, UInt64 *Count) {
-	/* Only the Close, Read and Write functions are implemented, to make sure that there is no way to Mount or Open MemFs,
-	 * as the, only way to do it SHOULD BE using the static MakeFile function. */
+	/* Only the Close, Read and Write functions are implemented, to make sure that there is no way to Mount or
+	* Open MemFs, as the, only way to do it SHOULD BE using the static MakeFile function. */
 	
 	const MemFs *fs = (MemFs*)Priv;
 	
@@ -77,8 +77,7 @@ Status MemFs::Read(const Void *Priv, UInt64, UInt64 Offset, UInt64 Length, Void 
 	return Status::Success;
 }
 
-Status MemFs::Write(const Void *Priv, UInt64 INode, UInt64 Offset, UInt64 Length, const Void *Buffer, UInt64 *Count) {
-	(Void)INode;
+Status MemFs::Write(const Void *Priv, UInt64, UInt64 Offset, UInt64 Length, const Void *Buffer, UInt64 *Count) {
 	MemFs *fs = (MemFs*)Priv;
 	
 	if (Priv == Null || Buffer == Null) {
@@ -100,8 +99,8 @@ SiaFs::SiaFs(const File &Source, const Header &Hdr, Void *ToFree, UIntPtr Expand
 			 Source(Source), Hdr(Hdr), ToFree(ToFree), ExpandLoc(ExpandLoc) { }
 
 SiaFs::~SiaFs(Void) {
-	/* If we had to allocate the memory, we also need to free it, as the memory is not going to magically be freed by some
-	 * mage. */
+	/* If we had to allocate the memory, we also need to free it, as the memory is not going to magically be freed
+	 * by some mage. */
 	
 	if (ToFree) {
 		delete (UInt8*)ToFree;
@@ -113,11 +112,11 @@ Status SiaFs::Register(Void) {
 }
 
 Status SiaFs::MountRamFs(const String &Path, Void *Location, UInt64 Length) {
-	/* This function serves two purposes: creating an actual ramfs/tmpfs, when the Location is Null, and mounting the initrd,
-	 * when the Location isn't Null. If the Location is Null, we need to manually alloc the specified Length, and remember to
-	 * free it after we're finished. Before trying to create the File*, we need to check if the Path isn't already mounted.
-	 * FileSys::Open would return NotMounted, but that only happens if the root directory isn't mounted, so we need to use
-	 * the CheckMountPoint function. */
+	/* This function serves two purposes: creating an actual ramfs/tmpfs, when the Location is Null, and mounting
+	 * the initrd, when the Location isn't Null. If the Location is Null, we need to manually alloc the specified
+	 * Length, and remember to free it after we're finished. Before trying to create the File*, we need to check
+	 * if the Path isn't already mounted. FileSys::Open would return NotMounted, but that only happens if the root
+	 * directory isn't mounted, so we need to use the CheckMountPoint function. */
 	
 	UIntPtr expand = 0;
 	Boolean free = False;
@@ -129,14 +128,14 @@ Status SiaFs::MountRamFs(const String &Path, Void *Location, UInt64 Length) {
 			return Status::OutOfMemory;
 		}
 		
-		/* TODO: We still don't have any way to generate random number to fill in the UUID, so we're just going to fill it
-		 * with some default value.
-		 * We just need to create the SIA header (and clear it), and create the root directory header (and clear it), as
-		 * the root directory should ALWAYS exist. */
+		/* TODO: We still don't have any way to generate random number to fill in the UUID, so we're just going
+		 * to fill it with some default value. We just need to create the SIA header (and clear it), and create the
+		 * root directory header (and clear it), as the root directory should ALWAYS exist. */
 		
 		SiaFs::Header hdr { SIA_MAGIC, 0, { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99,
 											0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF }, 0, 0, 0, 0, 0, sizeof(hdr) };
-		SiaFs::FileHeader root { 0, SIA_FLAGS_DIRECTORY | SIA_FLAGS_READ | SIA_FLAGS_WRITE | SIA_FLAGS_EXEC, 0, 0, "/" };
+		SiaFs::FileHeader root { 0, SIA_FLAGS_DIRECTORY | SIA_FLAGS_READ | SIA_FLAGS_WRITE | SIA_FLAGS_EXEC, 0, 0,
+								 "/" };
 		
 		StrCopyMemory(Location, &hdr, sizeof(hdr));
 		StrCopyMemory((Void*)((UIntPtr)Location + sizeof(hdr)), &root, sizeof(root));
@@ -146,8 +145,8 @@ Status SiaFs::MountRamFs(const String &Path, Void *Location, UInt64 Length) {
 	}
 	
 #ifdef DBG
-	Debug->Write("[SiaFs] Mounting the ramfs located at 0x%x (length 0x%x) to the path '%S'\n", Location, (UIntPtr)Length,
-				 &Path);
+	Debug->Write("[SiaFs] Mounting the ramfs located at 0x%x (length 0x%x) to the path '%S'\n", Location,
+				 (UIntPtr)Length, &Path);
 #endif
 	
 	Status status = FileSys::CheckMountPoint(Path);
@@ -164,8 +163,8 @@ Status SiaFs::MountRamFs(const String &Path, Void *Location, UInt64 Length) {
 		return status;
 	}
 	
-	/* I think that it is a good idea to check if the location contains a valid SIA header before allocating the File* as
-	 * well. */
+	/* I think that it is a good idea to check if the location contains a valid SIA header before allocating the File*
+	 * as well. */
 	
 	SiaFs::Header hdr;
 	StrCopyMemory(&hdr, Location, sizeof(hdr));
@@ -182,7 +181,7 @@ Status SiaFs::MountRamFs(const String &Path, Void *Location, UInt64 Length) {
 	 * after that (as it is going to be copied, and the File class can handle making sure that the file will only be
 	 * completly destructed after we are unmounted. */
 	
-	UInt8 flags = OPEN_READ | OPEN_EXEC | ((hdr.Info & SIA_INFO_FIXED) ? 0 : OPEN_WRITE);
+	UInt8 flags = OPEN_RX | ((hdr.Info & SIA_INFO_FIXED) ? 0 : OPEN_WRITE);
 	File src;
 	
 	if ((status = MemFs::MakeFile(Location, Length, flags, src)) != Status::Success) {
@@ -223,7 +222,7 @@ Status SiaFs::MountRamFs(const String &Path, Void *Location, UInt64 Length) {
 	
 	StrCopyMemory(&priv->Hdr, (Void*)((UIntPtr)Location + hdr.RootOffset), sizeof(priv->Hdr));
 	
-	if ((status = FileSys::CreateMountPoint(Path, File("/", flags | OPEN_DIR, &SiaFs::Impl, 0,
+	if ((status = FileSys::CreateMountPoint(Path, File("/", flags | OPEN_DIR | OPEN_EXEC, &SiaFs::Impl, 0,
 													   priv, 0))) != Status::Success) {
 #ifdef DBG
 		Debug->Write("        The system is probably out of memory (couldn't create the mount point)\n");
@@ -237,19 +236,20 @@ Status SiaFs::MountRamFs(const String &Path, Void *Location, UInt64 Length) {
 }
 
 Status SiaFs::CheckHeader(const SiaFs::Header &Hdr, UInt64 Length) {
-	/* We have four things to check: if the header magic is valid, if the free file headers are valid (check the start of
-	 * the headers, and if there is at least space for the amount of specified headers), if the free data headers are
-	 * valid (same as the free file headers), and if the root directory offset it valid.
-	 * We don't need to check if the KERNEL flag is set (different from the x86 bootloader, for example), as this may not
-	 * be the kernel image/initrd. */
+	/* We have four things to check: if the header magic is valid, if the free file headers are valid (check the start
+	 * of the headers, and if there is at least space for the amount of specified headers), if the free data headers
+	 * are valid (same as the free file headers), and if the root directory offset it valid.
+	 * We don't need to check if the KERNEL flag is set (different from the x86 bootloader, for example), as this may
+	 * not be the kernel image/initrd. */
 	
 	if (Hdr.Magic != SIA_MAGIC) {
 #ifdef DBG
 		Debug->Write("        The header magic is invalid (expected 0x%x, got 0x%x).\n", SIA_MAGIC, Hdr.Magic);
 #endif
 		return Status::InvalidFs;
-	} else if (Hdr.FreeFileCount != 0 && (Hdr.FreeFileOffset < sizeof(SiaFs::Header) ||
-										  Hdr.FreeFileOffset + Hdr.FreeFileCount * sizeof(SiaFs::FileHeader) >= Length)) {
+	} else if (Hdr.FreeFileCount != 0 &&
+			   (Hdr.FreeFileOffset < sizeof(SiaFs::Header) ||
+				Hdr.FreeFileOffset + Hdr.FreeFileCount * sizeof(SiaFs::FileHeader) >= Length)) {
 #ifdef DBG
 		Debug->Write("        The free file count/offset is too small/too big (starts at 0x%x, while the min is 0x%x, ",
 					 (UIntPtr)Hdr.FreeFileOffset, sizeof(SiaFs::Header));
@@ -257,8 +257,9 @@ Status SiaFs::CheckHeader(const SiaFs::Header &Hdr, UInt64 Length) {
 					 (UIntPtr)(Hdr.FreeFileOffset + Hdr.FreeFileCount * sizeof(SiaFs::FileHeader)), (UIntPtr)Length);
 #endif
 		return Status::InvalidFs;
-	} else if (Hdr.FreeDataCount != 0 && (Hdr.FreeDataOffset < sizeof(SiaFs::Header) ||
-										  Hdr.FreeDataOffset + Hdr.FreeDataCount * sizeof(SiaFs::DataHeader) >= Length)) {
+	} else if (Hdr.FreeDataCount != 0 &&
+			   (Hdr.FreeDataOffset < sizeof(SiaFs::Header) ||
+				Hdr.FreeDataOffset + Hdr.FreeDataCount * sizeof(SiaFs::DataHeader) >= Length)) {
 #ifdef DBG
 		Debug->Write("        The free data count/offset is too small/too big (starts at 0x%x, while the min is 0x%x, ",
 					 (UIntPtr)Hdr.FreeDataOffset, sizeof(SiaFs::Header));
@@ -280,8 +281,8 @@ Status SiaFs::CheckHeader(const SiaFs::Header &Hdr, UInt64 Length) {
 }
 
 Status SiaFs::CheckPrivData(const Void *Priv, const SiaFs::PrivData *&OutPriv) {
-	/* This counts for all the functions below (and ourselves): Priv contains the PrivData pointer, you can read the pointer
-	 * to get both the FS class instance (which contains the source file) and the file header. */
+	/* This counts for all the functions below (and ourselves): Priv contains the PrivData pointer, you can read
+	 * the pointer to get both the FS class instance (which contains the source file) and the file header. */
 	
 	if (Priv == Null) {
 		return Status::InvalidArg;
@@ -293,8 +294,8 @@ Status SiaFs::CheckPrivData(const Void *Priv, const SiaFs::PrivData *&OutPriv) {
 }
 
 Status SiaFs::CheckPrivData(const Void *Priv, SiaFs::PrivData *&OutPriv) {
-	/* Non const version of the CheckPrivData, Read, Write and Create will call this version, as we need to change some
-	 * info in the priv struct. */
+	/* Non const version of the CheckPrivData, Read, Write and Create will call this version, as we need to change
+	 * some info in the priv struct. */
 	
 	if (Priv == Null) {
 		return Status::InvalidArg;
@@ -306,7 +307,8 @@ Status SiaFs::CheckPrivData(const Void *Priv, SiaFs::PrivData *&OutPriv) {
 }
 
 static Status CheckFileFlags(UInt16 FileFlags, UInt8 OpenFlags) {
-	/* We can't just implement one big comparison that returns a boolean, as each case have one specific error code. */
+	/* We can't just implement one big comparison that returns a boolean, as each case have one specific error
+	 * code. */
 	
 	if ((OpenFlags & OPEN_DIR) && !(FileFlags & SIA_FLAGS_DIRECTORY)) {
 		return Status::NotDirectory;
@@ -326,13 +328,14 @@ static Status CheckOpenFlags(UInt8 OpenFlagsSource, UInt8 OpenFlagsFile) {
 		return Status::CantRead;
 	}
 	
-	return ((OpenFlagsFile & OPEN_WRITE) && !(OpenFlagsSource & OPEN_WRITE)) ? Status::CantWrite : Status::Success;
+	return ((OpenFlagsFile & OPEN_WRITE) && !(OpenFlagsSource & OPEN_WRITE)) ? Status::CantWrite :
+																			   Status::Success;
 }
 
 Status SiaFs::Open(const Void *Priv, UInt64, UInt8 Flags) {
-	/* All of the functions have to call CheckPrivData as this one is doing. We should only check if the flags are valid,
-	 * as you can't write to an read-only file. Checking the source file flags is also required, as while the file were
-	 * trying to access may be R/W, the source file may be R-only. */
+	/* All of the functions have to call CheckPrivData as this one is doing. We should only check if the flags
+	 * are valid, as you can't write to an read-only file. Checking the source file flags is also required, as
+	 * while the file were rying to access may be R/W, the source file may be R-only. */
 	
 	Status status;
 	const SiaFs::PrivData *priv = Null;
@@ -347,8 +350,8 @@ Status SiaFs::Open(const Void *Priv, UInt64, UInt8 Flags) {
 }
 
 Void SiaFs::Close(const Void *Priv, UInt64) {
-	/* The PrivData struct exists so we don't need to ->Read the file header all the time, we only need to free it, as
-	 * the FS struct is going to be freed later (on the unmount function). */
+	/* The PrivData struct exists so we don't need to ->Read the file header all the time, we only need to free
+	 * it, as the FS struct is going to be freed later (on the unmount function). */
 	
 	const SiaFs::PrivData *priv = Null;
 	
@@ -394,10 +397,10 @@ Status SiaFs::Read(const Void *Priv, UInt64, UInt64 Offset, UInt64 Length, Void 
 			return Status::ReadFailed;
 		}
 		
-		/* The .Contents field contains a static amount of data, as of today (July 17 2020), that amount is 504 bytes,
-		 * which when we add the size of the .Next field gives us 512 bytes, the most common sector size for HDs.
-		 * If the size of the .Contents field is smaller than the remaining size, we can just copy everything from
-		 * it, else, we need to make sure that we will only copy the remaining amount. */
+		/* The .Contents field contains a static amount of data, as of today (July 17 2020), that amount is 504
+		 * bytes, which when we add the size of the .Next field gives us 512 bytes, the most common sector size
+		 * for HDs. If the size of the .Contents field is smaller than the remaining size, we can just copy everything
+		 * from it, else, we need to make sure that we will only copy the remaining amount. */
 		
 		UInt64 size = sizeof(hdr.Contents) - skip;
 		
@@ -431,8 +434,8 @@ Status SiaFs::Write(const Void *Priv, UInt64, UInt64 Offset, UInt64 Length, cons
 		/* The File::Write function is supposed to this for us, do we even need to check it here? Idk. */
 		return status;
 	} else if (priv->Fs->Hdr.Info & SIA_INFO_FIXED) {
-		/* Tho we do need to check if the fixed flag is set, and I don't think that the File::Write function can even
-		 * do this for us lol. */
+		/* Tho we do need to check if the fixed flag is set, and I don't think that the File::Write function can
+		 * even do this for us lol. */
 		return Status::CantWrite;
 	}
 	
@@ -455,9 +458,7 @@ Status SiaFs::Write(const Void *Priv, UInt64, UInt64 Offset, UInt64 Length, cons
 			return Status::ReadFailed;
 		}
 		
-		/* The .Contents field contains a static amount of data, as of today (July 17 2020), that amount is 504 bytes,
-		 * which when we add the size of the .Next field gives us 512 bytes, the most common sector size for HDs.
-		 * If the size of the .Contents field is smaller than the remaining size, we can just copy everything from
+		/* If the size of the .Contents field is smaller than the remaining size, we can just copy everything from
 		 * it, else, we need to make sure that we will only copy the remaining amount. */
 		
 		UInt64 size = sizeof(hdr.Contents) - skip;
@@ -479,8 +480,8 @@ Status SiaFs::Write(const Void *Priv, UInt64, UInt64 Offset, UInt64 Length, cons
 		Length -= size;
 		
 		if (hdr.Next == 0) {
-			/* For allocating more data entries here, we can do the exact same that we do on the ::GoToOffset function,
-			 * so yeah, this is only a CTRL+C CTRL+V of the same snippet of code from ::GoToOffset. */
+			/* For allocating more data entries here, we can do the exact same that we do on the ::GoToOffset
+			 * function, so yeah, this is only a CTRL+C CTRL+V of the same snippet of code from ::GoToOffset. */
 			
 			if ((status = priv->Fs->AllocDataEntry2(ncur)) != Status::Success) {
 				return status;
@@ -562,15 +563,15 @@ Status SiaFs::Search(const Void *Priv, UInt64, const Char *Name, Void **OutPriv,
 	if ((status = CheckPrivData(Priv, priv)) != Status::Success) {
 		return status;
 	} else if ((status = CheckFileFlags(priv->Hdr.Flags, OPEN_DIR | OPEN_READ)) != Status::Success ||
-			   (status = CheckOpenFlags(priv->Fs->Source.GetFlags(), OPEN_DIR | OPEN_READ)) != Status::Success) {
+			   (status = CheckOpenFlags(priv->Fs->Source.GetFlags(), OPEN_READ)) != Status::Success) {
 		return status;
 	} else if (priv->Hdr.Offset == 0) {
 		return Status::DoesntExist;
 	}
 	
-	/* We need to do the same thing that we do on the ::ReadDirectory function, but instead of limiting ourselves for
-	 * the index, and returning the name, we should check the name and return a PrivData pointer and the length of
-	 * the file (or 0 on directories). We can construct a CHicago string around the name, so we can just call
+	/* We need to do the same thing that we do on the ::ReadDirectory function, but instead of limiting ourselves
+	 * for the index, and returning the name, we should check the name and return a PrivData pointer and the length
+	 * of the file (or 0 on directories). We can construct a CHicago string around the name, so we can just call
 	 * ::Compare. */
 	
 	String name(Name);
@@ -591,8 +592,8 @@ Status SiaFs::Search(const Void *Priv, UInt64, const Char *Name, Void **OutPriv,
 		}
 	}
 	
-	/* As said above, we need to allocate the PrivData pointer, this time we don't need to allocate the SiaFs pointer
-	 * as it already exists (priv->Fs). */
+	/* As said above, we need to allocate the PrivData pointer, this time we don't need to allocate the SiaFs
+	 * pointer as it already exists (priv->Fs). */
 	
 	*OutPriv = new SiaFs::PrivData { priv->Fs, cur, 0, 0, 0, 0, { 0 } };
 	
@@ -613,9 +614,10 @@ Status SiaFs::Create(const Void *Priv, UInt64, const Char *Name, UInt8 Flags) {
 	Status status;
 	SiaFs::PrivData *priv = Null;
 	
-	/* This time we need both read and write permissions. The create function is pretty simple (thanks to the helper
-	 * functions lol), we first allocate the file entry, and we try linking it into the last entry from the directory.
-	 * The FileSys::Open function should be the one calling us, so we don't need to mount any pointer, or call Search. */
+	/* This time we need both read and write permissions. The create function is pretty simple (thanks to the
+	 * helper functions lol), we first allocate the file entry, and we try linking it into the last entry from
+	 * the directory. The FileSys::Open function should be the one calling us, so we don't need to mount any
+	 * pointer, or call Search. */
 	
 	if ((status = CheckPrivData(Priv, priv)) != Status::Success) {
 		return status;
@@ -631,10 +633,10 @@ Status SiaFs::Create(const Void *Priv, UInt64, const Char *Name, UInt8 Flags) {
 
 Status SiaFs::Mount(const Void *Source, Void **OutPriv, UInt64*) {
 	/* We're directly integrated with the kernel, so we can cast the Source to its true form... const File*.
-	 * What we're going to do it's pretty simillar to what we do on the MountRamFs function, but now we don't have
-	 * one memory location that we can just access, we need to actually R/W from a file.
-	 * Also, this time we don't have the destination path, we just need to check if the source file is valid, and try
-	 * getting everything ready. */
+	 * What we're going to do it's pretty simillar to what we do on the MountRamFs function, but now we don't
+	 * have one memory location that we can just access, we need to actually R/W from a file.
+	 * Also, this time we don't have the destination path, we just need to check if the source file is valid,
+	 * and try getting everything ready. */
 	
 	const File *src = (const File*)Source;
 	
@@ -693,8 +695,8 @@ Status SiaFs::Unmount(const Void *Priv, UInt64) {
 	Status status;
 	SiaFs::PrivData *priv = Null;
 	
-	/* Unmounting is just a matter of deleting the FS pointer and deleting the priv pointer (if the priv data had a
-	 * custom destructor with some type of ref counting, we probably could only delete it). */
+	/* Unmounting is just a matter of deleting the FS pointer and deleting the priv pointer (if the priv data
+	 * had a custom destructor with some type of ref counting, we probably could only delete it). */
 	
 	if ((status = CheckPrivData(Priv, priv)) != Status::Success) {
 		return status;
@@ -707,8 +709,8 @@ Status SiaFs::Unmount(const Void *Priv, UInt64) {
 }
 
 Status SiaFs::GoToOffset(SiaFs::FileHeader &FHdr, UInt64 FOff, UInt64 Offset, UInt64 &Out, Boolean Alloc) {
-	/* This function is used by both ::Read and ::Write, it tries traversing the data linked list until we find the
-	 * start of the data that we want, and, for the ::Write function, it auto-allocs what doesn't exist. */
+	/* This function is used by both ::Read and ::Write, it tries traversing the data linked list until we find
+	 * the start of the data that we want, and, for the ::Write function, it auto-allocs what doesn't exist. */
 	
 	UInt64 cur = FHdr.Offset, ncur, rw;
 	SiaFs::DataHeader hdr;
@@ -717,8 +719,8 @@ Status SiaFs::GoToOffset(SiaFs::FileHeader &FHdr, UInt64 FOff, UInt64 Offset, UI
 	if (!Alloc && cur == 0) {
 		return Status::EOF;
 	} else if (Alloc && cur == 0) {
-		/* I'm guessing you just called ::Create, and this is the first time calling ::Write... Ok, let's alloc the
-		 * first data sector of this file... */
+		/* I'm guessing you just called ::Create, and this is the first time calling ::Write... Ok, let's alloc
+		 * the first data sector of this file... */
 		
 		if ((status = AllocDataEntry2(cur)) != Status::Success) {
 			return status;
@@ -745,8 +747,8 @@ Status SiaFs::GoToOffset(SiaFs::FileHeader &FHdr, UInt64 FOff, UInt64 Offset, UI
 		if (!Alloc && hdr.Next == 0) {
 			return Status::EOF;
 		} else if (Alloc && hdr.Next == 0) {
-			/* This is the same process that we did above, but instead of writing the value to FHdr.Offset, we're going
-			 * to write it to hdr.Next (and write hdr back instead of FHdr). */
+			/* This is the same process that we did above, but instead of writing the value to FHdr.Offset, we're
+			 * going to write it to hdr.Next (and write hdr back instead of FHdr). */
 			
 			if ((status = AllocDataEntry2(ncur)) != Status::Success) {
 				return status;
@@ -770,8 +772,8 @@ Status SiaFs::GoToOffset(SiaFs::FileHeader &FHdr, UInt64 FOff, UInt64 Offset, UI
 }
 
 Status SiaFs::AllocDataEntry1(UInt64 Offset) {
-	/* First version of the alloc data entry function, it doesn't actually allocate the offset, it just creates the data
-	 * header, zeroes it, and writes it into the source file (at the specified offset). */
+	/* First version of the alloc data entry function, it doesn't actually allocate the offset, it just creates the
+	 * data header, zeroes it, and writes it into the source file (at the specified offset). */
 	
 	if (Offset < sizeof(Hdr)) {
 		return Status::InvalidArg;
@@ -789,9 +791,9 @@ Status SiaFs::AllocDataEntry1(UInt64 Offset) {
 }
 
 Status SiaFs::AllocDataEntry2(UInt64 &Offset) {
-	/* Second version of the alloc data entry function, this one actually tries to allocate the offset, first, we need to
-	 * check if there is a free data entry, the SIA header contains the amount of free data entries, and the offset to the
-	 * first free entry. */
+	/* Second version of the alloc data entry function, this one actually tries to allocate the offset, first, we need
+	 * to check if there is a free data entry, the SIA header contains the amount of free data entries, and the offset
+	 * to the first free entry. */
 	
 	if (Hdr.FreeDataCount != 0) {
 		SiaFs::DataHeader hdr;
@@ -804,9 +806,9 @@ Status SiaFs::AllocDataEntry2(UInt64 &Offset) {
 			return status;
 		}
 		
-		/* The free data entries are always linked to the next entry, they are a linked list, so making sure that we're not
-		 * going to alloc the same entry two times is just a matter of making sure to set the start of the list as the next
-		 * entry. */
+		/* The free data entries are always linked to the next entry, they are a linked list, so making sure that we're
+		 * not going to alloc the same entry two times is just a matter of making sure to set the start of the list as
+		 * the next  entry. */
 		
 		Hdr.FreeDataCount--;
 		Hdr.FreeDataOffset = hdr.Next;
@@ -820,9 +822,9 @@ Status SiaFs::AllocDataEntry2(UInt64 &Offset) {
 		return rw != sizeof(Hdr) ? Status::WriteFailed : Status::Success;
 	}
 	
-	/* If the source file is R/W, just writing after the current length is going to auto-increase the file size, so let's
-	 * try doing that to alloc more one entry... Except that if this is a ramfs we need to know the last location that we
-	 * used, as Source.Location is going to be the size of the memory area that we have... */
+	/* If the source file is R/W, just writing after the current length is going to auto-increase the file size, so
+	 * let's try doing that to alloc more one entry... Except that if this is a ramfs we need to know the last location
+	 * that we used, as Source.Location is going to be the size of the memory area that we have... */
 	
 	Status status = AllocDataEntry1(Offset = ExpandLoc ? ExpandLoc : Source.GetLength());
 	
@@ -833,15 +835,15 @@ Status SiaFs::AllocDataEntry2(UInt64 &Offset) {
 	return status;
 }
 
-/* The two AllocFileEntry function are equivalent to the two AllocDataEntry functions, but they alloc file entries instead
- * of data entries. The file entries are also all linked to each other. */
+/* The two AllocFileEntry function are equivalent to the two AllocDataEntry functions, but they alloc file entries
+ * instead of data entries. The file entries are also all linked to each other. */
 
 static UInt16 ToSiaFlags(UInt8 Flags) {
 	UInt16 ret = 0;
 	
-	/* As of July 17 2020 both the flags used on our FileSystem representation (OPEN_*) and the SIA flags (SIA_FLAGS_*) are
-	 * the same, but to make sure that we're always going to send out valid flags into the files, let's manually parse the
-	 * OPEN_* flags. */
+	/* As of July 17 2020 both the flags used on our FileSystem representation (OPEN_*) and the SIA flags (SIA_FLAGS_*)
+	 * are the same, but to make sure that we're always going to send out valid flags into the files, let's manually parse
+	 * the OPEN_* flags. */
 	
 	if (Flags & OPEN_DIR) {
 		ret |= SIA_FLAGS_DIRECTORY;
@@ -920,9 +922,9 @@ Status SiaFs::AllocFileEntry2(const String &Name, UInt8 Flags, UInt64 &Offset) {
 }
 
 Status SiaFs::LinkFileEntry(SiaFs::FileHeader &FHdr, UInt64 FOff, UInt64 Offset) {
-	/* First entry (FHdr.Offset == 0): Write the offset into the file header, write the file header back, and we're done.
-	 * Other entries: Find the last entry, and write the offset into the .Next field of it (and write the file header of
-	 * said entry back lol). */
+	/* First entry (FHdr.Offset == 0): Write the offset into the file header, write the file header back, and we're
+	 * done. Other entries: Find the last entry, and write the offset into the .Next field of it (and write the file
+	 * header of said entry back lol). */
 	
 	SiaFs::FileHeader hdr = FHdr;
 	Status status;

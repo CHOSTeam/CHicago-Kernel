@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 21 of 2020, at 12:06 BRT
- * Last edited on August 07 of 2020, at 19:48 BRT */
+ * Last edited on October 09 of 2020, at 20:47 BRT */
 
 #include <chicago/arch/arch.hxx>
 #include <chicago/arch/boot.hxx>
@@ -18,16 +18,18 @@ static Image ArchFrameBuffer;
 
 extern "C" Void KernelEntry(BootInfo *Info) {
 	/* Hello, World! The loader just exited the EFI environment, and gave control to the kernel!
-	 * We should be on protected/long mode (protected for 32-bits, long for 64-bits), with paging enabled (the page directory
-	 * should contain the kernel, all the boot info, the framebuffer, and the EFI entry point, as it was required for not breaking
-	 * everything), and already running on higher-half (0xC0000000 on x86-32 and 0xFFFF800000000000 on x86-64).
-	 * Before anything, let's call the _init function, this function runs all the global constructors and things like that. */
+	 * We should be on protected/long mode (protected for 32-bits, long for 64-bits), with paging
+	 * enabled (the page directory should contain the kernel, all the boot info, the framebuffer,
+	 * and the EFI entry point, as it was required for not breaking everything), and already running
+	 * on higher-half (0xC0000000 on x86-32 and 0xFFFF800000000000 on x86-64). Before anything, let's
+	 * call the _init function, this function runs all the global constructors and things like that. */
 	
 	_init();
 	
-	/* Before even thinking about jumping to the kernel main function, we should initialize all the interfaces that it expects us
-	 * to init before calling it (or actually, let's init the arch and the debug interfaces, check if we were really booted by our
-	 * OS loader, or by something that gave us the right boot info struct, and then finish initializing the interfaces). */
+	/* Before even thinking about jumping to the kernel main function, we should initialize all the
+	 * interfaces that it expects us to init before calling it (or actually, let's init the arch and
+	 * the debug interfaces, check if we were really booted by our OS loader, or by something that gave
+	 * us the right boot info struct, and then finish initializing the interfaces). */
 	
 	InitArchInterface();
 	InitDebugInterface();
@@ -47,8 +49,9 @@ extern "C" Void KernelEntry(BootInfo *Info) {
 		Arch->Halt();
 	}
 	
-	/* Unmapping the efi entry on x86-32 is just a matter of clearing the present bit on the PD entry, and, on x86-64, while we also
-	 * need to unset the present bit, the way to get to the PD entry is different, as we need to traverse PML4->PDP->PD. */
+	/* Unmapping the efi entry on x86-32 is just a matter of clearing the present bit on the PD entry, and,
+	 * on x86-64, while we also need to unset the present bit, the way to get to the PD entry is different,
+	 * as we need to traverse PML4->PDP->PD. */
 	
 #ifdef ARCH_64
 	((UInt64*)0xFFFFFFFFC0000000 +
@@ -59,8 +62,8 @@ extern "C" Void KernelEntry(BootInfo *Info) {
 	
 	asm volatile("invlpg (%0)" :: "r"(Info->EfiMainAddress & ~0xFFF) : "memory");
 	
-	/* And also let's initialize the description tables (GDT and IDT), to make sure that exceptions will be handled correctly, we just
-	 * exited the EFI environment, and we're with both GDT and IDT from the EFI firmware. */
+	/* And also let's initialize the description tables (GDT and IDT), to make sure that exceptions will be
+	 * handled correctly, we just exited the EFI environment, and we're with both GDT and IDT from the EFI firmware. */
 	
 	GdtInit();
 	IdtInit();
@@ -70,9 +73,9 @@ extern "C" Void KernelEntry(BootInfo *Info) {
 #endif
 	
 	/* Initialize the memory manager, without it, we can't even init the filesystem manager.
-	 * The two pieces that we have to do anything are the physical memory manager (initialize the memory size, max addressable physical
-	 * address and all of the avaliable page regions) and the heap (pre-alloc the PD/PML4 for the heap, and set the start and end points
-	 * of the heap). */
+	 * The two pieces that we have to do anything are the physical memory manager (initialize the memory size, max
+	 * addressable physical address and all of the avaliable page regions) and the heap (pre-alloc the PD/PML4 for the heap,
+	 * and set the start and end points of the heap). */
 	
 	PmmInit();
 	
@@ -91,8 +94,8 @@ extern "C" Void KernelEntry(BootInfo *Info) {
 				 Heap::GetStart(), Heap::GetEnd(), Heap::GetSize());
 #endif
 
-	/* Initialize our default display interface: the framebuffer. We need to init it after initializing the memory manager, as the
-	 * Display::Register needs to allocate the front buffer. */
+	/* Initialize our default display interface: the framebuffer. We need to init it after initializing the memory manager,
+	 * as the Display::Register needs to allocate the front buffer. */
 	
 	Display::Mode mode = { Info->FrameBuffer.Width, Info->FrameBuffer.Height, (Void*)Info->FrameBuffer.Address };
 	Display::Impl funcs = { Null };

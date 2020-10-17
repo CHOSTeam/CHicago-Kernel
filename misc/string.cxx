@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 25 of 2020, at 11:52 BRT
- * Last edited on August 03 of 2020, at 10:51 BRT */
+ * Last edited on October 09 of 2020, at 21:49 BRT */
 
 #include <chicago/string.hxx>
 
@@ -14,19 +14,21 @@ String::String(UIntPtr Length) {
 	this->Length = Allocated = 0;
 	Value = Length != 0 ? new Char[Length + 1] : Null;
 	
-	if (this->Value != Null) {
+	if (Value != Null) {
 		Allocated = Length + 1;
 	}
 }
 
 String::String(const String &Value) {
-	/* Init everything to Null/0, so we can call ->Append, as this is the easiest way of doing
-	 * the copy (without having a bunch of repeated code). */
+	/* Init everything to Null/0, so we can call ->Append, as this is the easiest way of doing the
+	 * copy (without having a bunch of repeated code). */
 	
 	this->Value = Null;
 	Length = Allocated = 0;
 	
-	Append(Value);
+	if (Value.Value != Null) {
+		Append(Value);
+	}
 }
 
 String::String(const Char *Value, Boolean Alloc) {
@@ -44,10 +46,9 @@ String::String(const Char *Value, Boolean Alloc) {
 }
 
 String::~String(Void) {
-	/* If the allocated size (stored in the variable named Allocated) is greater than 0,
-	 * we need to delete[] the array. Also remember to set the allocated size to 0, as we
-	 * may be called multiple times accidentally (probably not going to happen, but let's do it
-	 * just to be sure). */
+	/* If the allocated size (stored in the variable named Allocated) is greater than 0, we need to
+	 * delete[] the array. Also remember to set the allocated size to 0, as we may be called multiple
+	 * times accidentally (probably not going to happen, but let's do it just to be sure). */
 	
 	if (Allocated > 0) {
 		delete[] Value;
@@ -55,8 +56,8 @@ String::~String(Void) {
 	}
 }
 
-/* Assigning a new value is just a question of clearing the current contents, and appending
- * the new contents. */
+/* Assigning a new value is just a question of clearing the current contents, and appending the new
+ * contents. */
 
 String &String::operator =(const String &Source) {
 	if (&Source != this) {
@@ -82,19 +83,20 @@ String &String::operator =(const Char *Source) {
 }
 
 Void String::Clear(Void) {
-	/* And clearing is just deallocating (if required) and setting the Length and the Allocated
-	 * variables to 0. */
+	/* And clearing is just deallocating (if required) and setting the Length and the Allocated variables
+	 * to 0. */
 	
-	if (Allocated > 0) {
+	if (Allocated > 0 && Value != Null) {
 		delete[] Value;
+		Value = Null;
 	}
 	
 	Allocated = Length = 0;
 }
 
 Status String::Append(Char Value) {
-	/* First, if our allocated buffer wasn't actually allocated, we gonna need to allocate it,
-	 * if it is too small, we need to resize it. */
+	/* First, if our allocated buffer wasn't actually allocated, we gonna need to allocate it, if it is
+	 * too small, we need to resize it. */
 	
 	if (Allocated == 0 || Length + 1 >= Allocated) {
 		UIntPtr nlen = Length < 4 ? 4 : Length * 2 + 1;
@@ -184,16 +186,20 @@ Status String::Append(UIntPtr Value, UInt8 Base, UIntPtr MinLength, Char PadChar
 }
 
 Status String::Append(const String &Value) {
-	/* Just get the internal C string out of the CHicago string, and recall Append, passing the C string as
-	 * the argument. */
+	/* Just get the internal C string out of the CHicago string, and recall Append, passing the C
+	 * string as the argument. */
+	
+	if (Value.Value == Null) {
+		return Status::Success;
+	}
 	
 	return AppendInt(Value.Value, 0, ' ');
 }
 
 static UIntPtr ParseFlags(const Char *Start, UIntPtr &MinLength, Char &PadChar) {
-	/* The three "flags" that we accept are: '0', which indicates that the string should be padded using
-	 * zeroes, a single space, which indicates that the string should be padded using spaces, and numbers
-	 * from 1-9, that indicates a minimum length.
+	/* The three "flags" that we accept are: '0', which indicates that the string should be padded
+	 * using zeroes, a single space, which indicates that the string should be padded using spaces,
+	 * and numbers from 1-9, that indicates a minimum length.
 	 * Goto does make our job a bit easier lol. */
 	
 	UIntPtr ret = 0;
@@ -231,12 +237,13 @@ Status String::Append(const Char *Format, ...) {
 	VariadicList va;
 	VariadicStart(va, Format);
 	
-	/* Let's parse the format string: If a % is detected, the next character says what we're going to print,
-	 * 's' is a C string, 'S' is a CHicago string (pointer to one at least), 'c' is a single character, 'd'
-	 * is a signed number (base 10), 'u' is an unsigned number (base 10), 'b' is a binary number (unsigned),
-	 * 'B' is to write a some size in bytes (for example, the RAM size), in the smallest possible way, 'o'
-	 * is an octal number (unsigned) and 'x' is a hex number (unsigned as well). After the % and before the
-	 * format itself, the user can also specify if we need to pad the result. */
+	/* Let's parse the format string: If a % is detected, the next character says what we're going
+	 * to print, 's' is a C string, 'S' is a CHicago string (pointer to one at least), 'c' is a
+	 * single character, 'd' is a signed number (base 10), 'u' is an unsigned number (base 10), 'b'
+	 * is a binary number (unsigned), 'B' is to write a some size in bytes (for example, the RAM size),
+	 * in the smallest possible way, 'o' is an octal number (unsigned) and 'x' is a hex number (unsigned
+	 * as well). After the % and before the format itself, the user can also specify if we need to pad
+	 * the result. */
 	
 	for (UIntPtr i = 0; Format[i]; i++) {
 		Status res;
@@ -356,9 +363,9 @@ static Boolean IsDelimiter(const String &Delimiters, Char Value) {
 }
 
 List<String> String::Tokenize(const String &Delimiters) const {
-	/* Start by checking if the delimiters string have at least one delimiter, creating the output
-	 * list, and creating one "global" string pointer, we're going to initialize it to Null, and only
-	 * alloc it if we need. */
+	/* Start by checking if the delimiters string have at least one delimiter, creating the output list,
+	 * and creating one "global" string pointer, we're going to initialize it to Null, and only alloc it
+	 * if we need. */
 	
 	if (Value == Null || Delimiters.Length == 0) {
 		return List<String>();
@@ -369,8 +376,8 @@ List<String> String::Tokenize(const String &Delimiters) const {
 	
 	for (UIntPtr i = 0; i < Length; i++) {
 		if (IsDelimiter(Delimiters, Value[i])) {
-			/* If this is one of the delimiters, we can add the string we have been creating to the
-			 * list. If the string is still empty, we can just skip and go to the next character. */
+			/* If this is one of the delimiters, we can add the string we have been creating to the list.
+			 * If the string is still empty, we can just skip and go to the next character. */
 			
 			if (str.GetLength() == 0) {
 				continue;
@@ -407,14 +414,18 @@ Status String::AppendInt(const Char *Value, UIntPtr MinLength, Char PadChar) {
 	 * filling what we need on the left side (before the string).
 	 * Before starting to do the padding, we need to get the length of the string. */
 	
+	if (Value == Null) {
+		Value = "";
+	}
+	
 	UIntPtr len = 0;
 	Status ret = Status::Success;
 	
 	for (; Value[len]; len++) ;
 	
-	/* Now, in the case the value length is smaller than the minimum length, we need to fill the left
-	 * side with the PadChar, until the length that we filled + the length of the string will be the
-	 * minimum length. */
+	/* Now, in the case the value length is smaller than the minimum length, we need to fill the
+	 * left side with the PadChar, until the length that we filled + the length of the string will
+	 * be the minimum length. */
 	
 	for (; len < MinLength; len++) {
 		if ((ret = Append(PadChar)) != Status::Success) {
@@ -433,8 +444,8 @@ Status String::AppendInt(const Char *Value, UIntPtr MinLength, Char PadChar) {
 	return ret;
 }
 
-/* Next are all the memory functions, we could make a better and optimized implementation, but, for now,
- * let's just hope that the compiler will optimize it for us. */
+/* Next are all the memory functions, we could make a better and optimized implementation, but, for
+ * now, let's just hope that the compiler will optimize it for us. */
 
 Void StrCopyMemory(Void *Buffer, const Void *Source, UIntPtr Length) {
 	if (Buffer == Null || Source == Null || Length == 0 || Buffer == Source) {
@@ -477,11 +488,11 @@ Void StrSetMemory32(Void *Buffer, UInt32 Value, UIntPtr Length) {
 }
 
 Void StrMoveMemory(Void *Buffer, const Void *Source, UIntPtr Length) {
-	/* While copy doesn't handle intersecting regions, move should handle them, there are two ways of doing
-	 * that: Allocating a temp buffer, copying the source data into it and copying the data from the temp buffer
-	 * into the destination, or checking if the source buffer overlaps with the destination when copying forward,
-	 * and, if that's the case, copy backwards. We're going with the second way, as we it's (probably) a good
-	 * idea to make this work even without the memory allocator. */
+	/* While copy doesn't handle intersecting regions, move should handle them, there are two ways of
+	 * doing that: Allocating a temp buffer, copying the source data into it and copying the data from
+	 * the temp buffer into the destination, or checking if the source buffer overlaps with the destination
+	 * when copying forward, and, if that's the case, copy backwards. We're going with the second way, as
+	 * it's (probably) a good idea to make this work even without the memory allocator. */
 	
 	if (Buffer == Null || Source == Null || Length == 0 || Buffer == Source) {
 		return;

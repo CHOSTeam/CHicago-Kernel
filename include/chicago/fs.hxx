@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 06 of 2020, at 10:01 BRT
- * Last edited on August 22 of 2020, at 11:37 BRT */
+ * Last edited on October 10 of 2020, at 11:38 BRT */
 
 #ifndef __CHICAGO_FS_HXX__
 #define __CHICAGO_FS_HXX__
@@ -14,6 +14,7 @@
 #define OPEN_WRITE 0x04
 #define OPEN_EXEC 0x08
 #define OPEN_RW (OPEN_READ | OPEN_WRITE)
+#define OPEN_RX (OPEN_READ | OPEN_EXEC)
 #define OPEN_RWX (OPEN_RW | OPEN_EXEC)
 #define OPEN_CREATE 0x10
 #define OPEN_RECUR_CREATE 0x20
@@ -21,8 +22,9 @@
 
 #define FILE_FLAGS_MASK (OPEN_DIR | OPEN_READ | OPEN_WRITE | OPEN_EXEC)
 
-/* You may be wondering: Why are we using typedefs for those things, why not use pure virtual classes? Portability, we
- * want those interfaces to be portable across compilers/compiler versions, so it's better to use packed C structs. */
+/* You may be wondering: Why are we using typedefs for those things, why not use pure virtual classes?
+ * Portability, we want those interfaces to be portable across compilers/compiler versions, so it's better
+ * to use packed C structs. */
 
 struct packed FsImpl {
 	Status (*Open)(const Void*, UInt64, UInt8);
@@ -47,9 +49,10 @@ public:
 	
 	File &operator =(const File&);
 	
-	/* This is just an whole class is just an easy accessor for all the fields that we need to read/write/manipulate
-	 * files. Only the FileSys class and the kernel entry (probably) call the non-empty & non-copy constructor.
-	 * There is no Close function, as the destructor already class Fs->Close. */
+	/* This is just an whole class is just an easy accessor for all the fields that we need to
+	 * read/write/manipulate files. Only the FileSys class and the kernel entry (probably) call the
+	 * non-empty & non-copy constructor. There is no Close function, as the destructor already calls
+	 * Fs->Close. */
 	
 	Status Read(UInt64, UInt64, Void*, UInt64&) const;
 	Status Write(UInt64, UInt64, const Void*, UInt64&) const;
@@ -86,14 +89,14 @@ private:
 
 class FileSys {
 public:
-	/* Some easy path manipulation functions. We return pointers here, and we expect that the user will ranged-for delete
-	 * everything in the list, and delete the pointers themselves. */
+	/* Some easy path manipulation functions. We return pointers here, and we expect that the user will
+	 * ranged-for delete everything in the list, and delete the pointers themselves. */
 	
 	static List<String> TokenizePath(const String&);
 	static String CanonicalizePath(const String&, const String& = "");
 	
-	/* If you didn't got it untill now, everything that is accessable from the kernel drivers (and that the driver can
-	 * manipulate/add new "handlers") have a ::Register function. */
+	/* If you didn't got it untill now, everything that is accessable from the kernel drivers (and that
+	 * the driver can manipulate/add new "handlers") have a ::Register function. */
 	
 	static Status Register(const FsImpl*);
 	static Status CheckMountPoint(const String&);

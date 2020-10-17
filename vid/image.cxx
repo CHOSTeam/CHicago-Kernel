@@ -1,13 +1,14 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on August 01 of 2020, at 17:46 BRT
- * Last edited on August 08 of 2020, at 12:30 BRT */
+ * Last edited on October 11 of 2020, at 18:12 BRT */
 
 #include <chicago/img.hxx>
 
 Image::Image(IntPtr Width, IntPtr Height) {
-	/* Zero values for any of the variables mean that the user want us to use the default value for said variable (800 for Width
-	 * and 600 for Height). Could also be thatw they for some reason forgot to set said field, but let's hope that's not the case. */
+	/* Zero values for any of the variables mean that the user want us to use the default value for said
+	 * variable (800 for Width and 600 for Height). Could also be that they for some reason forgot to set
+	 * said field, but let's hope that's not the case. */
 	
 	if (Width == 0) {
 		Width = 800;
@@ -29,9 +30,9 @@ Image::Image(IntPtr Width, IntPtr Height) {
 }
 
 Image::Image(IntPtr Width, IntPtr Height, UInt32 *Buffer, Boolean Alloc) {
-	/* Same rule as before, but in the case we set any of the values to the default, we need to alloc manually the buffer, instead
-	 * of using the user provided one. If the buffer that the user provided was supposed to be fully handled by us, we need to free
-	 * it. */
+	/* Same rule as before, but in the case we set any of the values to the default, we need to alloc manually
+	 * the buffer, instead of using the user provided one. If the buffer that the user provided was supposed
+	 * to be fully handled by us, we need to free it. */
 	
 	if (Width == 0) {
 		Alloc = Alloc == True ? 3 : 2;
@@ -59,9 +60,10 @@ Image::Image(IntPtr Width, IntPtr Height, UInt32 *Buffer, Boolean Alloc) {
 }
 
 Image::~Image(Void) {
-	/* The Allocated variable should always be set to False if the buffer is Null/failed to be allocated, so we don't need to
-	 * handle that. The reference counter is what allows us to the stuff like we do on the display initialization, if it wasn't
-	 * for that, we would have some random memory overwriting it (and I did had this problem in the start). */
+	/* The Allocated variable should always be set to False if the buffer is Null/failed to be allocated, so
+	 * we don't need to handle that. The reference counter is what allows us to the stuff like we do on the
+	 * display initialization, if it wasn't for that, we would have some random memory overwriting it (and I
+	 * did had this problem in the start). */
 	
 	if (Allocated && (References == Null || --(*References) == 0)) {
 		if (References != Null) {
@@ -75,9 +77,9 @@ Image::~Image(Void) {
 }
 
 Image &Image::operator =(const Image &Source) {
-	/* No need to overwrite anything if someone is trying to do this=this, but if we're actually getting a whole new buffer, we
-	 * need to call the deconstructor (free the references pointer and the buffer, if necessary), and call the constructor again
-	 * (copy the value from all the source variables into our variables). */
+	/* No need to overwrite anything if someone is trying to do this=this, but if we're actually getting a whole
+	 * new buffer, we need to call the deconstructor (free the references pointer and the buffer, if necessary),
+	 * and call the constructor again (copy the value from all the source variables into our variables). */
 	
 	if (Source.Buffer != Buffer) {
 		if (Allocated && (References == Null || --(*References) == 0)) {
@@ -105,36 +107,33 @@ Image &Image::operator =(const Image &Source) {
 }
 
 UInt32 Image::GetPixel(const Vector2D<IntPtr> &Point) {
-	/* In all of the function, we need to make sure that the given point is inside of the image area, else, we're probably going
-	 * to page fault. We expect the buffer to be ALWAYS in little endian, but the computer may be big endian, in that case, we would
-	 * need to swap the bytes of the UInt32, fortunately, we can use the FIX_ARGB macro for that. And finally, for GetPixel and PutPixel,
-	 * is just a matter of indexing into the buffer. */
+	/* In all of the function, we need to make sure that the given point is inside of the image area, else,
+	 * we're probably going to page fault. */
 	
 	IntPtr x = Point.X >= Width ? Width - 1 : Point.X, y = Point.Y >= Height ? Height - 1 : Point.Y;
-	UInt32 c = Buffer[y * Width + x];
 	
-	return FIX_ARGB(c);
+	return Buffer[y * Width + x];
 }
 
 Void Image::PutPixel(const Vector2D<IntPtr> &Point, UInt32 Color) {
 	IntPtr x = Point.X >= Width ? Width - 1 : Point.X, y = Point.Y >= Height ? Height - 1 : Point.Y;
 	
-	Buffer[y * Width + x] = FIX_ARGB(Color);
+	Buffer[y * Width + x] = Color;
 }
 
 Void Image::DrawLine(const Vector2D<IntPtr> &Start, const Vector2D<IntPtr> &End, UInt32 Color) {
 	IntPtr sx = Start.X >= Width ? Width - 1 : Start.X, sy = Start.Y >= Height ? Height - 1 : Start.Y,
 		   ex = End.X >= Width ? Width - 1 : End.X, ey = End.Y >= Height ? Height - 1 : End.Y;
 	
-	/* Fully horizontal/vertical lines can be easily made by just filling an entire area with SetMemory, or looping on Y and plotting
-	 * the pixels. No need to any complex algorithm. */
+	/* Fully horizontal/vertical lines can be easily made by just filling an entire area with SetMemory, or
+	 * looping on Y and plotting the pixels. No need to any complex algorithm. */
 	
 	if (sy == ey) {
-		StrSetMemory32(&Buffer[sy * Width + Math::Min(sx, ex)], FIX_ARGB(Color), Math::Abs(ex - sx) + 1);
+		StrSetMemory32(&Buffer[sy * Width + Math::Min(sx, ex)], Color, Math::Abs(ex - sx) + 1);
 		return;
 	} else if (sx == ex) {
 		for (IntPtr y = Math::Min(sy, ey); y <= Math::Max(sy, ey); y++) {
-			Buffer[y * Width + sx] = FIX_ARGB(Color);
+			Buffer[y * Width + sx] = Color;
 		}
 		
 		return;
@@ -146,7 +145,7 @@ Void Image::DrawLine(const Vector2D<IntPtr> &Start, const Vector2D<IntPtr> &End,
 		   e = (dx > dy ? dx : -dy) / 2, e2;
 	
 	while (True) {
-		Buffer[sy * Width + sx] = FIX_ARGB(Color);
+		Buffer[sy * Width + sx] = Color;
 		
 		if (sx == ex && sy == ey) {
 			break;
@@ -167,8 +166,8 @@ Void Image::DrawRectangle(const Vector2D<IntPtr> &Start, IntPtr Width, IntPtr He
 		return;
 	}
 	
-	/* Unfillled rectangles are just 4 lines, filled rectangles are also just a bunch of lines (we can calc the start address, and
-	 * increase it each iteration, while also StrSetMemory32ing the place we need to fill). */
+	/* Unfillled rectangles are just 4 lines, filled rectangles are also just a bunch of lines (we can calc
+	 * the start address, and increase it each iteration, while also StrSetMemory32ing the place we need to fill). */
 	
 	if (!Fill) {
 		Vector2D<IntPtr> w(Width - 1, 0), h(0, Height - 1), wh(Width - 1, Height - 1);
@@ -181,12 +180,14 @@ Void Image::DrawRectangle(const Vector2D<IntPtr> &Start, IntPtr Width, IntPtr He
 		return;
 	}
 	
-	IntPtr x = Start.X >= this->Width ? this->Width - 1 : Start.X, y = Start.Y >= this->Height ? this->Height - 1 : Start.Y,
-		   sx = x + Width - 1 > this->Width ? this->Width - x : Width, sy = y + Height - 1 > this->Height ? this->Height - y : Height,
+	IntPtr x = Start.X >= this->Width ? this->Width - 1 : Start.X,
+		   y = Start.Y >= this->Height ? this->Height - 1 : Start.Y,
+		   sx = x + Width - 1 > this->Width ? this->Width - x : Width,
+		   sy = y + Height - 1 > this->Height ? this->Height - y : Height,
 		   start = y * this->Width + x;
 	
 	for (IntPtr i = 0; i < sy; i++, start += this->Width) {
-		StrSetMemory32(&Buffer[start], FIX_ARGB(Color), sx);
+		StrSetMemory32(&Buffer[start], Color, sx);
 	}
 }
 
@@ -195,12 +196,13 @@ Void Image::DrawCharacter(const Vector2D<IntPtr> &Start, Char Value, UInt32 Colo
 		return;
 	}
 	
-	/* Drawing character with the new static font format is a bit different than the old way. In the old way, each pixel of the
-	 * character was encoded as one bit, 1 meant that it was foreground, and 0 meant that it was background/we could ignore it. Now,
-	 * we're converting/rendering TrueType fonts into the struct that we use, and it is not a monochrome bitmap anymore, now, each
-	 * byte represents the brightness level of the pixel, 0 means that it is background, and 1-255 means that it is foreground, we
-	 * need to get that brightness level and transform it into a 0-1 value, that we can treat as the alpha value of the pixel.
-	 * With that, we can just call BlendARGB, and let it do the job of changing the brightness for us. */
+	/* Drawing character with the new static font format is a bit different than the old way. In the old way, each
+	 * pixel of the character was encoded as one bit, 1 meant that it was foreground, and 0 meant that it was
+	 * background/we could ignore it. Now, we're converting/rendering TrueType fonts into the struct that we use,
+	 * and it is not a monochrome bitmap anymore, now, each byte represents the brightness level of the pixel, 0
+	 * means that it is background, and 1-255 means that it is foreground, we need to get that brightness level and
+	 * transform it into a 0-1 value, that we can treat as the alpha value of the pixel. With that, we can just call
+	 * BlendARGB, and let it do the job of changing the brightness for us. */
 	
 	UIntPtr start = (Value < 0 ? 0 : Value) * DefaultFontData.Width * DefaultFontData.Height;
 	
@@ -221,7 +223,7 @@ Void Image::DrawCharacter(const Vector2D<IntPtr> &Start, Char Value, UInt32 Colo
 				continue;
 			}
 			
-			Buffer[p.Y * Width + p.X] = FIX_ARGB(BlendARGB(Buffer[p.Y * Width + p.X], Color, (Float)bright / 255));
+			Buffer[p.Y * Width + p.X] = BlendARGB(Buffer[p.Y * Width + p.X], Color, (Float)bright / 255);
 		}
 	}
 }

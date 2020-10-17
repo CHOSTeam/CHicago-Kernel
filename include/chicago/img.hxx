@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 26 of 2020, at 22:25 BRT
- * Last edited on August 22 of 2020, at 11:39 BRT */
+ * Last edited on October 11 of 2020, at 18:10 BRT */
 
 #ifndef __CHICAGO_IMAGE_HXX__
 #define __CHICAGO_IMAGE_HXX__
@@ -10,26 +10,20 @@
 #include <chicago/string.hxx>
 #include <chicago/textout.hxx>
 
-/* Helper macros for extracting/creating colors (extracting the A,R,G and B components, or creating colors using said
- * components. */
+/* Helper macros for extracting/creating colors (extracting the A,R,G and B components, or creating colors
+ * using said components. */
 
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#define EXTRACT_ARGB(c, a, r, g, b) (b) = ((c) >> 24) & 0xFF; (g) = ((c) >> 16) & 0xFF; (r) = ((c) >> 8) & 0xFF; (a) = (c) & 0xFF
-#define MAKE_ARGB(a, r, g, b) ((((b) & 0xFF) << 24) | (((g) & 0xFF) << 16) | (((r) & 0xFF) << 8) | ((a) & 0xFF))
-#define FIX_ARGB(c) __builtin_bswap32(c)
-#else
 #define EXTRACT_ARGB(c, a, r, g, b) (a) = ((c) >> 24) & 0xFF; (r) = ((c) >> 16) & 0xFF; (g) = ((c) >> 8) & 0xFF; (b) = (c) & 0xFF
 #define MAKE_ARGB(a, r, g, b) ((((a) & 0xFF) << 24) | (((r) & 0xFF) << 16) | (((g) & 0xFF) << 8) | ((b) & 0xFF))
-#define FIX_ARGB(c) (c)
-#endif
 
 struct FontData {
 	UInt8 Width, Height;
 	UInt8 Glyphs[];
 };
 
-/* Different from way of storing coordinates, now we're going to use one class to store it (and we're going to store it
- * as doubles instead of unsigned integers, it's more precise, and let us do some pretty some precise manipulation). */
+/* Different from way of storing coordinates, now we're going to use one class to store it (and we're going
+ * to store it as doubles instead of unsigned integers, it's more precise, and let us do some pretty some
+ * precise manipulation). */
 
 template<class T> class Vector2D {
 public:
@@ -70,8 +64,8 @@ public:
 
 class Image {
 public:
-	/* We need a 3 args constructor, that will manually alloc the image buffer, and a 4 args constructor, that will use the
-	 * USER (or in this case probably the kernel) pre-allocated buffer.
+	/* We need a 3 args constructor, that will manually alloc the image buffer, and a 4 args constructor,
+	 * that will use the USER (or in this case probably the kernel) pre-allocated buffer.
 	 * And also, we need a 0-args constructor, which is going to init everything to Null. */
 	
 	Image(Void) : Width(0), Height(0), References(Null), Buffer(Null), Allocated(False) { }
@@ -95,8 +89,8 @@ public:
 	static inline UInt32 BlendARGB(UInt32 Background, UInt32 Foreground, Float Alpha) {
 		UInt8 a, r1, r2, g1, g2, b1, b2;
 		
-		/* The alpha value from the colors don't matter, as we expect the user to pass an alpha value in the range 0-1 to us.
-		 * the (Void)a statement is required to prevent unused arg warnings. */
+		/* The alpha value from the colors don't matter, as we expect the user to pass an alpha value
+		 * in the range 0-1 to us. the (Void)a statement is required to prevent unused arg warnings. */
 		
 		EXTRACT_ARGB(Background, a, r1, g1, b1);
 		EXTRACT_ARGB(Foreground, a, r2, g2, b2);
@@ -108,20 +102,17 @@ public:
 	}
 	
 	static inline UInt32 BlendARGB(UInt32 Background, UInt32 Foreground) {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-		return BlendARGB(Background, Foreground, (Float)(Foreground & 0xFF) / 255);
-#else
 		return BlendARGB(Background, Foreground, (Float)((Foreground >> 24) & 0xFF) / 255);
-#endif
 	}
 	
-	/* Now we start with the functions that manipulate the image, beginning with Clear, which fills the image with a solid color.
-	 * We DO have a function that can do that in the most optimzed way possible (well, at least would be if we weren't depending
-	 * on the compiler for doing the optimization), so we can just call it. */
+	/* Now we start with the functions that manipulate the image, beginning with Clear, which fills the
+	 * image with a solid color. We DO have a function that can do that in the most optimzed way possible
+	 * (well, at least would be if we weren't depending on the compiler for doing the optimization), so we
+	 * can just call it. */
 	
 	inline Void Clear(UInt32 Color) {
 		if (Buffer != Null) {
-			StrSetMemory32(Buffer, FIX_ARGB(Color), Width * Height);
+			StrSetMemory32(Buffer, Color, Width * Height);
 		}
 	}
 	

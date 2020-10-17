@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 05 of 2020, at 20:57 BRT
- * Last edited on August 06 of 2020, at 11:34 BRT */
+ * Last edited on October 09 of 2020, at 20:35 BRT */
 
 #ifndef __CHICAGO_LIST_HXX__
 #define __CHICAGO_LIST_HXX__
@@ -10,8 +10,8 @@
 #include <chicago/mm.hxx>
 
 /* Wow, now, with C++, we can actually make the list class be strongly-typed!
- * Just one thing, we actually have to define and declare all the functions here in the header.. Well, no problems, as this
- * class is pretty small.
+ * Just one thing, we actually have to define and declare all the functions here in the header...
+ * Well, no problems, as this class is pretty small.
  * Btw, we can't include string.hxx here, as it also includes us. */
 
 Void StrCopyMemory(Void *Buffer, const Void *Source, UIntPtr Length);
@@ -29,8 +29,8 @@ public:
 	~List(Void) { if (Elements != Null) { Clear(); Fit(); } }
 	
 	List &operator =(const List &Source) {
-		/* Basic rule: If you are overwriting the copy constructor and the destructor, you also need to overwrite the copy
-		 * operator. Thankfully for us, we just need to call Clear() and Add(). */
+		/* Basic rule: If you are overwriting the copy constructor and the destructor, you also need to
+		 * overwrite the copy operator. Thankfully for us, we just need to call Clear() and Add(). */
 		
 		if (this != &Source) {
 			Clear();
@@ -44,10 +44,10 @@ public:
 	Status Reserve(UIntPtr Size) {
 		T *buf = Null;
 		
-		/* Allocating with new[] would call the destructor for all the items everytime we delete[] it, we don't want
-		 * that, we want to be able to manually call the destructors using Remove(), and later just deallocate the
-		 * memory without calling the destructors again (that is, without causing UB), so let's use the Heap::Allocate
-		 * function (which is our malloc function). */
+		/* Allocating with new[] would call the destructor for all the items everytime we delete[] it,
+		 * we don't want that, we want to be able to manually call the destructors using Remove(), and
+		 * later just deallocate the memory without calling the destructors again (that is, without causing
+		 * UB), so let's use the Heap::Allocate function (which is our malloc function). */
 		
 		if (Size <= Capacity) {
 			return Status::InvalidArg;
@@ -55,8 +55,9 @@ public:
 			return Status::OutOfMemory;
 		}
 		
-		/* Don't do the same mistake I did when I first wrote this function. Remember to check if this isn't the first
-		 * allocation we're doing, if that's the case, we don't need to copy the old elements nor deallocate the them. */
+		/* Don't do the same mistake I did when I first wrote this function. Remember to check if this isn't
+		 * the first allocation we're doing, if that's the case, we don't need to copy the old elements nor
+		 * deallocate the them. */
 		
 		if (Elements != Null) {
 			StrCopyMemory(buf, Elements, Length * sizeof(T));
@@ -72,9 +73,10 @@ public:
 	Status Fit(Void) {
 		T *buf = Null;
 		
-		/* While the Reserve function allocates a buffer that can contain at least all the items that the user specified,
-		 * this function deallocates any extra space, and fits the element buffer to make the capacity=length. If the
-		 * length is 0 (for example, we were called on the destructor), we just need to free the buffer. */
+		/* While the Reserve function allocates a buffer that can contain at least all the items that the
+		 * user specified, this function deallocates any extra space, and fits the element buffer to make
+		 * the capacity=length. If the length is 0 (for example, we were called on the destructor), we just
+		 * need to free the buffer. */
 		
 		if (Elements == Null || Capacity == Length) {
 			return Status::Success;
@@ -116,14 +118,14 @@ public:
 	}
 	
 	Status Add(const T &Data, UIntPtr Index) {
-		/* As the elements are stored in one big array, setting the value (or even adding a new one and relocating the
-		 * others) isn't hard. First, we need to check if we have enough space for adding the new item and relocating
-		 * the others that are on the position/after the position forward (of course, this last part isn't required
-		 * when adding beyond the current length), if there isn't enough space, we can call Reserve(), if this is the
-		 * first entry, allocate * 2 items than the last allocation, else, the default allocation size is 2 (we can
-		 * change this later). Before actually copying the data into the array, we need to move everything on the
-		 * index forward (if it's not beyond the current length), we need to use MoveMemory for this, as the memory
-		 * locations ARE going to overlap. */
+		/* As the elements are stored in one big array, setting the value (or even adding a new one and relocating
+		 * the others) isn't hard. First, we need to check if we have enough space for adding the new item and
+		 * relocating the others that are on the position/after the position forward (of course, this last part
+		 * isn't required when adding beyond the current length), if there isn't enough space, we can call Reserve(),
+		 * if this is the first entry, allocate * 2 items than the last allocation, else, the default allocation size
+		 * is 2 (we can change this later). Before actually copying the data into the array, we need to move everything
+		 * on the index forward (if it's not beyond the current length), we need to use MoveMemory for this, as the
+		 * memory locations ARE going to overlap. */
 		
 		Status status;
 		
@@ -191,11 +193,11 @@ public:
 	const T &operator [](UIntPtr Index) const { return Elements[Index]; }
 private:
 	template<typename U> inline static Void MergeSort(T *Array, UIntPtr Length, U &&Compare) {
-		/* Merge sort is a divide and conquerer sorting algorithm, we subdivide the array until we the length is <= 1,
-		 * and we sort the subdivided arrays, best/worst/avg cases are O(nlogn), but the space complexity is O(n),
-		 * we're allocing space on the stack for the temp array, so we may need to increase the kernel stack size in
-		 * the future. Other choice would be implementing something like quick sort, or trying to implement an in-place
-		 * merge sort algorithm. */
+		/* Merge sort is a divide and conquerer sorting algorithm, we subdivide the array until we the length is
+		 * <= 1, and we sort the subdivided arrays, best/worst/avg cases are O(nlogn), but the space complexity is
+		 * O(n), we're allocing space on the stack for the temp array, so we may need to increase the kernel stack
+		 * size in the future. Other choice would be implementing something like quick sort, or trying to implement
+		 * an in-place merge sort algorithm. */
 		
 		if (Length <= 1) {
 			return;

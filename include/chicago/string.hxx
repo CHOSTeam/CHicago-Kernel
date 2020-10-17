@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 25 of 2020, at 11:19 BRT
- * Last edited on August 22 of 2020, at 11:50 BRT */
+ * Last edited on October 09 of 2020, at 20:31 BRT */
 
 #ifndef __CHICAGO_STRING_HXX__
 #define __CHICAGO_STRING_HXX__
@@ -15,8 +15,9 @@ public:
 
 class String {
 public:
-	/* Constructors: One that takes no argument, and you can later just .Append anything you want, one that takes how many characters
-	 * we should pre-allocate, one that takes a reference to another String, and one that takes a normal C string. */
+	/* Constructors: One that takes no argument, and you can later just .Append anything you want, one that
+	 * takes how many characters we should pre-allocate, one that takes a reference to another String, and
+	 * one that takes a normal C string. */
 	
 	String();
 	String(UIntPtr);
@@ -27,18 +28,19 @@ public:
 	
 	~String(Void);
 	
-	/* And the copy operators... Which frees the whole string, and call the constructor (actually ::Append) again. */
+	/* And the copy operators... Which frees the whole string, and call the constructor (actually ::Append)
+	 * again. */
 	
 	String &operator =(const String&);
 	String &operator =(const Char*);
 	
-	/* You maybe wondering: Hey, why doesn't the constructors allow initializing the string with formatted input?
-	 * Well, for this we have the Format function! And yeah, we actually need to make their body here as well, because of all the
-	 * template<> stuff. */
+	/* You maybe wondering: Hey, why doesn't the constructors allow initializing the string with formatted
+	 * input? Well, for this we have the Format function! And yeah, we actually need to make their body here
+	 * as well, because of all the template<> stuff. */
 	
 	template<typename... Args> static String Format(const Char *Format, Args... VaArgs) {
-		/* First, let's create the string itself, we're going to use the 0-args initializer, as the Append function is going
-		 * to dynamically allocate the memory we need. */
+		/* First, let's create the string itself, we're going to use the 0-args initializer, as the Append
+		 * function is going to dynamically allocate the memory we need. */
 		
 		String str;
 		
@@ -57,8 +59,8 @@ public:
 	
 	Void Clear(Void);
 	
-	/* Append functions: One for a single character, one for signed numbers, one for unsigned numbers, one for CHicago strings, and one
-	 * for C strings. */
+	/* Append functions: One for a single character, one for signed numbers, one for unsigned numbers, one for
+	 * CHicago strings, and one for C strings. */
 	
 	Status Append(Char);
 	Status Append(IntPtr, UInt8, UIntPtr = 0, Char = ' ');
@@ -66,15 +68,15 @@ public:
 	Status Append(const String&);
 	Status Append(const Char*, ...);
 	
-	/* The tokenize and compare functions only have one form, that takes a String, if you pass a Char*, it will be auto converted
-	 * into String&. */
+	/* The tokenize and compare functions only have one form, that takes a String, if you pass a Char*, it will
+	 * be auto converted into String&. */
 	
 	Boolean Compare(const String&) const;
 	List<String> Tokenize(const String&) const;
 	
-	/* The remaining functions are: ToCString, which just returns ->Value; ToMutCString, which makes sure that the user can use/change
-	 * the returned C string, and that we're not going to overwrite it/delete it, And GetLength, which, as you may think, returns
-	 * ->Length. */
+	/* The remaining functions are: ToCString, which just returns ->Value; ToMutCString, which makes sure that the
+	 * user can use/change the returned C string, and that we're not going to overwrite it/delete it, And GetLength,
+	 * which, as you may think, returns ->Length. */
 	
 	const Char *ToCString(Void) const { return Value; }
 	Char *ToMutCString(Void) const;

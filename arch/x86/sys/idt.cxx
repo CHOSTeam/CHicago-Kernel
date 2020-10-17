@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 29 of 2020, at 11:24 BRT
- * Last edited on August 23 of 2020, at 17:01 BRT */
+ * Last edited on October 09 of 2020, at 20:49 BRT */
 
 #include <chicago/arch/desctables.hxx>
 #include <chicago/arch/port.hxx>
@@ -48,15 +48,15 @@ static const Char *ExceptionStrings[32] = {
 };
 
 extern "C" Void IdtDefaultHandler(Registers *Regs) {
-	/* 'regs' contains information about the interrupt that we received, we can determine whatever this is an exception or some
-	 * device interrupt using the interrupt number: 0-31 is ALWAYS exceptions (at least on the way that we configured the PIC;
-	 * 32-255 are device interrupts/OS interrupts (like system calls).
-	 * For interrupts 32-47 need to send the EOI to the PIC, and NOT crash if the handler isn't installed. For 48-255 we need
-	 * to crash if the handler isn't installed. */
+	/* 'regs' contains information about the interrupt that we received, we can determine whatever this is an exception
+	 * or some device interrupt using the interrupt number: 0-31 is ALWAYS exceptions (at least on the way that we
+	 * configured the PIC; 32-255 are device interrupts/OS interrupts (like system calls).
+	 * For interrupts 32-47 need to send the EOI to the PIC, and NOT crash if the handler isn't installed. For 48-255
+	 * we need to crash if the handler isn't installed. */
 	
 	if (Regs->IntNum >= 32 && Regs->IntNum <= 47) {
-		/* Send the EOI signal to the master PIC (if the interrupt number is between 40-47, we need to send it to the slave PIC
-		 * as well). */
+		/* Send the EOI signal to the master PIC (if the interrupt number is between 40-47, we need to send it to the
+		 * slave PIC as well). */
 		
 		if (InterruptHandlers[Regs->IntNum - 32] != Null) {
 			InterruptHandlers[Regs->IntNum - 32](Regs);
@@ -96,8 +96,8 @@ Void IdtSetHandler(UInt8 Num, InterruptHandlerFunc Func) {
 }
 
 no_inline static Void IdtSetGate(UInt8 Num, UIntPtr Base, UInt16 Selector, UInt8 Type) {
-	/* Just like on the GDT, let's encode all the fields manually (and this time, some of the fields are of different size on
-	 * x86-64 in comparison to x86-32). */
+	/* Just like on the GDT, let's encode all the fields manually (and this time, some of the fields are of different
+	 * size on x86-64 in comparison to x86-32). */
 	
 	IdtEntries[Num][0] = Base & 0xFF;
 	IdtEntries[Num][1] = (Base >> 8) & 0xFF;
@@ -115,8 +115,8 @@ no_inline static Void IdtSetGate(UInt8 Num, UIntPtr Base, UInt16 Selector, UInt8
 	
 	IdtEntries[Num][5] = Type | 0x60;
 	
-	/* Now all the "always zero" fields (which is only one on x86-32). We could probably not do this, as this functions is only
-	 * going to be called after the entry table was StrSetMemory'd, but let's make sure that they are zero. */
+	/* Now all the "always zero" fields (which is only one on x86-32). We could probably not do this, as this functions
+	 * is only going to be called after the entry table was StrSetMemory'd, but let's make sure that they are zero. */
 	
 	IdtEntries[Num][4] = 0;
 #ifdef ARCH_64
@@ -128,9 +128,9 @@ no_inline static Void IdtSetGate(UInt8 Num, UIntPtr Base, UInt16 Selector, UInt8
 }
 
 Void IdtInit(Void) {
-	/* Before anything else: We don't know the state of the IDT that the bootloader passed to us, it could not even exist! We only
-	 * know that interrupts are, for now, disabled (and that is for our security). So, let's remap the PIC, and put it in a known
-	 * state. */
+	/* Before anything else: We don't know the state of the IDT that the bootloader passed to us, it could not even exist!
+	 * We only know that interrupts are, for now, disabled (and that is for our security). So, let's remap the PIC, and
+	 * put it in a known state. */
 	
 	Port::OutByte(0x20, 0x11);
 	Port::OutByte(0xA0, 0x11);

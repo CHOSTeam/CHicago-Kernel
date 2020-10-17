@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 04 of 2020, at 23:14 BRT
- * Last edited on August 02 of 2020, at 16:44 BRT */
+ * Last edited on October 09 of 2020, at 21:54 BRT */
 
 #include <chicago/arch.hxx>
 #include <chicago/mm.hxx>
@@ -13,16 +13,16 @@ UIntPtr Heap::Start = 0, Heap::End = 0, Heap::Current = 0, Heap::CurrentAligned 
 AllocBlock *Heap::AllocBase = Null;
 
 Void Heap::Initialize(UIntPtr Start, UIntPtr End) {
-	/* Just setup all the variables, but remember that we have to page align everything, as Arch::Map expects
-	 * everything to be aligned (well, it is actually going to manually align it, but whatever). */
+	/* Just setup all the variables, but remember that we have to page align everything, as Arch::Map
+	 * expects everything to be aligned (well, it is actually going to manually align it, but whatever). */
 	
 	Heap::Start = Current = CurrentAligned = Start & MM_PAGE_MASK;
 	Heap::End = End & MM_PAGE_MASK;
 }
 
 Status Heap::Increment(UIntPtr Amount) {
-	/* We need to check for two things: First, if the Amount is even valid (if it isn't, return InvalidArg),
-	 * second, if we aren't trying to expand beyond the heap limit. */
+	/* We need to check for two things: First, if the Amount is even valid (if it isn't, return
+	 * InvalidArg), second, if we aren't trying to expand beyond the heap limit. */
 	
 	if (Amount == 0) {
 		return Status::InvalidArg;
@@ -30,8 +30,9 @@ Status Heap::Increment(UIntPtr Amount) {
 		return Status::OutOfMemory;
 	}
 	
-	/* Now, we need to expand the heap, but this is not just a matter of increasing the Heap::Current variable,
-	 * we need to make sure that the space we're expanding into is going to be mapped into the memory. */
+	/* Now, we need to expand the heap, but this is not just a matter of increasing the Heap::Current
+	 * variable, we need to make sure that the space we're expanding into is going to be mapped into the
+	 * memory. */
 	
 	UIntPtr nw = Current + Amount;
 	Status status;
@@ -39,9 +40,10 @@ Status Heap::Increment(UIntPtr Amount) {
 	for (; CurrentAligned < nw; CurrentAligned += MM_PAGE_SIZE) {
 		UIntPtr phys;
 		
-		/* The process to expand one page is: Alloc a new physical page, if it fails, free everything that we
-		 * allocated in this session/call and return what the error was. Try to map said physical page, if it
-		 * fails, free everything just as before, and make sure that the physical page will also be freed. */
+		/* The process to expand one page is: Alloc a new physical page, if it fails, free everything that
+		 * we allocated in this session/call and return what the error was. Try to map said physical page,
+		 * if it fails, free everything just as before, and make sure that the physical page will also be
+		 * freed. */
 		
 		if ((status = PhysMem::ReferenceSingle(0, phys)) != Status::Success) {
 			return status;
@@ -57,8 +59,8 @@ Status Heap::Increment(UIntPtr Amount) {
 }
 
 Status Heap::Decrement(UIntPtr Amount) {
-	/* Again, let's do the exact same checks as we did in the Increment function, but this time, we need to
-	 * check if the Amount big enough to underflow (and go before the heap start). */
+	/* Again, let's do the exact same checks as we did in the Increment function, but this time, we need
+	 * to check if the Amount big enough to underflow (and go before the heap start). */
 	
 	if (Amount == 0 || (Current - Amount) < Start || (Current - Amount) >= End) {
 		return Status::InvalidArg;
@@ -82,16 +84,17 @@ Status Heap::Decrement(UIntPtr Amount) {
 }
 
 Void Heap::SplitBlock(AllocBlock *Block, UIntPtr Size) {
-	/* We probably could skip the Null pointer checks, as the only ones that are going to call this (and the other
-	 * private functions) is ourselves, but let's do it anyways. We also need to check if the block is big enough
-	 * to be split, it needs at least the size of the new block we want to create + the size of the alloc header. */
+	/* We probably could skip the Null pointer checks, as the only ones that are going to call this (and
+	 * the other private functions) is ourselves, but let's do it anyways. We also need to check if the
+	 * block is big enough to be split, it needs at least the size of the new block we want to create +
+	 * the size of the alloc header. */
 	
 	if (Block == Null || Size == 0 || Block->Size <= Size + sizeof(AllocBlock)) {
 		return;
 	}
 	
-	/* Let's split the block so the current block have exactly the same that the caller asked for, and the new
-	 * block is the remainder. */
+	/* Let's split the block so the current block have exactly the same that the caller asked for, and
+	 * the new block is the remainder. */
 	
 	AllocBlock *nblk = (AllocBlock*)(Block->Start + Size);
 	
@@ -113,8 +116,8 @@ Void Heap::SplitBlock(AllocBlock *Block, UIntPtr Size) {
 }
 
 AllocBlock *Heap::FuseBlock(AllocBlock *Block) {
-	/* We can only fuse blocks that are just after ourselves, to fuse blocks that are in the ->Prev field, the
-	 * caller should call the FuseBlock function on the ->Prev field, instead of the current block. */
+	/* We can only fuse blocks that are just after ourselves, to fuse blocks that are in the ->Prev field,
+	 * the caller should call the FuseBlock function on the ->Prev field, instead of the current block. */
 	
 	if (Block != Null && Block->Next != Null &&
 		(UIntPtr)Block->Next == Block->Start + Block->Size && Block->Next->Free) {
@@ -130,9 +133,10 @@ AllocBlock *Heap::FuseBlock(AllocBlock *Block) {
 }
 
 AllocBlock *Heap::FindBlock(AllocBlock *&Last, UIntPtr Size) {
-	/* The block list always ends (or starts, if there are no blocks yet) on a Null pointer, so we can always
-	 * just keep on following the ->Next chain untill we find a Null pointer. This time, we only have to check
-	 * if there is at least the size we were asked for, no need to check if there is space for the header. */
+	/* The block list always ends (or starts, if there are no blocks yet) on a Null pointer, so we can
+	 * always just keep on following the ->Next chain untill we find a Null pointer. This time, we only
+	 * have to check if there is at least the size we were asked for, no need to check if there is space
+	 * for the header. */
 	
 	if (Size == 0) {
 		return Null;
@@ -304,8 +308,8 @@ Void Heap::Deallocate(Void *Address) {
 		FuseBlock(blk);
 	}
 	
-	/* If this is the end of the block list, AND the block is just at the end of the heap,
-	 * let's free some space on the heap (this will actually free the physical memory). */
+	/* If this is the end of the block list, AND the block is just at the end of the heap, let's free
+	 * some space on the heap (this will actually free the physical memory). */
 	
 	if (blk->Next == Null &&
 		(UIntPtr)blk == Current - (blk->Size + sizeof(AllocBlock))) {

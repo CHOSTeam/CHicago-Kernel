@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 25 of 2020, at 09:44 BRT
- * Last edited on August 22 of 2020, at 11:34 BRT */
+ * Last edited on October 17 of 2020, at 12:47 BRT */
 
 #ifndef __CHICAGO_ARCH_ARCH_HXX___
 #define __CHICAGO_ARCH_ARCH_HXX___
@@ -13,9 +13,20 @@
 
 #define COM1_PORT 0x3F8
 
+#define ELF_REL_NONE 0x00
+#define ELF_REL_PTRWORD 0x01
+#define ELF_REL_PC32 0x02
+#ifdef ARCH_64
+#define ELF_REL_PTR32 0x0A
+#define ELF_REL_PTR32S 0x0B
+#define ELF_REL_PC64 0x18
+#endif
+
 class ArchImpl : public IArch {
 public:
 	no_return Void Halt(Void) override;
+	Status DoElfRelocation(UInt32, const Elf::SectHeader*, const UInt8*,
+						   const Elf::RelHeader*) override;
 	
 	Status GetPhys(Void*, UIntPtr&) override;
 	Status Query(Void*, UInt32&) override;

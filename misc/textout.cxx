@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 26 of 2020, at 14:54 BRT
- * Last edited on August 07 of 2020, at 21:25 BRT */
+ * Last edited on October 09 of 2020, at 21:51 BRT */
 
 #include <chicago/textout.hxx>
 
@@ -10,8 +10,8 @@
 TextOutput *Debug = Null;
 TextOutput *Console = Null;
 
-/* Some functions to write stuff without calling the formatted string version, we need to have them separate
- * as a kind of "interface" to the true functions as we need to call AfterWrite. */
+/* Some functions to write stuff without calling the formatted string version, we need to have them
+ * separate as a kind of "interface" to the true functions as we need to call AfterWrite. */
 
 Void TextOutput::Write(Char Value) {
 	WriteInt(Value);
@@ -19,8 +19,10 @@ Void TextOutput::Write(Char Value) {
 }
 
 Void TextOutput::Write(const String &Value) {
-	WriteInt(Value.ToCString(), 0, ' ');
-	AfterWrite();
+	if (Value.ToCString() != Null) {
+		WriteInt(Value.ToCString(), 0, ' ');
+		AfterWrite();
+	}
 }
 
 Void TextOutput::Write(IntPtr Value, UInt8 Base, UIntPtr MinLength, Char PadChar) {
@@ -34,9 +36,9 @@ Void TextOutput::Write(UIntPtr Value, UInt8 Base, UIntPtr MinLength, Char PadCha
 }
 
 static UIntPtr ParseFlags(const Char *Start, UIntPtr &MinLength, Char &PadChar) {
-	/* The three "flags" that we accept are: '0', which indicates that the string should be padded using
-	 * zeroes, a single space, which indicates that the string should be padded using spaces, and numbers
-	 * from 1-9, that indicates a minimum length.
+	/* The three "flags" that we accept are: '0', which indicates that the string should be padded
+	 * using zeroes, a single space, which indicates that the string should be padded using spaces,
+	 * and numbers from 1-9, that indicates a minimum length.
 	 * Goto does make our job a bit easier lol. */
 	
 	UIntPtr ret = 0;
@@ -76,12 +78,13 @@ Void TextOutput::Write(const Char *Format, ...) {
 	VariadicList va;
 	VariadicStart(va, Format);
 	
-	/* Let's parse the format string: If a % is detected, the next character says what we're going to print,
-	 * 's' is a C string, 'S' is a CHicago string, 'c' is a single character, 'd' is a signed number (base 10),
-	 * 'u' is an unsigned number (base 10), 'b' is a binary number (unsigned), 'B' is to write a some size in
-	 * bytes (for example, the RAM size), in the smallest possible way, 'o' is an octal number (unsigned) and
-	 * 'x' is a hex number (unsigned as well). After the % and before the format itself, the user can also specify
-	 ( if we need to pad the result. */
+	/* Let's parse the format string: If a % is detected, the next character says what we're going
+	 * to print, 's' is a C string, 'S' is a CHicago string (pointer to one at least), 'c' is a
+	 * single character, 'd' is a signed number (base 10), 'u' is an unsigned number (base 10), 'b'
+	 * is a binary number (unsigned), 'B' is to write a some size in bytes (for example, the RAM size),
+	 * in the smallest possible way, 'o' is an octal number (unsigned) and 'x' is a hex number (unsigned
+	 * as well). After the % and before the format itself, the user can also specify if we need to pad
+	 * the result. */
 	
 	for (UIntPtr i = 0; Format[i]; i++) {
 		if (Format[i] != '%') {
@@ -172,6 +175,10 @@ Void TextOutput::WriteInt(const Char *Value, UIntPtr MinLength, Char PadChar) {
 	 * filling what we need on the left side (before the string).
 	 * Before starting to do the padding, we need to get the length of the string. */
 	
+	if (Value == Null) {
+		Value = "";
+	}
+	
 	UIntPtr len = 0;
 	
 	for (; Value[len]; len++) ;
@@ -204,9 +211,9 @@ Void TextOutput::WriteInt(IntPtr Value, UInt8 Base, UIntPtr MinLength, Char PadC
 	/* Now, we need to create a temp buffer that can handle the max number on the min base.
 	 * The max number would depend on the architecture, but let's put it as 2^64-1, the 64-bits
 	 * limit, so, on the lowest base (base-2), it would take 64 characters + the string terminator
-	 * in the end. BUT, this is takes signed integers, so we can actually ignore the first bit, as
-	 * it is the sign of the number, still, this doesn't change the size, as we need to take in
-	 * consideration the minus sign. */
+	 * in the end. BUT, this is takes signed integers, so we can actually ignore the first bit,
+	 * as it is the sign of the number, still, this doesn't change the size, as we need to take
+	 * in consideration the minus sign. */
 	
 	Char buf[65] = { 0 };
 	Boolean neg = Value < 0;

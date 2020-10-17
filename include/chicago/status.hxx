@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 16:12 BRT
- * Last edited on July 19 of 2020, at 11:20 BRT */
+ * Last edited on August 25 of 2020, at 13:20 BRT */
 
 #ifndef __CHICAGO_STATUS_HXX__
 #define __CHICAGO_STATUS_HXX__
@@ -14,26 +14,31 @@
 
 enum class Status {
 	/* Used on the arch-specific syscall handler. */
+	
 	InvalidSyscall = -2, WrongHandle = -1,
 	
 	/* Two status codes that doesn't go anywhere else. */
+	
 	Success = 0, InvalidArg, Unsupported, NotFound, DoesntExist, AlreadyExists,
 	
 	/* Memory errors. */
+	
 	OutOfMemory, MapError, UnmapError, NotMapped, AlreadyMapped, MapFileFailed,
 	UnmapFileFailed,
 	
 	/* File errors (that is, status codes used on file functions. */
+	
 	InvalidFile, NotDirectory, NotFile, NotMounted, AlreadyMounted, CantRead, CantWrite,
 	CantExec, MountFailed, UmountFailed, OpenFailed, ReadFailed, WriteFailed, ControlFailed,
 	InvalidControlCmd, InvalidFs, EOF,
 	
-	/* Font errors. */
+	/* Elf loading errors. */
 	
-	NotTtf, CorruptedTtf,
+	NotElf, WrongElf, CorruptedElf, InvalidArch, AlreadyLoaded,
 	
 	/* Three in one: Errors from the process functions, error from the port functions,
 	 * and errors form the shared memory functions. */
+	
 	InvalidProcess, InvalidThread, ActionDenied, InvalidPort, NotOwner, InvalidShmSect
 };
 

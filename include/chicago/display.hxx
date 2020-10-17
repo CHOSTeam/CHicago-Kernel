@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 07 of 2020, at 12:05 BRT
- * Last edited on August 11 of 2020, at 17:08 BRT */
+ * Last edited on October 09 of 2020, at 20:38 BRT */
 
 #ifndef __CHICAGO_DISPLAY_HXX__
 #define __CHICAGO_DISPLAY_HXX__
@@ -11,8 +11,8 @@
 
 class Display {
 public:
-	/* For now, our display interface is pretty simple, it just have a SetResolution function, later we should expand it
-	 * to have at least 2D acceleration functions, and a way to get the supported functions. */
+	/* For now, our display interface is pretty simple, it just have a SetResolution function, later we should
+	 * expand it to have at least 2D acceleration functions, and a way to get the supported functions. */
 
 	struct packed Mode {
 		UIntPtr Width, Height;
@@ -23,18 +23,18 @@ public:
 		Status (*SetResolution)(UIntPtr, UIntPtr, Mode*);
 	};
 	
-	/* The video driver should call the Register function, to indicate to us the current mode (so we can allocate the
-	 * frontbuffer, and to set all the internal function pointers. */
+	/* The video driver should call the Register function, to indicate to us the current mode (so we can allocate
+	 * the frontbuffer, and to set all the internal function pointers. */
 	
 	static Status Register(Impl &Funcs, const List<Mode> &SupportedModes, Mode &CurrentMode);
 	
-	/* While our *Int functions do most of the job, we should check if they even exists, and we should also update our
-	 * internal variables after functions like SetResInt, so let's make wrapper functions around them. */
+	/* While our *Int functions do most of the job, we should check if they even exists, and we should also update
+	 * our internal variables after functions like SetResInt, so let's make wrapper functions around them. */
 	
 	static Status SetResolution(UIntPtr Width, UIntPtr Height);
 	
-	/* We should have a way to access the backbuffer and the frontbuffer, as I don't want to make the variables themselves
-	 * public, let's make some accessors... */
+	/* We should have a way to access the backbuffer and the frontbuffer, as I don't want to make the variables
+	 * themselves public, let's make some accessors... */
 	 
 	static Void Update(Void) { StrCopyMemory32(CurrentMode.Buffer, FrontBuffer.GetBuffer(),
 											   CurrentMode.Width * CurrentMode.Height); }
