@@ -1,15 +1,16 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 04 of 2020, at 23:14 BRT
- * Last edited on October 09 of 2020, at 21:54 BRT */
+ * Last edited on December 01 of 2020, at 12:37 BRT */
 
-#include <chicago/arch.hxx>
-#include <chicago/mm.hxx>
-#include <chicago/textout.hxx>
+#include <arch.hxx>
+#include <mm.hxx>
+#include <textout.hxx>
 
 /* We need to init the static variables. */
 
 UIntPtr Heap::Start = 0, Heap::End = 0, Heap::Current = 0, Heap::CurrentAligned = 0;
+SpinLock Heap::HeapLock, Heap::AllocLock;
 AllocBlock *Heap::AllocBase = Null;
 
 Void Heap::Initialize(UIntPtr Start, UIntPtr End) {
@@ -24,9 +25,13 @@ Status Heap::Increment(UIntPtr Amount) {
 	/* We need to check for two things: First, if the Amount is even valid (if it isn't, return
 	 * InvalidArg), second, if we aren't trying to expand beyond the heap limit. */
 	
+	HeapLock.Lock();
+	
 	if (Amount == 0) {
+		HeapLock.Unlock();
 		return Status::InvalidArg;
 	} else if ((Current + Amount) < Start || (Current + Amount) >= End) {
+		HeapLock.Unlock();
 		return Status::OutOfMemory;
 	}
 	
@@ -46,14 +51,20 @@ Status Heap::Increment(UIntPtr Amount) {
 		 * freed. */
 		
 		if ((status = PhysMem::ReferenceSingle(0, phys)) != Status::Success) {
+			HeapLock.Unlock();
 			return status;
-		} else if ((status = Arch->Map((Void*)CurrentAligned, phys, MM_MAP_KDEF)) != Status::Success) {
+		}
+		
+		if ((status = Arch->Map((Void*)CurrentAligned, phys, MM_MAP_KDEF)) != Status::Success) {
+			HeapLock.Unlock();
 			PhysMem::DereferenceSingle(phys);
 			return status;
 		}
 	}
 	
 	Current = nw;
+	
+	HeapLock.Unlock();
 	
 	return Status::Success;
 }
@@ -62,7 +73,10 @@ Status Heap::Decrement(UIntPtr Amount) {
 	/* Again, let's do the exact same checks as we did in the Increment function, but this time, we need
 	 * to check if the Amount big enough to underflow (and go before the heap start). */
 	
+	HeapLock.Lock();
+	
 	if (Amount == 0 || (Current - Amount) < Start || (Current - Amount) >= End) {
+		HeapLock.Unlock();
 		return Status::InvalidArg;
 	}
 	
@@ -79,6 +93,8 @@ Status Heap::Decrement(UIntPtr Amount) {
 		
 		Arch->Unmap((Void*)CurrentAligned);
 	}
+	
+	HeapLock.Unlock();
 	
 	return Status::Success;
 }
@@ -189,6 +205,8 @@ Void *Heap::Allocate(UIntPtr Size) {
 	/* With all the function that we wrote, now is just a question of checking if we need to create a new
 	 * block, or use/split an existing one. */
 	
+	AllocLock.Lock();
+	
 	Size = ((Size > 0 ? Size : 1) + 15) & -16;
 	
 	AllocBlock *last = Null, *blk = FindBlock(last, Size);
@@ -214,6 +232,8 @@ Void *Heap::Allocate(UIntPtr Size) {
 	
 	/* If everything went well, we can zero the allocated memory (just to be safe) and return, else, we
 	 * should return a null pointer. */
+	
+	AllocLock.Unlock();
 	
 	if (blk != Null) {
 		StrSetMemory((Void*)blk->Start, 0, Size);
@@ -260,9 +280,12 @@ Void Heap::Deallocate(Void *Address) {
 	 * access ptr[-2] to get the header location, else, we just subtract the size of the header from
 	 * the address. */
 	
+	AllocLock.Lock();
+	
 	if (Address == Null ||
 		(UIntPtr)Address < (UIntPtr)AllocBase + sizeof(AllocBlock) || (UIntPtr)Address >= Current) {
-#ifdef DBG
+		AllocLock.Unlock();
+#ifndef NDEBUG
 		Debug->Write("[Heap] Tried to ::Deallocate invalid address 0x%x\n", Address);
 #endif
 		return;
@@ -280,17 +303,20 @@ Void Heap::Deallocate(Void *Address) {
 	/* Now, we need to check if this is a valid block, and if we haven't called Deallocate on it
 	 * before (double free). */
 	
-#ifdef DBG
+#ifndef NDEBUG
 	if (blk->Magic != ALLOC_BLOCK_MAGIC) {
+		AllocLock.Unlock();
 		Debug->Write("[Heap] Invalid allocation block for the address (got the magic number 0x%x)\n",
 					 Address, blk->Magic);
 		return;
 	} else if (blk->Free) {
+		AllocLock.Unlock();
 		Debug->Write("[Heap] Tried to double ::Deallocate the address 0x%x\n", Address);
 		return;
 	}
 #else
 	if (blk->Magic != ALLOC_BLOCK_MAGIC || blk->Free) {
+		AllocLock.Unlock();
 		return;
 	}
 #endif
@@ -321,4 +347,6 @@ Void Heap::Deallocate(Void *Address) {
 		
 		Decrement(blk->Size + sizeof(AllocBlock));
 	}
+	
+	AllocLock.Unlock();
 }

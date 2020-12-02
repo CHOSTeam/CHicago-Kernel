@@ -1,10 +1,10 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on August 07 of 2020, at 19:20 BRT
- * Last edited on October 09 of 2020, at 22:12 BRT */
+ * Last edited on October 24 of 2020, at 14:27 BRT */
 
-#include <chicago/display.hxx>
-#include <chicago/textout.hxx>
+#include <display.hxx>
+#include <textout.hxx>
 
 static ConsoleImpl ConsoleImp;
 
@@ -17,14 +17,14 @@ Void ConsoleImpl::InitConsoleInterface(UInt32 Background, UInt32 Foreground, Boo
 	ConsoleImp.Background = Background;
 	ConsoleImp.Foreground = Foreground;
 	ConsoleImp.CursorEnabled = CursorEnabled;
-	ConsoleImp.Max.X = Display::GetFrontBuffer().GetWidth() / DefaultFontData.Width;
-	ConsoleImp.Max.Y = Display::GetFrontBuffer().GetHeight() / DefaultFontData.Height;
+	ConsoleImp.Max.X = Display::GetFrontBuffer()->GetWidth() / DefaultFontData.Width;
+	ConsoleImp.Max.Y = Display::GetFrontBuffer()->GetHeight() / DefaultFontData.Height;
 	Console = &ConsoleImp;
 	
-	Display::GetFrontBuffer().Clear(Background);
+	Display::GetFrontBuffer()->Clear(Background);
 	
 	if (CursorEnabled) {
-		Display::GetFrontBuffer().DrawRectangle(0, DefaultFontData.Width, DefaultFontData.Height,
+		Display::GetFrontBuffer()->DrawRectangle(0, DefaultFontData.Width, DefaultFontData.Height,
 												ConsoleImp.Background, True);
 	}
 	
@@ -46,9 +46,9 @@ Void ConsoleImpl::WriteInt(Char Value) {
 	 * to remove a bit of redundancy. */
 	
 	Vector2D<IntPtr> fsize(DefaultFontData.Width, DefaultFontData.Height);
-	Image &buf = Display::GetFrontBuffer();
+	Image *buf = Display::GetFrontBuffer();
 	
-	buf.DrawRectangle(Position * fsize, DefaultFontData.Width, DefaultFontData.Height, Background, True);
+	buf->DrawRectangle(Position * fsize, DefaultFontData.Width, DefaultFontData.Height, Background, True);
 	
 	switch (Value) {
 	case '\b': {
@@ -62,7 +62,7 @@ Void ConsoleImpl::WriteInt(Char Value) {
 			Position.X = Max.X - 1;
 		}
 		
-		buf.DrawRectangle(Position * fsize, DefaultFontData.Width, DefaultFontData.Height, Background, True);
+		buf->DrawRectangle(Position * fsize, DefaultFontData.Width, DefaultFontData.Height, Background, True);
 		
 		break;
 	}
@@ -85,7 +85,7 @@ Void ConsoleImpl::WriteInt(Char Value) {
 		break;
 	}
 	default: {
-		buf.DrawCharacter(Position * fsize, Value, Foreground);
+		buf->DrawCharacter(Position * fsize, Value, Foreground);
 		Position.X++;
 		break;
 	}
@@ -99,11 +99,11 @@ Void ConsoleImpl::WriteInt(Char Value) {
 	}
 	
 	if (Position.Y >= Max.Y) {
-		buf.Scroll(DefaultFontData.Height, Background);
+		buf->Scroll(DefaultFontData.Height, Background);
 		Position.Y = Max.Y - 1;
 	}
 	
 	if (CursorEnabled) {
-		buf.DrawRectangle(Position * fsize, DefaultFontData.Width, DefaultFontData.Height, Foreground, True);
+		buf->DrawRectangle(Position * fsize, DefaultFontData.Width, DefaultFontData.Height, Foreground, True);
 	}
 }

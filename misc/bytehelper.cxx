@@ -1,9 +1,9 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 03 of 2020, at 12:30 BRT
- * Last edited on October 09 of 2020, at 21:43 BRT */
+ * Last edited on October 24 of 2020, at 14:34 BRT */
 
-#include <chicago/string.hxx>
+#include <string.hxx>
 
 Void ByteHelper::Convert(Float Value, Char &Unit, UIntPtr &Left, UIntPtr &Right) {
 	/* This function takes in a value in bytes, and convert it into the smallest possible unit, so we

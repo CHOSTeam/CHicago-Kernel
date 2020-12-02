@@ -1,10 +1,10 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 06 of 2020, at 11:15 BRT
- * Last edited on October 09 of 2020, at 22:03 BRT */
+ * Last edited on October 27 of 2020, at 15:40 BRT */
 
-#include <chicago/fs.hxx>
-#include <chicago/textout.hxx>
+#include <fs.hxx>
+#include <textout.hxx>
 
 List<const FsImpl*> FileSys::FileSystems;
 List<const MountPoint*> FileSys::MountPoints;
@@ -12,12 +12,9 @@ List<const MountPoint*> FileSys::MountPoints;
 /* We need to handle the reference count on all the constructors except for the Void one. We're not
  * going to implement a const File* constructor, instead, call the construtor passing *ptr. */
 
-File::File(Void) : Name("<unknown>"), Flags(0), Fs(Null), Length(0), Priv(Null), INode(0),
-				   References(Null) { }
-
 File::File(const String &Name, UInt8 Flags, const FsImpl *Fs, UInt64 Length, const Void *Priv,
 		   UInt64 INode) : Name((String&)Name), Flags(Flags), Fs(Fs), Length(Length), Priv(Priv),
-		   INode(INode), References(new UIntPtr) {
+						   INode(INode), References(new UIntPtr) {
 	if (References != Null) {
 		(*References)++;
 	}
@@ -31,7 +28,9 @@ File::File(const File &Source) : Name(Source.Name), Flags(Source.Flags), Fs(Sour
 	}
 }
 
-File::~File(Void) {
+Void File::Cleanup(Void) {
+	/* Remove a bit of redundancy. */
+	
 	if (References == Null || --(*References) == 0) {
 		if (References != Null) {
 			delete References;
@@ -43,17 +42,13 @@ File::~File(Void) {
 	}
 }
 
+File::~File(Void) {
+	Cleanup();
+}
+
 File &File::operator =(const File &Source) {
-	if (Source.Priv != Priv || Source.INode != INode || Source.References != References) {
-		if (References == Null || --(*References) == 0) {
-			if (References != Null) {
-				delete References;
-			}
-			
-			if (Fs != Null && Fs->Close == Null) {
-				Fs->Close(Priv, INode);
-			}
-		}
+	if (Source.Priv != Priv || Source.INode != INode) {
+		Cleanup();
 		
 		Name = Source.Name;
 		Flags = Source.Flags;
@@ -113,7 +108,7 @@ Status File::ReadDirectory(UIntPtr Index, String &Name) const {
 	return Name.GetSize() == 0 ? Status::OutOfMemory : Status::Success;
 }
 
-Status File::Search(const String &Name, UInt8 Flags, File &Out) const {
+Status File::Search(const String &Name, UInt8 Flags, File *&Out) const {
 	/* ->Search returns the Priv and INode values for the file, we should mount the wrapper around
 	 * the returned values, remembering that the Fs remains the same. */
 	
@@ -135,7 +130,15 @@ Status File::Search(const String &Name, UInt8 Flags, File &Out) const {
 		return status;
 	}
 	
-	Out = File(Name, Flags, Fs, len, priv, inode);
+	Out = new File(Name, Flags, Fs, len, priv, inode);
+	
+	if (Out == Null) {
+		if (Fs->Close != Null) {
+			Fs->Close(priv, inode);
+		}
+		
+		return Status::OutOfMemory;
+	}
 	
 	return Status::Success;
 }
@@ -253,7 +256,7 @@ Status FileSys::Register(const FsImpl *Info) {
 		return Status::AlreadyExists;
 	}
 	
-#ifdef DBG
+#ifndef NDEBUG
 	Status status = FileSystems.Add(Info);
 	
 	if (status == Status::Success) {
@@ -299,11 +302,13 @@ Status FileSys::CheckMountPoint(const String &Path) {
 	return Status::NotMounted;
 }
 
-Status FileSys::CreateMountPoint(const String &Path, const File &Root) {
+Status FileSys::CreateMountPoint(const String &Path, const File *Root) {
 	/* We need to export this to be visisble so the user can mount the boot directory, the root directory, the
 	 * /Devices folder etc. */
 	
-	if (Path[0] != '/' || !(Root.GetFlags() & OPEN_DIR)) {
+	if (Root == Null) {
+		return Status::OutOfMemory;
+	} else if (Path[0] != '/' || !(Root->GetFlags() & OPEN_DIR)) {
 		return Status::InvalidArg;
 	}
 	
@@ -345,7 +350,7 @@ c:	MountPoint *mp = new MountPoint(Path, Root);
 		return status;
 	}
 	
-#ifdef DBG
+#ifndef NDEBUG
 	Debug->Write("[FileSys] Created a mount point at the path '%S'\n", &Path);
 #endif
 	
@@ -369,7 +374,7 @@ static Status CheckFlags(UInt8 SourceFlags, UInt8 Flags) {
 	return ((Flags & OPEN_EXEC) && !(SourceFlags & OPEN_EXEC)) ? Status::CantExec : Status::Success;
 }
 
-Status FileSys::Open(const String &Path, UInt8 Flags, File &Out) {
+Status FileSys::Open(const String &Path, UInt8 Flags, File *&Out) {
 	if (Path[0] != '/') {
 		return Status::InvalidArg;
 	} else if (MountPoints.GetLength() == 0) {
@@ -397,12 +402,11 @@ Status FileSys::Open(const String &Path, UInt8 Flags, File &Out) {
 	
 	if (mp == Null) {
 		return Status::NotMounted;
-	} else if ((status = CheckFlags(mp->GetRoot().GetFlags(),
+	} else if ((status = CheckFlags(mp->GetRoot()->GetFlags(),
 									remain.GetLength() == 0 ? ffile : fdir)) != Status::Success) {
 		return status;
 	} else if (remain.GetLength() == 0) {
-		Out = mp->GetRoot();
-		return Status::Success;
+		return (Out = new File(*mp->GetRoot())) == Null ? Status::OutOfMemory : Status::Success;
 	}
 	
 	List<String> parts = TokenizePath(remain);
@@ -411,17 +415,17 @@ Status FileSys::Open(const String &Path, UInt8 Flags, File &Out) {
 		return Status::OutOfMemory;
 	}
 	
-	File dir = mp->GetRoot();
+	const File *dir = mp->GetRoot();
 	
 	while (parts.GetLength() != 1) {
-		File cur;
+		File *cur;
 		String name = parts[0];
 		
 		parts.Remove(0);
 		
-		if ((status = dir.Search(name, fdir, cur)) != Status::Success) {
+		if ((status = dir->Search(name, fdir, cur)) != Status::Success) {
 			if (status != Status::DoesntExist || !(Flags & OPEN_RECUR_CREATE) ||
-				(status = dir.Create(name, fdir)) != Status::Success) {
+				(status = dir->Create(name, fdir)) != Status::Success) {
 				return status;
 			}
 		}
@@ -438,13 +442,13 @@ Status FileSys::Open(const String &Path, UInt8 Flags, File &Out) {
 	
 	parts.Remove(0);
 	
-	if ((status = dir.Search(name, ffile, Out)) != Status::Success) {
+	if ((status = dir->Search(name, ffile, Out)) != Status::Success) {
 		if (status != Status::DoesntExist || !(Flags & OPEN_CREATE) ||
-			(status = dir.Create(name, ffile)) != Status::Success) {
+			(status = dir->Create(name, ffile)) != Status::Success) {
 			return status;
 		}
 		
-		if ((status = dir.Search(name, ffile, Out)) != Status::Success) {
+		if ((status = dir->Search(name, ffile, Out)) != Status::Success) {
 			return status;
 		}
 	} else if (Flags & OPEN_ONLY_CREATE) {
@@ -464,7 +468,7 @@ Status FileSys::Mount(const String &Dest, const String &Source, UInt8 Flags) {
 	
 	Flags = (Flags & FILE_FLAGS_MASK) & ~OPEN_DIR;
 	
-	File dst, src;
+	File *dst, *src;
 	Status status;
 	UInt64 inode;
 	Void *priv;
@@ -475,24 +479,19 @@ Status FileSys::Mount(const String &Dest, const String &Source, UInt8 Flags) {
 		return status;
 	}
 	
-	File *srcp = new File(src);
-	
-	if (srcp == Null) {
-		return Status::OutOfMemory;
-	}
-	
 	for (const FsImpl *fs : FileSystems) {
-		if ((status = fs->Mount((Void*)srcp, &priv, &inode)) == Status::Success) {
-			if ((status = CreateMountPoint(Dest, File("/", OPEN_DIR | Flags, fs, 0, priv, inode))) != Status::Success) {
+		if ((status = fs->Mount((Void*)src, &priv, &inode)) == Status::Success) {
+			if ((status = CreateMountPoint(Dest, new File("/", OPEN_DIR | Flags, fs,
+										   0, priv, inode))) != Status::Success) {
 				fs->Unmount(priv, inode);
 			}
 			
-			delete srcp;
+			delete src;
 			return status;
 		} else if (status == Status::OutOfMemory) {
 			/* I think that it is a good idea to fail in the case the FS driver returns that the kernel is out of
 			 * memory. */
-			delete srcp;
+			delete src;
 			return status;
 		}
 	}
@@ -529,7 +528,7 @@ Status FileSys::Unmount(const String &Path) {
 		}
 		
 		MountPoints.Remove(idx);
-		mp->GetRoot().Unmount();
+		mp->GetRoot()->Unmount();
 		
 		delete mp;
 		return Status::Success;

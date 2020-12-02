@@ -1,17 +1,13 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 25 of 2020, at 11:52 BRT
- * Last edited on October 09 of 2020, at 21:49 BRT */
+ * Last edited on November 28 of 2020, at 11:24 BRT */
 
-#include <chicago/string.hxx>
+#include <string.hxx>
 
-String::String() {
-	Value = Null;
-	Length = Allocated = 0;
-}
+String::String() : Value(Null), Length(0), Allocated(0) { }
 
-String::String(UIntPtr Length) {
-	this->Length = Allocated = 0;
+String::String(UIntPtr Length) : Length(0), Allocated(0) {
 	Value = Length != 0 ? new Char[Length + 1] : Null;
 	
 	if (Value != Null) {
@@ -19,13 +15,7 @@ String::String(UIntPtr Length) {
 	}
 }
 
-String::String(const String &Value) {
-	/* Init everything to Null/0, so we can call ->Append, as this is the easiest way of doing the
-	 * copy (without having a bunch of repeated code). */
-	
-	this->Value = Null;
-	Length = Allocated = 0;
-	
+String::String(const String &Value) : Value(Null), Length(0), Allocated(0) {
 	if (Value.Value != Null) {
 		Append(Value);
 	}
@@ -254,7 +244,7 @@ Status String::Append(const Char *Format, ...) {
 			UIntPtr min = 0;
 			Char pad = ' ';
 			
-			i += ParseFlags((const Char*)&Format[++i], min, pad);
+			i += ParseFlags((const Char*)&Format[i + 1], min, pad) + 1;
 			
 			switch (Format[i]) {
 			case 's': {

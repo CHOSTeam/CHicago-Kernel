@@ -1,12 +1,12 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 03 of 2020, at 22:55 BRT
- * Last edited on October 09 of 2020, at 20:45 BRT */
+ * Last edited on November 29 of 2020, at 23:37 BRT */
 
-#include <chicago/arch/arch.hxx>
-#include <chicago/arch/mm.hxx>
-#include <chicago/string.hxx>
-#include <chicago/textout.hxx>
+#include <arch/arch.hxx>
+#include <arch/mm.hxx>
+#include <string.hxx>
+#include <textout.hxx>
 
 /* Basic inline helpers for the other functions. */
 
@@ -86,7 +86,7 @@ static Status CheckPageTables(UIntPtr VirtAddr, UIntPtr *&OutEnt, UIntPtr &CurLv
 	
 	switch (CurLvl) {
 	case 1: {
-		if ((ret = CheckTableEntry(0xFFFFFFFFFFFFF000, pml4e, 3, OutEnt, CleanCur)) == -1) {
+		if ((ret = CheckTableEntry(0xFFFFFF7FBFDFE000, pml4e, 3, OutEnt, CleanCur)) == -1) {
 			return Status::NotMapped;
 		}
 		
@@ -94,7 +94,7 @@ static Status CheckPageTables(UIntPtr VirtAddr, UIntPtr *&OutEnt, UIntPtr &CurLv
 		CurLvl++;
 	}
 	case 2: {
-		if ((ret = CheckTableEntry(0xFFFFFFFFFFE00000 + pml4a, pdpe, 3, OutEnt, CleanCur)) < 0) {
+		if ((ret = CheckTableEntry(0xFFFFFF7FBFC00000 + pml4a, pdpe, 3, OutEnt, CleanCur)) < 0) {
 			return Status::NotMapped;
 		}
 		
@@ -102,7 +102,7 @@ static Status CheckPageTables(UIntPtr VirtAddr, UIntPtr *&OutEnt, UIntPtr &CurLv
 		CurLvl++;
 	}
 	case 3: {
-		if ((ret = CheckTableEntry(0xFFFFFFFFC0000000 + pdpa, pde, 3, OutEnt, CleanCur)) < 0) {
+		if ((ret = CheckTableEntry(0xFFFFFF7F80000000 + pdpa, pde, 3, OutEnt, CleanCur)) < 0) {
 			return Status::NotMapped;
 		}
 		
@@ -110,7 +110,7 @@ static Status CheckPageTables(UIntPtr VirtAddr, UIntPtr *&OutEnt, UIntPtr &CurLv
 		CurLvl++;
 	}
 	case 4: {
-		ret = CheckTableEntry(0xFFFFFF8000000000 + pda, pte, 3, OutEnt, CleanCur);
+		ret = CheckTableEntry(0xFFFFFF0000000000 + pda, pte, 3, OutEnt, CleanCur);
 		break;
 	}
 	}
@@ -209,7 +209,7 @@ Status ArchImpl::MapTemp(UIntPtr PhysAddr, UInt32 Flags, Void *&Out) {
 	UIntPtr pz = (Flags & MM_MAP_HUGE) ? MM_HUGE_PAGE_SIZE : MM_PAGE_SIZE;
 	
 #ifdef ARCH_64
-	for (UIntPtr i = 0xFFFFFF0000000000; i < 0xFFFFFF8000000000; i += pz) {
+	for (UIntPtr i = 0xFFFFFE8000000000; i < 0xFFFFFF0000000000; i += pz) {
 #else
 	for (UIntPtr i = 0xFF800000; i < 0xFFC00000; i += pz) {
 #endif
@@ -232,7 +232,7 @@ Status ArchImpl::Map(Void *VirtAddr, UIntPtr PhysAddr, UInt32 Flags) {
 		PhysAddr &= MM_HUGE_PAGE_MASK;
 	} else {
 		VirtAddr = (Void*)((UIntPtr)VirtAddr & MM_PAGE_MASK);
-		PhysAddr &= PhysAddr;
+		PhysAddr &= MM_PAGE_MASK;
 	}
 	
 	UInt32 flgs = (Flags & MM_MAP_AOR) ? PAGE_AOR : PAGE_PRESENT;
@@ -285,7 +285,7 @@ Status ArchImpl::Map(Void *VirtAddr, UIntPtr PhysAddr, UInt32 Flags) {
 		}
 		
 #ifdef ARCH_64
-		if ((UIntPtr)VirtAddr >= 0xFFFF800000000000) {
+		if ((UIntPtr)VirtAddr >= 0xFFFFFF8000000000) {
 #else
 		if ((UIntPtr)VirtAddr >= 0xC0000000) {
 #endif
@@ -332,7 +332,7 @@ Status ArchImpl::CreateDirectory(UIntPtr &Out) {
 	 * to allocate one physical page for the new directory, and temp map it into the memory. */
 	
 #ifdef ARCH_64
-	UIntPtr *cdir = (UIntPtr*)0xFFFFFFFFFFFFF000;
+	UIntPtr *cdir = (UIntPtr*)0xFFFFFF7FBFDFE000;
 #else
 	UIntPtr *cdir = (UIntPtr*)0xFFFFF000;
 #endif
@@ -351,25 +351,26 @@ Status ArchImpl::CreateDirectory(UIntPtr &Out) {
 	 * copy any of the pages that we use for temp mappings. */
 	
 #ifdef ARCH_64
-	UIntPtr max = 512;
-#else
-	UIntPtr max = 1024;
-#endif
-	
-	for (UInt32 i = 0; i < max; i++) {
-		if (!(cdir[i] & PAGE_PRESENT) ||
-#ifdef ARCH_64
-			i < 256 || i == 510) {
-#else
-			i < 768 || i == 1022) {
-#endif
+	for (UInt32 i = 0; i < 512; i++) {
+		if (!(cdir[i] & PAGE_PRESENT) || i < 510) {
 			dir[i] = 0;
-		} else if (i == max - 1) {
+		} else if (i == 510) {
 			dir[i] = (Out & MM_PAGE_MASK) | 3;
 		} else {
-			dir[i] = cdir[i];
+			dir[i] = dir[i] = cdir[i];
 		}
 	}
+#else
+	for (UInt32 i = 0; i < 1024; i++) {
+		if (!(cdir[i] & PAGE_PRESENT) || i < 768 || i == 1022) {
+			dir[i] = 0;
+		} else if (i == 1023) {
+			dir[i] = (Out & MM_PAGE_MASK) | 3;
+		} else {
+			dir[i] = dir[i] = cdir[i];
+		}
+	}
+#endif
 	
 	Unmap(dir);
 	
@@ -400,12 +401,8 @@ Status ArchImpl::FreeDirectory(UIntPtr Directory) {
 		return status;
 	}
 	
-	/* Now there are somethings to take in consideration: The kernel starts at the page directory index 256, so we should
-	 * only free things below that index. Also, we need to free the temp mappings, and they are at the page directory index
-	 * 510 (yes, x86-64 have half the amount of entries per directory level, but double the amount of levels). */
-	
 	for (UIntPtr i = 0; i < 512; i++) {
-		if (i >= 256 && i != 510) {
+		if (i >= 510) {
 			continue;
 		} else if (!(pml4[i] & PAGE_PRESENT)) {
 			continue;
@@ -588,13 +585,14 @@ Void VmmInit(Void) {
 	 * still should have plently of physical memory for us. */
 	
 #ifdef ARCH_64
-	UIntPtr hend = 0xFFFFFF0000000000, esize = 0x8000000000, *ent = Null, lvl = 1,
+	UIntPtr hend = 0xFFFFFFFF80000000, esize = 0x8000000000, *ent = Null, lvl = 1,
+			hstart = 0xFFFFFF8000000000;
 #else
 	UIntPtr hend = 0xFF800000, esize = 0x400000, *ent = Null, lvl = 1,
-#endif
 			hstart = (ArchImp.GetKernelEnd() + esize - 1) & -esize;
+#endif
 	
-	for (UIntPtr i = hstart, p = 0; i < hend; i += esize) {
+	for (UIntPtr i = hstart, p = 0; i < hend && i >= hstart; i += esize) {
 		if (CheckPageTables(i, ent, lvl) != Status::NotMapped || lvl != 1) {
 			continue;
 		}

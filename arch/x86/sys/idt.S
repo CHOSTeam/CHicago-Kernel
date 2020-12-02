@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 30 of 2020, at 08:27 BRT
- * Last edited on June 30 of 2020, at 16:26 BRT */
+ * Last edited on November 30 of 2020, at 20:35 BRT */
 
  .altmacro
 .section .text
@@ -74,7 +74,7 @@ IDT_ERRCODE 30
  * sure that the stack (or whatever) is ready for receiving the Registers* paramenter in the C++ code. */
 
 .extern IdtDefaultHandler
-.ifdef ARCH_64
+#ifdef ARCH_64
 IdtCommonStub:
 	/* x86-64 is almost the same as x86, but we don't have the pusha instruction, so we need to manually push
 	 * every single general register, and we also don't have to push GS and FS, as they aren't really controlled
@@ -137,7 +137,7 @@ IdtCommonStub:
 	
 	add $16, %rsp
 	iretq
-.else
+#else
 IdtCommonStub:
 	/* Under x86-32: Push all the general registers using the 'pusha' instruction (which is really helpful,
 	 * but doesn't exist under x86-64), push the segment registers, set them to the kernel default ones, and
@@ -147,8 +147,6 @@ IdtCommonStub:
 	
 	push %ds
 	push %es
-	push %fs
-	push %gs
 	
 	mov $0x10, %ax
 	mov %ax, %ds
@@ -166,8 +164,6 @@ IdtCommonStub:
 	 * After this, remove the interrupt number and the error code from the stack (that the IdtHandler* function
 	 * pushed), and call 'iret', which restores the right code segment and stack segment. */
 	
-	pop %gs
-	pop %fs
 	pop %es
 	pop %ds
 	
@@ -175,18 +171,18 @@ IdtCommonStub:
 	
 	add $8, %esp
 	iret
-.endif
+#endif
 
 /* And now, on the .data section, we can use another .rept loop to make a table with all those entries. */
 
 .section .data
 
 .macro IDT_ENTRY num
-.ifdef ARCH_64
+#ifdef ARCH_64
 	.quad IdtHandler\num
-.else
+#else
 	.long IdtHandler\num
-.endif
+#endif
 .endm
 
 .global IdtDefaultHandlers

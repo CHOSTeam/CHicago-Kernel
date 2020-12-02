@@ -1,9 +1,9 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on August 01 of 2020, at 17:46 BRT
- * Last edited on October 11 of 2020, at 18:12 BRT */
+ * Last edited on October 24 of 2020, at 14:34 BRT */
 
-#include <chicago/img.hxx>
+#include <img.hxx>
 
 Image::Image(IntPtr Width, IntPtr Height) {
 	/* Zero values for any of the variables mean that the user want us to use the default value for said

@@ -1,13 +1,13 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 25 of 2020, at 09:49 BRT
- * Last edited on October 10 of 2020, at 15:50 BRT */
+ * Last edited on December 02 of 2020, at 08:13 BRT */
 
-#include <chicago/arch.hxx>
-#include <chicago/display.hxx>
-#include <chicago/elf.hxx>
-#include <chicago/siafs.hxx>
-#include <chicago/textout.hxx>
+#include <arch.hxx>
+#include <display.hxx>
+#include <siafs.hxx>
+#include <process.hxx>
+#include <textout.hxx>
 
 /* Some global variables that don't fit anywhere else. */
 
@@ -28,28 +28,12 @@ Void KernelMain(Void) {
 	
 	ConsoleImpl::InitConsoleInterface(0xFF000000, 0xFFFFFFFF, False);
 	
-#ifdef DBG
-	Console->Write("This was compiled under the '[Version: %s] [Arch: %s] [Debug: yes]' environment\n",
-				   VERSION, ARCH);
-#else
-	Console->Write("This was compiled under the '[Version: %s] [Arch: %s] [Debug: no]' environment\n",
-				   VERSION, ARCH);
-#endif
+	Console->Write("CHicago Operating System for %s version %s\n", ARCH, VERSION);
 	Console->Write("Usable physical memory size size is %BB\n", PhysMem::GetSize());
 	Console->Write("%BB of physical memory are being used, and %BB are free\n", PhysMem::GetUsage(),
 				   PhysMem::GetFree());
 	Console->Write("The display resolution is %dx%d, and the font size is %dx%d\n", Display::GetWidth(),
 				   Display::GetHeight(), DefaultFontData.Width, DefaultFontData.Height);
-	
-	/* TEMP: Load the test driver. */
-	
-	Elf driver("/System/Boot/Drivers/test.chd", ELF_TYPE_REL);
-	
-	if (driver.GetLoadStatus() != Status::AlreadyLoaded) {
-		Console->Write("The test driver failed to load (status is %d)\n", driver.GetLoadStatus());
-	} else {
-		Console->Write("The test driver was loaded with success\n");
-	}
 	
 	Arch->Halt();
 }

@@ -1,9 +1,9 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 26 of 2020, at 14:54 BRT
- * Last edited on October 09 of 2020, at 21:51 BRT */
+ * Last edited on December 01 of 2020, at 15:00 BRT */
 
-#include <chicago/textout.hxx>
+#include <textout.hxx>
 
 /* Global TextOutput implementations. */
 
@@ -14,25 +14,35 @@ TextOutput *Console = Null;
  * separate as a kind of "interface" to the true functions as we need to call AfterWrite. */
 
 Void TextOutput::Write(Char Value) {
+	Lock.Lock();
 	WriteInt(Value);
 	AfterWrite();
+	Lock.Unlock();
 }
 
 Void TextOutput::Write(const String &Value) {
+	Lock.Lock();
+	
 	if (Value.ToCString() != Null) {
 		WriteInt(Value.ToCString(), 0, ' ');
 		AfterWrite();
 	}
+	
+	Lock.Unlock();
 }
 
 Void TextOutput::Write(IntPtr Value, UInt8 Base, UIntPtr MinLength, Char PadChar) {
+	Lock.Lock();
 	WriteInt(Value, Base, MinLength, PadChar);
 	AfterWrite();
+	Lock.Unlock();
 }
 
 Void TextOutput::Write(UIntPtr Value, UInt8 Base, UIntPtr MinLength, Char PadChar) {
+	Lock.Lock();
 	WriteInt(Value, Base, MinLength, PadChar);
 	AfterWrite();
+	Lock.Unlock();
 }
 
 static UIntPtr ParseFlags(const Char *Start, UIntPtr &MinLength, Char &PadChar) {
@@ -86,6 +96,8 @@ Void TextOutput::Write(const Char *Format, ...) {
 	 * as well). After the % and before the format itself, the user can also specify if we need to pad
 	 * the result. */
 	
+	Lock.Lock();
+	
 	for (UIntPtr i = 0; Format[i]; i++) {
 		if (Format[i] != '%') {
 			WriteInt(Format[i]);
@@ -93,7 +105,7 @@ Void TextOutput::Write(const Char *Format, ...) {
 			UIntPtr min = 0;
 			Char pad = ' ';
 			
-			i += ParseFlags(&Format[++i], min, pad);
+			i += ParseFlags(&Format[i + 1], min, pad) + 1;
 			
 			switch (Format[i]) {
 			case 's': {
@@ -162,11 +174,13 @@ Void TextOutput::Write(const Char *Format, ...) {
 		}
 	}
 	
+	AfterWrite();
+	Lock.Unlock();
+	
 	/* Tell the compiler that we're done using the variadic list, there are some architectures that need
 	 * to do some clean up. */
 	
 	VariadicEnd(va);
-	AfterWrite();
 }
 
 Void TextOutput::WriteInt(const Char *Value, UIntPtr MinLength, Char PadChar) {

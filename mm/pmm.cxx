@@ -1,11 +1,12 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on October 09 of 2020, at 21:57 BRT */
+ * Last edited on December 01 of 2020, at 12:39 BRT */
 
-#include <chicago/mm.hxx>
-#include <chicago/string.hxx>
-#include <chicago/textout.hxx>
+#include <mm.hxx>
+#include <process.hxx>
+#include <string.hxx>
+#include <textout.hxx>
 
 /* This is probably the only code (non-header) file with some type of macro definition on it lol. */
 
@@ -17,14 +18,15 @@
 
 /* All of the static private variables. */
 
-UIntPtr PhysMem::KernelStart = 0, PhysMem::KernelEnd = 0, PhysMem::RegionCount = 0,
-		PhysMem::MaxAddress = 0, PhysMem::MaxBytes = 0, PhysMem::UsedBytes = 0;
+UIntPtr PhysMem::KernelStart = 0, PhysMem::KernelEnd = 0, PhysMem::RegionCount = 0;
+UInt64 PhysMem::MaxAddress = 0, PhysMem::MaxBytes = 0, PhysMem::UsedBytes = 0;
 PhysMem::Region *PhysMem::Regions = Null;
 UInt8 *PhysMem::References = Null;
 Boolean PhysMem::InInit = False;
+SpinLock PhysMem::Lock;
 
-Void PhysMem::Initialize(UInt8 *Start, UIntPtr KernelStart, UIntPtr KernelEnd, UIntPtr MaxAddress,
-						 UIntPtr MaxBytes) {
+Void PhysMem::Initialize(UInt8 *Start, UIntPtr KernelStart, UIntPtr KernelEnd, UInt64 MaxAddress,
+						 UInt64 MaxBytes) {
 	/* This function should only be called once by the arch-specific kernel entry, it is responsible for
 	 * initializing the physical memory manager (allocate/deallocate physical memory, and manage how many
 	 * references the pages have around all the tasks/CPUs/whatever). */
@@ -181,7 +183,10 @@ Status PhysMem::ReferenceSingle(UIntPtr Page, UIntPtr &Out) {
 		return Status::InvalidArg;
 	}
 	
+	Lock.Lock();
 	References[(Page & MM_PAGE_MASK) >> MM_PAGE_SIZE_SHIFT]++;
+	Lock.Unlock();
+	
 	Out = Page & MM_PAGE_MASK;
 	
 	return Status::Success;
@@ -252,9 +257,14 @@ Status PhysMem::DereferenceSingle(UIntPtr Page) {
 		return Status::InvalidArg;
 	}
 	
+	Lock.Lock();
+	
 	if (!(References[Page >> MM_PAGE_SIZE_SHIFT]--)) {
+		Lock.Unlock();
 		return FreeSingle(Page);
 	}
+	
+	Lock.Unlock();
 	
 	return Status::Success;
 }
@@ -303,7 +313,11 @@ UInt8 PhysMem::GetReferences(UIntPtr Page) {
 		return 0;
 	}
 	
-	return References[(Page & MM_PAGE_MASK) >> MM_PAGE_SIZE_SHIFT];
+	Lock.Lock();
+	UInt8 ret = References[(Page & MM_PAGE_MASK) >> MM_PAGE_SIZE_SHIFT];
+	Lock.Unlock();
+	
+	return ret;
 }
 
 UIntPtr PhysMem::CountFreePages(UIntPtr BitMap, UIntPtr Start, UIntPtr End) {
@@ -360,9 +374,13 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out) {
 	/* We need to check if all of the arguments are valid, and if the physical memory manager have already
 	 * been initialized. */
 	
+	Lock.Lock();
+	
 	if (Count == 0) {
+		Lock.Unlock();
 		return Status::InvalidArg;
 	} else if (Regions == Null || UsedBytes + Count * MM_PAGE_SIZE >= MaxBytes) {
+		Lock.Unlock();
 		return Status::OutOfMemory;
 	}
 	
@@ -392,6 +410,9 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out) {
 				Regions[i].Free -= Count;
 				Regions[i].Used += Count;
 				UsedBytes += Count * MM_PAGE_SIZE;
+				
+				Lock.Unlock();
+				
 				Out = (i * (1 << MM_REGION_SIZE_SHIFT)) +
 					  (j * (1 << MM_REGION_PAGE_SIZE_SHIFT)) +
 					  (bit * MM_PAGE_SIZE);
@@ -401,14 +422,19 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out) {
 		}
 	}
 	
+	Lock.Unlock();
+	
 	return Status::OutOfMemory;
 }
 
 Status PhysMem::FreeInt(UIntPtr Start, UIntPtr Count) {
 	/* Do the same checks that we did in the AllocInt function, and align the start address to a page boundary. */
 	
+	Lock.Lock();
+	
 	if (Start < MM_PAGE_SIZE || Count == 0 ||
 		(Start & MM_PAGE_MASK) + Count * MM_PAGE_SIZE >= MaxAddress || UsedBytes < Count * MM_PAGE_SIZE) {
+		Lock.Unlock();
 		return Status::InvalidArg;
 	}
 	
@@ -423,6 +449,7 @@ Status PhysMem::FreeInt(UIntPtr Start, UIntPtr Count) {
 			k = (Start - (i << MM_REGION_SIZE_SHIFT) - (j << MM_REGION_PAGE_SIZE_SHIFT)) >> MM_PAGE_SIZE_SHIFT;
 	
 	if (Regions[i].Used < Count) {
+		Lock.Unlock();
 		return Status::InvalidArg;
 	}
 	
@@ -433,6 +460,8 @@ Status PhysMem::FreeInt(UIntPtr Start, UIntPtr Count) {
 	Regions[i].Free += Count;
 	Regions[i].Used -= Count;
 	UsedBytes -= Count * MM_PAGE_SIZE;
+	
+	Lock.Unlock();
 	
 	return Status::Success;
 }

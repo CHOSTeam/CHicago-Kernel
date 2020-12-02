@@ -1,10 +1,10 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 16 of 2020, at 09:24 BRT
- * Last edited on October 10 of 2020, at 13:26 BRT */
+ * Last edited on November 30 of 2020, at 15:01 BRT */
 
-#include <chicago/siafs.hxx>
-#include <chicago/textout.hxx>
+#include <siafs.hxx>
+#include <textout.hxx>
 
 const FsImpl MemFs::Impl = {
 	Null,
@@ -25,7 +25,7 @@ const FsImpl SiaFs::Impl = {
 
 MemFs::MemFs(Void *Location, UInt64 Length) : Location(Location), Length(Length) { }
 
-Status MemFs::MakeFile(Void *Location, UInt64 Length, UInt8 Flags, File &Out) {
+Status MemFs::MakeFile(Void *Location, UInt64 Length, UInt8 Flags, File *&Out) {
 	/* MemFs files are always going to be files, never directories, as said in the .hxx file, MemFs is mostly
 	 * used for initrd and things like that. You should ALWAYS call this function to mount MemFs files. */
 	
@@ -39,7 +39,12 @@ Status MemFs::MakeFile(Void *Location, UInt64 Length, UInt8 Flags, File &Out) {
 		return Status::OutOfMemory;
 	}
 	
-	Out = File("<memory>", Flags & FILE_FLAGS_MASK, &MemFs::Impl, Length, priv, 0);
+	Out = new File("<memory>", Flags & FILE_FLAGS_MASK, &MemFs::Impl, Length, priv, 0);
+	
+	if (Out == Null) {
+		delete priv;
+		return Status::OutOfMemory;
+	}
 	
 	return Status::Success;
 }
@@ -95,7 +100,7 @@ Status MemFs::Write(const Void *Priv, UInt64, UInt64 Offset, UInt64 Length, cons
 	return Status::Success;
 }
 
-SiaFs::SiaFs(const File &Source, const Header &Hdr, Void *ToFree, UIntPtr ExpandLoc) :
+SiaFs::SiaFs(const File *Source, const Header &Hdr, Void *ToFree, UIntPtr ExpandLoc) :
 			 Source(Source), Hdr(Hdr), ToFree(ToFree), ExpandLoc(ExpandLoc) { }
 
 SiaFs::~SiaFs(Void) {
@@ -105,6 +110,8 @@ SiaFs::~SiaFs(Void) {
 	if (ToFree) {
 		delete (UInt8*)ToFree;
 	}
+	
+	delete Source;
 }
 
 Status SiaFs::Register(Void) {
@@ -144,7 +151,7 @@ Status SiaFs::MountRamFs(const String &Path, Void *Location, UInt64 Length) {
 		expand = sizeof(hdr) + sizeof(root);
 	}
 	
-#ifdef DBG
+#ifndef NDEBUG
 	Debug->Write("[SiaFs] Mounting the ramfs located at 0x%x (length 0x%x) to the path '%S'\n", Location,
 				 (UIntPtr)Length, &Path);
 #endif
@@ -152,7 +159,7 @@ Status SiaFs::MountRamFs(const String &Path, Void *Location, UInt64 Length) {
 	Status status = FileSys::CheckMountPoint(Path);
 	
 	if (status != Status::NotMounted) {
-#ifdef DBG
+#ifndef NDEBUG
 		Debug->Write("        A mount point already exists at the path, we're out of memory, or the path is invalid\n");
 #endif
 		
@@ -182,10 +189,10 @@ Status SiaFs::MountRamFs(const String &Path, Void *Location, UInt64 Length) {
 	 * completly destructed after we are unmounted. */
 	
 	UInt8 flags = OPEN_RX | ((hdr.Info & SIA_INFO_FIXED) ? 0 : OPEN_WRITE);
-	File src;
+	File *src;
 	
 	if ((status = MemFs::MakeFile(Location, Length, flags, src)) != Status::Success) {
-#ifdef DBG
+#ifndef NDEBUG
 		Debug->Write("        The system is probably out of memory (couldn't create the MemFs file node)\n");
 #endif
 		
@@ -199,7 +206,7 @@ Status SiaFs::MountRamFs(const String &Path, Void *Location, UInt64 Length) {
 	SiaFs *fs = new SiaFs(src, hdr, free ? Location : Null, expand);
 	
 	if (fs == Null) {
-#ifdef DBG
+#ifndef NDEBUG
 		Debug->Write("        The system is out of memory (couldn't alloc the FS data pointer)\n");
 #endif
 		
@@ -207,28 +214,31 @@ Status SiaFs::MountRamFs(const String &Path, Void *Location, UInt64 Length) {
 			delete (UInt8*)Location;
 		}
 		
+		delete src;
 		return Status::OutOfMemory;
 	}
 	
-	SiaFs::PrivData *priv = new SiaFs::PrivData { fs, hdr.RootOffset, 0, 0, 0, 0, { 0 } };
+	SiaFs::PrivData *priv = new SiaFs::PrivData { fs, hdr.RootOffset, { 0, 0, 0, 0, { 0 } } };
 	
 	if (priv == Null) {
-#ifdef DBG
+#ifndef NDEBUG
 		Debug->Write("        The system is out of memory (couldn't alloc the priv data pointer)\n");
 #endif	
 		delete fs;
+		delete src;
 		return Status::OutOfMemory;
 	}
 	
 	StrCopyMemory(&priv->Hdr, (Void*)((UIntPtr)Location + hdr.RootOffset), sizeof(priv->Hdr));
 	
-	if ((status = FileSys::CreateMountPoint(Path, File("/", flags | OPEN_DIR | OPEN_EXEC, &SiaFs::Impl, 0,
-													   priv, 0))) != Status::Success) {
-#ifdef DBG
+	if ((status = FileSys::CreateMountPoint(Path, new File("/", flags | OPEN_DIR | OPEN_EXEC, &SiaFs::Impl, 0,
+														   priv, 0))) != Status::Success) {
+#ifndef NDEBUG
 		Debug->Write("        The system is probably out of memory (couldn't create the mount point)\n");
 #endif
 		delete fs;
 		delete priv;
+		delete src;
 		return status;
 	}
 	
@@ -243,14 +253,14 @@ Status SiaFs::CheckHeader(const SiaFs::Header &Hdr, UInt64 Length) {
 	 * not be the kernel image/initrd. */
 	
 	if (Hdr.Magic != SIA_MAGIC) {
-#ifdef DBG
+#ifndef NDEBUG
 		Debug->Write("        The header magic is invalid (expected 0x%x, got 0x%x).\n", SIA_MAGIC, Hdr.Magic);
 #endif
 		return Status::InvalidFs;
 	} else if (Hdr.FreeFileCount != 0 &&
 			   (Hdr.FreeFileOffset < sizeof(SiaFs::Header) ||
 				Hdr.FreeFileOffset + Hdr.FreeFileCount * sizeof(SiaFs::FileHeader) >= Length)) {
-#ifdef DBG
+#ifndef NDEBUG
 		Debug->Write("        The free file count/offset is too small/too big (starts at 0x%x, while the min is 0x%x, ",
 					 (UIntPtr)Hdr.FreeFileOffset, sizeof(SiaFs::Header));
 		Debug->Write("ends at 0x%x, while the max is 0x%x)\n",
@@ -260,7 +270,7 @@ Status SiaFs::CheckHeader(const SiaFs::Header &Hdr, UInt64 Length) {
 	} else if (Hdr.FreeDataCount != 0 &&
 			   (Hdr.FreeDataOffset < sizeof(SiaFs::Header) ||
 				Hdr.FreeDataOffset + Hdr.FreeDataCount * sizeof(SiaFs::DataHeader) >= Length)) {
-#ifdef DBG
+#ifndef NDEBUG
 		Debug->Write("        The free data count/offset is too small/too big (starts at 0x%x, while the min is 0x%x, ",
 					 (UIntPtr)Hdr.FreeDataOffset, sizeof(SiaFs::Header));
 		Debug->Write("min end is 0x%x, while the max length is 0x%x)\n",
@@ -268,7 +278,7 @@ Status SiaFs::CheckHeader(const SiaFs::Header &Hdr, UInt64 Length) {
 #endif
 		return Status::InvalidFs;
 	} else if (Hdr.RootOffset < sizeof(SiaFs::Header) || Hdr.RootOffset + sizeof(SiaFs::FileHeader) >= Length) {
-#ifdef DBG
+#ifndef NDEBUG
 		Debug->Write("        The root directory location is invalid (starts at 0x%x, while the min is 0x%x, ",
 					 (UIntPtr)Hdr.RootOffset, sizeof(SiaFs::Header));
 		Debug->Write("min end is 0x%x, while the max length is 0x%x)\n",
@@ -346,7 +356,7 @@ Status SiaFs::Open(const Void *Priv, UInt64, UInt8 Flags) {
 		return status;
 	}
 	
-	return CheckOpenFlags(priv->Fs->Source.GetFlags(), Flags);
+	return CheckOpenFlags(priv->Fs->Source->GetFlags(), Flags);
 }
 
 Void SiaFs::Close(const Void *Priv, UInt64) {
@@ -371,7 +381,7 @@ Status SiaFs::Read(const Void *Priv, UInt64, UInt64 Offset, UInt64 Length, Void 
 	if ((status = CheckPrivData(Priv, priv)) != Status::Success) {
 		return status;
 	} else if ((status = CheckFileFlags(priv->Hdr.Flags, OPEN_READ)) != Status::Success ||
-			   (status = CheckOpenFlags(priv->Fs->Source.GetFlags(), OPEN_READ)) != Status::Success) {
+			   (status = CheckOpenFlags(priv->Fs->Source->GetFlags(), OPEN_READ)) != Status::Success) {
 		/* The File::Read function is supposed to this for us, do we even need to check it here? Idk. */
 		return status;
 	} else if (Offset >= priv->Hdr.Size || Offset + Length > priv->Hdr.Size) {
@@ -391,7 +401,7 @@ Status SiaFs::Read(const Void *Priv, UInt64, UInt64 Offset, UInt64 Length, Void 
 	}
 	
 	while (Length) {
-		if ((status = priv->Fs->Source.Read(cur, sizeof(hdr), &hdr, read)) != Status::Success) {
+		if ((status = priv->Fs->Source->Read(cur, sizeof(hdr), &hdr, read)) != Status::Success) {
 			return status;
 		} else if (read != sizeof(hdr)) {
 			return Status::ReadFailed;
@@ -430,7 +440,7 @@ Status SiaFs::Write(const Void *Priv, UInt64, UInt64 Offset, UInt64 Length, cons
 	if ((status = CheckPrivData(Priv, priv)) != Status::Success) {
 		return status;
 	} else if ((status = CheckFileFlags(priv->Hdr.Flags, OPEN_WRITE)) != Status::Success ||
-			   (status = CheckOpenFlags(priv->Fs->Source.GetFlags(), OPEN_WRITE)) != Status::Success) {
+			   (status = CheckOpenFlags(priv->Fs->Source->GetFlags(), OPEN_WRITE)) != Status::Success) {
 		/* The File::Write function is supposed to this for us, do we even need to check it here? Idk. */
 		return status;
 	} else if (priv->Fs->Hdr.Info & SIA_INFO_FIXED) {
@@ -452,7 +462,7 @@ Status SiaFs::Write(const Void *Priv, UInt64, UInt64 Offset, UInt64 Length, cons
 	}
 	
 	while (Length) {
-		if ((status = priv->Fs->Source.Read(cur, sizeof(hdr), &hdr, rw)) != Status::Success) {
+		if ((status = priv->Fs->Source->Read(cur, sizeof(hdr), &hdr, rw)) != Status::Success) {
 			return status;
 		} else if (rw != sizeof(hdr)) {
 			return Status::ReadFailed;
@@ -469,7 +479,7 @@ Status SiaFs::Write(const Void *Priv, UInt64, UInt64 Offset, UInt64 Length, cons
 		
 		StrCopyMemory(&hdr.Contents[skip], (Void*)((UIntPtr)Buffer + *Count), size);
 		
-		if ((status = priv->Fs->Source.Write(cur, sizeof(hdr), &hdr, rw)) != Status::Success) {
+		if ((status = priv->Fs->Source->Write(cur, sizeof(hdr), &hdr, rw)) != Status::Success) {
 			return status;
 		} else if (rw != sizeof(hdr)) {
 			return Status::WriteFailed;
@@ -489,7 +499,7 @@ Status SiaFs::Write(const Void *Priv, UInt64, UInt64 Offset, UInt64 Length, cons
 			
 			hdr.Next = ncur;
 			
-			if ((status = priv->Fs->Source.Write(cur, sizeof(hdr), &hdr, rw)) != Status::Success) {
+			if ((status = priv->Fs->Source->Write(cur, sizeof(hdr), &hdr, rw)) != Status::Success) {
 				return status;
 			} else if (rw != sizeof(hdr)) {
 				return Status::WriteFailed;
@@ -513,7 +523,7 @@ Status SiaFs::ReadDirectory(const Void *Priv, UInt64, UIntPtr Index, Char **Name
 	if ((status = CheckPrivData(Priv, priv)) != Status::Success) {
 		return status;
 	} else if ((status = CheckFileFlags(priv->Hdr.Flags, OPEN_DIR | OPEN_READ)) != Status::Success ||
-			   (status = CheckOpenFlags(priv->Fs->Source.GetFlags(), OPEN_DIR | OPEN_READ)) != Status::Success) {
+			   (status = CheckOpenFlags(priv->Fs->Source->GetFlags(), OPEN_DIR | OPEN_READ)) != Status::Success) {
 		return status;
 	} else if (priv->Hdr.Offset == 0) {
 		return Status::DoesntExist;
@@ -525,7 +535,7 @@ Status SiaFs::ReadDirectory(const Void *Priv, UInt64, UIntPtr Index, Char **Name
 	SiaFs::FileHeader hdr;
 	UInt64 cur = priv->Hdr.Offset, read, len = 0;
 	
-	if ((status = priv->Fs->Source.Read(cur, sizeof(hdr), &hdr, read)) != Status::Success) {
+	if ((status = priv->Fs->Source->Read(cur, sizeof(hdr), &hdr, read)) != Status::Success) {
 		return status;
 	}
 	
@@ -534,7 +544,7 @@ Status SiaFs::ReadDirectory(const Void *Priv, UInt64, UIntPtr Index, Char **Name
 		
 		if ((cur = hdr.Next) == 0) {
 			return Status::DoesntExist;
-		} else if ((status = priv->Fs->Source.Read(cur, sizeof(hdr), &hdr, read)) != Status::Success) {
+		} else if ((status = priv->Fs->Source->Read(cur, sizeof(hdr), &hdr, read)) != Status::Success) {
 			return status;
 		}
 	}
@@ -563,7 +573,7 @@ Status SiaFs::Search(const Void *Priv, UInt64, const Char *Name, Void **OutPriv,
 	if ((status = CheckPrivData(Priv, priv)) != Status::Success) {
 		return status;
 	} else if ((status = CheckFileFlags(priv->Hdr.Flags, OPEN_DIR | OPEN_READ)) != Status::Success ||
-			   (status = CheckOpenFlags(priv->Fs->Source.GetFlags(), OPEN_READ)) != Status::Success) {
+			   (status = CheckOpenFlags(priv->Fs->Source->GetFlags(), OPEN_READ)) != Status::Success) {
 		return status;
 	} else if (priv->Hdr.Offset == 0) {
 		return Status::DoesntExist;
@@ -578,7 +588,7 @@ Status SiaFs::Search(const Void *Priv, UInt64, const Char *Name, Void **OutPriv,
 	SiaFs::FileHeader hdr;
 	UInt64 cur = priv->Hdr.Offset, read;
 	
-	if ((status = priv->Fs->Source.Read(cur, sizeof(hdr), &hdr, read)) != Status::Success) {
+	if ((status = priv->Fs->Source->Read(cur, sizeof(hdr), &hdr, read)) != Status::Success) {
 		return status;
 	}
 	
@@ -587,7 +597,7 @@ Status SiaFs::Search(const Void *Priv, UInt64, const Char *Name, Void **OutPriv,
 			break;
 		} else if ((cur = hdr.Next) == 0) {
 			return Status::DoesntExist;
-		} else if ((status = priv->Fs->Source.Read(cur, sizeof(hdr), &hdr, read)) != Status::Success) {
+		} else if ((status = priv->Fs->Source->Read(cur, sizeof(hdr), &hdr, read)) != Status::Success) {
 			return status;
 		}
 	}
@@ -595,7 +605,7 @@ Status SiaFs::Search(const Void *Priv, UInt64, const Char *Name, Void **OutPriv,
 	/* As said above, we need to allocate the PrivData pointer, this time we don't need to allocate the SiaFs
 	 * pointer as it already exists (priv->Fs). */
 	
-	*OutPriv = new SiaFs::PrivData { priv->Fs, cur, 0, 0, 0, 0, { 0 } };
+	*OutPriv = new SiaFs::PrivData { priv->Fs, cur, { 0, 0, 0, 0, { 0 } } };
 	
 	if (*OutPriv != Null) {
 		StrCopyMemory(&((SiaFs::PrivData*)*OutPriv)->Hdr, &hdr, sizeof(hdr));
@@ -622,7 +632,7 @@ Status SiaFs::Create(const Void *Priv, UInt64, const Char *Name, UInt8 Flags) {
 	if ((status = CheckPrivData(Priv, priv)) != Status::Success) {
 		return status;
 	} else if ((status = CheckFileFlags(priv->Hdr.Flags, OPEN_DIR | OPEN_RW)) != Status::Success ||
-			   (status = CheckOpenFlags(priv->Fs->Source.GetFlags(), OPEN_DIR | OPEN_RW)) != Status::Success) {
+			   (status = CheckOpenFlags(priv->Fs->Source->GetFlags(), OPEN_DIR | OPEN_RW)) != Status::Success) {
 		return status;
 	} else if ((status = priv->Fs->AllocFileEntry2(Name, Flags, entry)) != Status::Success) {
 		return status;
@@ -646,7 +656,7 @@ Status SiaFs::Mount(const Void *Source, Void **OutPriv, UInt64*) {
 		return Status::InvalidFs;
 	}
 	
-#ifdef DBG
+#ifndef NDEBUG
 	Debug->Write("[SiaFs] Mounting the SIA file at the path '%S'\n", &src->GetName());
 #endif
 	
@@ -667,19 +677,19 @@ Status SiaFs::Mount(const Void *Source, Void **OutPriv, UInt64*) {
 		return status;
 	}
 	
-	SiaFs *fs = new SiaFs(*src, hdr, Null, 0);
+	SiaFs *fs = new SiaFs(src, hdr, Null, 0);
 	
 	if (fs == Null) {
-#ifdef DBG
+#ifndef NDEBUG
 		Debug->Write("        The system is out of memory (couldn't alloc the FS data pointer)\n");
 #endif	
 		return Status::OutOfMemory;
 	}
 	
-	*OutPriv = new SiaFs::PrivData { fs, hdr.RootOffset, 0, 0, 0, 0, { 0 } };
+	*OutPriv = new SiaFs::PrivData { fs, hdr.RootOffset, { 0, 0, 0, 0, { 0 } } };
 	
 	if (*OutPriv == Null) {
-#ifdef DBG
+#ifndef NDEBUG
 		Debug->Write("        The system is out of memory (couldn't alloc the priv data pointer)\n");
 #endif	
 		delete fs;
@@ -728,7 +738,7 @@ Status SiaFs::GoToOffset(SiaFs::FileHeader &FHdr, UInt64 FOff, UInt64 Offset, UI
 		
 		FHdr.Offset = cur;
 		
-		if ((status = Source.Write(FOff, sizeof(FHdr), &FHdr, rw)) != Status::Success) {
+		if ((status = Source->Write(FOff, sizeof(FHdr), &FHdr, rw)) != Status::Success) {
 			return status;
 		} else if (rw != sizeof(FHdr)) {
 			return Status::WriteFailed;
@@ -736,7 +746,7 @@ Status SiaFs::GoToOffset(SiaFs::FileHeader &FHdr, UInt64 FOff, UInt64 Offset, UI
 	}
 	
 	while (Offset >= sizeof(hdr.Contents)) {
-		if ((status = Source.Read(cur, sizeof(hdr), &hdr, rw)) != Status::Success) {
+		if ((status = Source->Read(cur, sizeof(hdr), &hdr, rw)) != Status::Success) {
 			return status;
 		} else if (rw != sizeof(hdr)) {
 			return Status::ReadFailed;
@@ -756,7 +766,7 @@ Status SiaFs::GoToOffset(SiaFs::FileHeader &FHdr, UInt64 FOff, UInt64 Offset, UI
 			
 			hdr.Next = ncur;
 			
-			if ((status = Source.Write(cur, sizeof(hdr), &hdr, rw)) != Status::Success) {
+			if ((status = Source->Write(cur, sizeof(hdr), &hdr, rw)) != Status::Success) {
 				return status;
 			} else if (rw != sizeof(hdr)) {
 				return Status::WriteFailed;
@@ -783,7 +793,7 @@ Status SiaFs::AllocDataEntry1(UInt64 Offset) {
 	Status status;
 	UInt64 wrote;
 	
-	if ((status = Source.Write(Offset, sizeof(hdr), &hdr, wrote)) != Status::Success) {
+	if ((status = Source->Write(Offset, sizeof(hdr), &hdr, wrote)) != Status::Success) {
 		return status;
 	}
 	
@@ -802,7 +812,7 @@ Status SiaFs::AllocDataEntry2(UInt64 &Offset) {
 		
 		Offset = Hdr.FreeDataOffset;
 		
-		if ((status = Source.Read(Offset, sizeof(hdr), &hdr, rw)) != Status::Success) {
+		if ((status = Source->Read(Offset, sizeof(hdr), &hdr, rw)) != Status::Success) {
 			return status;
 		}
 		
@@ -815,7 +825,7 @@ Status SiaFs::AllocDataEntry2(UInt64 &Offset) {
 		
 		if ((status = AllocDataEntry1(Offset)) != Status::Success) {
 			return status;
-		} else if ((status = Source.Write(0, sizeof(Hdr), &Hdr, rw)) != Status::Success) {
+		} else if ((status = Source->Write(0, sizeof(Hdr), &Hdr, rw)) != Status::Success) {
 			return status;
 		}
 		
@@ -824,9 +834,9 @@ Status SiaFs::AllocDataEntry2(UInt64 &Offset) {
 	
 	/* If the source file is R/W, just writing after the current length is going to auto-increase the file size, so
 	 * let's try doing that to alloc more one entry... Except that if this is a ramfs we need to know the last location
-	 * that we used, as Source.Location is going to be the size of the memory area that we have... */
+	 * that we used, as Source->Location is going to be the size of the memory area that we have... */
 	
-	Status status = AllocDataEntry1(Offset = ExpandLoc ? ExpandLoc : Source.GetLength());
+	Status status = AllocDataEntry1(Offset = ExpandLoc ? ExpandLoc : Source->GetLength());
 	
 	if (status == Status::Success && ExpandLoc) {
 		ExpandLoc += sizeof(SiaFs::FileHeader);
@@ -881,7 +891,7 @@ Status SiaFs::AllocFileEntry1(const String &Name, UInt8 Flags, UInt64 Offset) {
 	
 	hdr.Flags = ToSiaFlags(Flags);
 	
-	if ((status = Source.Write(Offset, sizeof(hdr), &hdr, wrote)) != Status::Success) {
+	if ((status = Source->Write(Offset, sizeof(hdr), &hdr, wrote)) != Status::Success) {
 		return status;
 	}
 	
@@ -896,7 +906,7 @@ Status SiaFs::AllocFileEntry2(const String &Name, UInt8 Flags, UInt64 &Offset) {
 		
 		Offset = Hdr.FreeFileOffset;
 		
-		if ((status = Source.Read(Offset, sizeof(hdr), &hdr, rw)) != Status::Success) {
+		if ((status = Source->Read(Offset, sizeof(hdr), &hdr, rw)) != Status::Success) {
 			return status;
 		}
 		
@@ -905,14 +915,14 @@ Status SiaFs::AllocFileEntry2(const String &Name, UInt8 Flags, UInt64 &Offset) {
 		
 		if ((status = AllocFileEntry1(Name, Flags, Offset)) != Status::Success) {
 			return status;
-		} else if ((status = Source.Write(0, sizeof(Hdr), &Hdr, rw)) != Status::Success) {
+		} else if ((status = Source->Write(0, sizeof(Hdr), &Hdr, rw)) != Status::Success) {
 			return status;
 		}
 		
 		return rw != sizeof(Hdr) ? Status::WriteFailed : Status::Success;
 	}
 	
-	Status status = AllocFileEntry1(Name, Flags, (Offset = ExpandLoc ? ExpandLoc : Source.GetLength()));
+	Status status = AllocFileEntry1(Name, Flags, (Offset = ExpandLoc ? ExpandLoc : Source->GetLength()));
 	
 	if (status == Status::Success && ExpandLoc) {
 		ExpandLoc += sizeof(SiaFs::FileHeader);
@@ -936,7 +946,7 @@ Status SiaFs::LinkFileEntry(SiaFs::FileHeader &FHdr, UInt64 FOff, UInt64 Offset)
 	} else {
 		FOff = FHdr.Offset;
 		
-		if ((status = Source.Read(FOff, sizeof(hdr), &hdr, rw)) != Status::Success) {
+		if ((status = Source->Read(FOff, sizeof(hdr), &hdr, rw)) != Status::Success) {
 			return status;
 		} else if (rw != sizeof(hdr)) {
 			return Status::ReadFailed;
@@ -946,14 +956,14 @@ Status SiaFs::LinkFileEntry(SiaFs::FileHeader &FHdr, UInt64 FOff, UInt64 Offset)
 	while (hdr.Next != 0) {
 		FOff = hdr.Next;
 		
-		if ((status = Source.Read(FOff, sizeof(hdr), &hdr, rw)) != Status::Success) {
+		if ((status = Source->Read(FOff, sizeof(hdr), &hdr, rw)) != Status::Success) {
 			return status;
 		} else if (rw != sizeof(hdr)) {
 			return Status::ReadFailed;
 		}
 	}
 	
-e:	if ((status = Source.Write(FOff, sizeof(hdr), &hdr, rw)) != Status::Success) {
+e:	if ((status = Source->Write(FOff, sizeof(hdr), &hdr, rw)) != Status::Success) {
 		return status;
 	}
 	

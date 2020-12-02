@@ -1,10 +1,10 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 29 of 2020, at 10:17 BRT
- * Last edited on October 09 of 2020, at 20:48 BRT */
+ * Last edited on October 24 of 2020, at 14:34 BRT */
 
-#include <chicago/arch/desctables.hxx>
-#include <chicago/string.hxx>
+#include <arch/desctables.hxx>
+#include <string.hxx>
 
 #ifdef ARCH_64
 static UInt8 GdtEntries[7][8];

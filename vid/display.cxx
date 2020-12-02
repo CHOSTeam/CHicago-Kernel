@@ -1,31 +1,30 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 07 of 2020, at 12:50 BRT
- * Last edited on October 09 of 2020, at 22:13 BRT */
+ * Last edited on November 30 of 2020, at 15:41 BRT */
 
-#include <chicago/display.hxx>
-#include <chicago/textout.hxx>
+#include <display.hxx>
+#include <textout.hxx>
 
 /* As always, we need to init all the static fields of the class... */
 
 Display::Mode Display::CurrentMode = { 0, 0, Null };
 List<Display::Mode> Display::SupportedModes;
-static Image Default;
-Image &Display::FrontBuffer = Default;
+Image *Display::FrontBuffer = Null;
 Display::Impl Display::Funcs = { Null };
 
 Status Display::Register(Display::Impl &Funcs, const List<Mode> &SupportedModes, Display::Mode &CurrentMode) {
 	/* Before actually registering the new internal functions, we should try allocating the new frontbuffer,
 	 * if it doesn't fail, we can proceed by registering everything, and copying the supplied CurrentMode. */
 	
-	UInt32 *nfb = new UInt32[CurrentMode.Width * CurrentMode.Height];
+	Image *nfb = new Image(CurrentMode.Width, CurrentMode.Height);
 	
 	if (nfb == Null) {
 		return Status::OutOfMemory;
 	}
 	
 	StrCopyMemory(&Display::Funcs, &Funcs, sizeof(Display::Impl));
-	StrCopyMemory(&Display::CurrentMode, &CurrentMode, sizeof(Display::Mode));
+	StrCopyMemory(&Display::CurrentMode, &CurrentMode, sizeof(Display::Mode)); 
 	
 	/* Let's hope that the SupportedModes list is copied succefully, else, we may have some problems later...
 	 * That is, the change resolution screen are going to be empty lol. */
@@ -33,7 +32,8 @@ Status Display::Register(Display::Impl &Funcs, const List<Mode> &SupportedModes,
 	Display::SupportedModes.Clear();
 	Display::SupportedModes.Add(SupportedModes);
 	
-	FrontBuffer = Image(CurrentMode.Width, CurrentMode.Height, nfb, True);
+	delete FrontBuffer;
+	FrontBuffer = nfb;
 	
 	return Status::Success;
 }
@@ -62,7 +62,7 @@ Status Display::SetResolution(UIntPtr Width, UIntPtr Height) {
 	/* Let's allocate the new frontbuffer already, is easier to just delete it if something goes wrong, instead
 	 * of setting the old video mode back if the allocation was to fail later. */
 	
-c:	UInt32 *nfb = new UInt32[Width * Height];
+c:	Image *nfb = new Image(Width, Height);
 	Status status = Status::OutOfMemory;
 	
 	if (nfb == Null) {
@@ -72,7 +72,8 @@ c:	UInt32 *nfb = new UInt32[Width * Height];
 		return status;
 	}
 	
-	FrontBuffer = Image(Width, Height, nfb, True);
+	delete FrontBuffer;
+	FrontBuffer = nfb;
 	
 	return Status::Success;
 }
