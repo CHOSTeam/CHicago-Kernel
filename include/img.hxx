@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 26 of 2020, at 22:25 BRT
- * Last edited on November 30 of 2020, at 15:41 BRT */
+ * Last edited on December 02 of 2020, at 08:44 BRT */
 
 #ifndef __IMG_HXX__
 #define __IMG_HXX__
@@ -137,6 +137,8 @@ public:
 	IntPtr GetHeight(Void) const { return Height; }
 	Void *GetBuffer(Void) const { return Buffer; }
 private:
+	Void Cleanup(Void);
+	
 	IntPtr Width, Height, *References;
 	UInt32 *Buffer;
 	Boolean Allocated;

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on November 30 of 2020, at 16:49 BRT
- * Last edited on December 01 of 2020, at 16:34 BRT */
+ * Last edited on December 02 of 2020, at 20:10 BRT */
 
 #include <arch/arch.hxx>
 #include <arch/desctables.hxx>
@@ -74,6 +74,40 @@ static Boolean CompareAndExchange(UIntPtr *Pointer, UIntPtr Expected, UIntPtr Va
 									   __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
 }
 
+static Void DoSwitch(UIntPtr Stack) {
+#ifdef ARCH_64
+	asm volatile("mov %%rax, %%rsp" :: "a"(Stack));
+	asm volatile("pop %rax");
+	asm volatile("mov %rax, %es");
+	asm volatile("pop %rax");
+	asm volatile("mov %rax, %ds");
+	asm volatile("pop %r15");
+	asm volatile("pop %r14");
+	asm volatile("pop %r13");
+	asm volatile("pop %r12");
+	asm volatile("pop %r11");
+	asm volatile("pop %r10");
+	asm volatile("pop %r9");
+	asm volatile("pop %r8");
+	asm volatile("pop %rbp");
+	asm volatile("pop %rdi");
+	asm volatile("pop %rsi");
+	asm volatile("pop %rdx");
+	asm volatile("pop %rcx");
+	asm volatile("pop %rbx");
+	asm volatile("pop %rax");
+	asm volatile("add $16, %rsp");
+	asm volatile("iretq");
+#else
+	asm volatile("mov %%eax, %%esp" :: "a"(Stack));
+	asm volatile("pop %es");
+	asm volatile("pop %ds");
+	asm volatile("popa");
+	asm volatile("add $8, %esp");
+	asm volatile("iret");
+#endif
+}
+
 Void ProcManager::SwitchManual(Void *Data) {
 	/* We can handle the WaitAddress "locks" even here (it's not something timer-specific/related), so,
 	 * let's do that. */
@@ -122,37 +156,7 @@ w:	for (Thread *th : WaitA) {
 		}
 	}
 	
-#ifdef ARCH_64
-	asm volatile("mov %%rax, %%rsp" :: "a"(((Context*)CurrentThread->Context)->StackPointer));
-	asm volatile("pop %rax");
-	asm volatile("mov %rax, %es");
-	asm volatile("pop %rax");
-	asm volatile("mov %rax, %ds");
-	asm volatile("pop %r15");
-	asm volatile("pop %r14");
-	asm volatile("pop %r13");
-	asm volatile("pop %r12");
-	asm volatile("pop %r11");
-	asm volatile("pop %r10");
-	asm volatile("pop %r9");
-	asm volatile("pop %r8");
-	asm volatile("pop %rbp");
-	asm volatile("pop %rdi");
-	asm volatile("pop %rsi");
-	asm volatile("pop %rdx");
-	asm volatile("pop %rcx");
-	asm volatile("pop %rbx");
-	asm volatile("pop %rax");
-	asm volatile("add $16, %rsp");
-	asm volatile("iretq");
-#else
-	asm volatile("mov %%eax, %%esp" :: "a"(((Context*)CurrentThread->Context)->StackPointer));
-	asm volatile("pop %es");
-	asm volatile("pop %ds");
-	asm volatile("popa");
-	asm volatile("add $8, %esp");
-	asm volatile("iret");
-#endif
+	DoSwitch(((Context*)CurrentThread->Context)->StackPointer);
 }
 
 Void ProcManager::SwitchTimer(Void *Data) {
@@ -204,38 +208,7 @@ ws:	for (Thread *th : WaitS) {
 	 * 0x3E syscall). */
 	
 	Port::OutByte(0x20, 0x20);
-	
-#ifdef ARCH_64
-	asm volatile("mov %%rax, %%rsp" :: "a"(((Context*)CurrentThread->Context)->StackPointer));
-	asm volatile("pop %rax");
-	asm volatile("mov %rax, %es");
-	asm volatile("pop %rax");
-	asm volatile("mov %rax, %ds");
-	asm volatile("pop %r15");
-	asm volatile("pop %r14");
-	asm volatile("pop %r13");
-	asm volatile("pop %r12");
-	asm volatile("pop %r11");
-	asm volatile("pop %r10");
-	asm volatile("pop %r9");
-	asm volatile("pop %r8");
-	asm volatile("pop %rbp");
-	asm volatile("pop %rdi");
-	asm volatile("pop %rsi");
-	asm volatile("pop %rdx");
-	asm volatile("pop %rcx");
-	asm volatile("pop %rbx");
-	asm volatile("pop %rax");
-	asm volatile("add $16, %rsp");
-	asm volatile("iretq");
-#else
-	asm volatile("mov %%eax, %%esp" :: "a"(((Context*)CurrentThread->Context)->StackPointer));
-	asm volatile("pop %es");
-	asm volatile("pop %ds");
-	asm volatile("popa");
-	asm volatile("add $8, %esp");
-	asm volatile("iret");
-#endif
+	DoSwitch(((Context*)CurrentThread->Context)->StackPointer);
 }
 
 static Void Handler(Registers *Regs) {

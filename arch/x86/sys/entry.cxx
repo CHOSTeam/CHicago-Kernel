@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 21 of 2020, at 12:06 BRT
- * Last edited on December 01 of 2020, at 14:06 BRT */
+ * Last edited on December 04 of 2020, at 15:02 BRT */
 
 #include <arch/arch.hxx>
 #include <arch/boot.hxx>

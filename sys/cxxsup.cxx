@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 25 of 2020, at 09:22 BRT
- * Last edited on November 28 of 2020, at 11:20 BRT */
+ * Last edited on December 02 of 2020, at 08:38 BRT */
 
 #include <string.hxx>
 
@@ -31,10 +31,11 @@ extern "C" Void memset(Void *Pointer, UInt8 Data, UIntPtr Count) {
 	StrSetMemory(Pointer, Data, Count);
 }
 
-extern "C" Void memcpy(Void *Dest, const Void *Source, UIntPtr Size) {
+extern "C" Void *memcpy(Void *Dest, const Void *Source, UIntPtr Size) {
 	/* Same thing as memset, but call StrCopyMemory this time. */
 	
 	StrCopyMemory(Dest, Source, Size);
+	return Dest;
 }
 
 /* Those are the 4 ::new operators that we have to implement: two for normal allocations, and two for aligned

@@ -1,7 +1,7 @@
 # File author is Ítalo Lima Marconato Matias
 #
 # Created on November 28 of 2020, at 10:32 BRT
-# Last edited on December 01 of 2020, at 12:40 BRT
+# Last edited on December 01 of 2020, at 12:59 BRT
 
 cmake_minimum_required(VERSION 3.12.0)
 
@@ -48,11 +48,10 @@ add_executable(chkrnl.elf ${KERNEL_SOURCES})
 
 target_include_directories(chkrnl.elf PRIVATE ${PROJECT_SOURCE_DIR}/include
 											  ${PROJECT_SOURCE_DIR}/arch/${CHOS_ARCH}/include)
-target_compile_options(chkrnl.elf PRIVATE -target ${CLANG_KERNEL_TARGET} -fno-rtti -fno-pic -msse
-										  -msse2 -msse3 -mssse3 -Wall -Wextra)
+target_compile_options(chkrnl.elf PRIVATE -target ${CLANG_KERNEL_TARGET} -fno-rtti -fno-pic -Wall -Wextra)
 target_compile_options(chkrnl.elf PRIVATE $<$<NOT:$<COMPILE_LANGUAGE:ASM-ATT>>:-ffreestanding -funroll-loops -fno-exceptions
 																			   -fno-use-cxa-atexit -fno-plt -fno-stack-protector
-																			   -fno-use-init-array -mfpmath=sse>)
+																			   -fno-use-init-array>)
 target_compile_definitions(chkrnl.elf PRIVATE KERNEL VERSION="${CHOS_VERSION}" ARCH="${CHOS_ARCH}")
 target_link_options(chkrnl.elf PRIVATE -T${PROJECT_SOURCE_DIR}/arch/${CHOS_ARCH}/link.ld)
 setup_kernel_arch(chkrnl.elf)

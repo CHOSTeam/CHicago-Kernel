@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on August 01 of 2020, at 17:46 BRT
- * Last edited on October 24 of 2020, at 14:34 BRT */
+ * Last edited on December 02 of 2020, at 08:45 BRT */
 
 #include <img.hxx>
 
@@ -59,7 +59,7 @@ Image::Image(IntPtr Width, IntPtr Height, UInt32 *Buffer, Boolean Alloc) {
 	}
 }
 
-Image::~Image(Void) {
+Void Image::Cleanup(Void) {
 	/* The Allocated variable should always be set to False if the buffer is Null/failed to be allocated, so
 	 * we don't need to handle that. The reference counter is what allows us to the stuff like we do on the
 	 * display initialization, if it wasn't for that, we would have some random memory overwriting it (and I
@@ -76,21 +76,17 @@ Image::~Image(Void) {
 	}
 }
 
+Image::~Image(Void) {
+	Cleanup();
+}
+
 Image &Image::operator =(const Image &Source) {
 	/* No need to overwrite anything if someone is trying to do this=this, but if we're actually getting a whole
 	 * new buffer, we need to call the deconstructor (free the references pointer and the buffer, if necessary),
 	 * and call the constructor again (copy the value from all the source variables into our variables). */
 	
 	if (Source.Buffer != Buffer) {
-		if (Allocated && (References == Null || --(*References) == 0)) {
-			if (References != Null) {
-				delete References;
-			}
-			
-			delete[] Buffer;
-		} else if (References != Null && *References == 0) {
-			delete References;
-		}
+		Cleanup();
 		
 		Width = Source.Width;
 		Height = Source.Height;

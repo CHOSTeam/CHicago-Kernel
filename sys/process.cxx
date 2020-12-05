@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on November 30 of 2020, at 13:20 BRT
- * Last edited on December 01 of 2020, at 16:42 BRT */
+ * Last edited on December 04 of 2020, at 15:07 BRT */
 
 #include <arch.hxx>
 #include <process.hxx>
@@ -223,7 +223,7 @@ Status ProcManager::CreateThread(Process *Parent, UIntPtr Entry, Thread *&Out, B
 		}
 		
 		delete Out;
-		return Status::OutOfMemory;
+		return status;
 	}
 	
 	Parent->LastTID++;
@@ -621,19 +621,14 @@ Void ProcManager::Initialize(UIntPtr Entry) {
 	 * and, of course, we need to use Switch() instead of just waiting for the timer, as the timer only
 	 * starts scheduling after we initialize the first process. */
 	
+	Thread *th;
 	Process *proc;
-	Status status = ProcManager::CreateProcess("System Process", Entry, Arch->GetCurrentDirectory(), proc);
 	
-	if (status != Status::Success) {
+	if (ProcManager::CreateProcess("System Process", Entry, Arch->GetCurrentDirectory(),
+								   proc) != Status::Success) {
 		Debug->Write("PANIC! Couldn't init the process manager\n");
 		Arch->Halt();
-	}
-	
-	/* We also need to already create the killer thread (which cleans up dead threads/processes). */
-	
-	Thread *th;
-	
-	if ((status = ProcManager::CreateThread(proc, (UIntPtr)KillerThread, th)) != Status::Success) {
+	} else if (ProcManager::CreateThread(proc, (UIntPtr)KillerThread, th) != Status::Success) {
 		Debug->Write("PANIC! Couldn't init the process manager\n");
 		Arch->Halt();
 	}
