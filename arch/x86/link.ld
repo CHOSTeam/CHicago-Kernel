@@ -1,13 +1,13 @@
 /* File author is Ítalo Lima Marconato Matias
  * 
- * Created on January 31 of 2021, at 20:09 BRT
- * Last edited on February 04 of 2021, at 18:25 BRT */
+ * Created on February 04 of 2021, at 18:32 BRT
+ * Last edited on February 04 of 2021, at 18:26 BRT */
 
 ENTRY(KernelEntry)
 
 SECTIONS
 {
-    . = 0xFFFF000000000000;
+    . = 0xC0000000;
 
     .init ALIGN(4K) :
     {
