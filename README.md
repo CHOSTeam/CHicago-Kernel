@@ -4,12 +4,9 @@
 
 # CHicago Kernel
 
-This is the portable kernel that CHicago uses. Currently, the kernel supports x86 and amd64.
-
-# Known Bugs
-
-The x86/amd64 scheduler is probably broken (for switching between rings 3 and 0), we should probably rewrite it.
+This is the portable kernel that CHicago uses. Currently, the kernel supports x86, amd64, and arm64.
 
 # Building
 
-After extracting the toolchain and running the env script (see instructions on the main repository README), you can just run 'build' on the kernel folder, if you want to build just the kernel.
+Make sure that the toolchain is already built (run make on the toolchain/kernel folder if you want just the kernel toolchain, or under the toolchain folder for both kernel and boot toolchains), and run make.
+View the makefile for the avaliable flags/modifiers (TODO: Also document it here).
