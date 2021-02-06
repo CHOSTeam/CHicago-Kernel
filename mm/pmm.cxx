@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on February 06 of 2021, at 17:28 BRT */
+ * Last edited on February 06 of 2021, at 18:41 BRT */
 
 #include <mm.hxx>
 
@@ -55,7 +55,7 @@ Void PhysMem::Initialize(BootInfo *Info) {
 
     for (UIntPtr i = 0; i < RegionCount; i++) {
         Regions[i].Free = 0;
-        Regions[i].Used = (1 << MM_REGION_SHIFT) / (1 << MM_REGION_PAGE_SHIFT);
+        Regions[i].Used = MM_REGION_BITMAP_LEN;
 
         for (UIntPtr i = 0; i < sizeof(Regions[i].Pages); i++) {
             Regions[i].Pages[i] = 0xFF;
@@ -73,35 +73,8 @@ Void PhysMem::Initialize(BootInfo *Info) {
         BootInfoMemMap *ent = &Info->MemoryMap.Entries[i];
 
         if (ent->Type == BOOT_INFO_MEM_FREE) {
-            InitializeRegion(ent->Base, ent->Count);
+            FreeInt(ent->Base, ent->Count);
         }
-    }
-}
-
-Void PhysMem::InitializeRegion(UIntPtr Address, UIntPtr Count) {
-    /* This function can only be called when we're initializing the physical memory manager, calling at any other time
-     * should just return without doing anything. */
-
-    if (Initialized || UsedBytes < Count * MM_PAGE_SIZE || !Address || (Address & MM_PAGE_MASK) ||
-        Address < MinAddress || Address + Count * MM_PAGE_SIZE >= MaxAddress) {
-        return;
-    }
-
-    Address -= MinAddress;
-
-    while (Count--) {
-        /* First, save some indexes that make our job a lot easier. */
-
-        UIntPtr i = Address >> MM_REGION_SHIFT, j = (Address - (i << MM_REGION_SHIFT)) >> MM_REGION_PAGE_SHIFT,
-                k = (Address - (i << MM_REGION_SHIFT) - (j << MM_REGION_PAGE_SHIFT)) >> MM_PAGE_SHIFT;
-
-        /* Now, free the page and decrease the used bytes count. */
-
-        Regions[i].Pages[j] &= ~((UIntPtr)1 << k);
-        Regions[i].Free++;
-        Regions[i].Used--;
-        UsedBytes -= MM_PAGE_SIZE;
-        Address += MM_PAGE_SIZE;
     }
 }
 
@@ -313,7 +286,7 @@ UIntPtr PhysMem::CountFreePages(UIntPtr BitMap, UIntPtr Start, UIntPtr End) {
     return ret;
 }
 
-Status PhysMem::FindFreePages(UIntPtr BitMap, UIntPtr Count, UIntPtr &Out) {
+Status PhysMem::FindFreePages(UIntPtr BitMap, UIntPtr Count, UIntPtr &Out, UIntPtr &Avaliable) {
     /* Each unset bit is one free page, for finding consective free pages, we can iterate through the bits of the
      * bitmap and search for free bits. */
 
@@ -343,6 +316,14 @@ Status PhysMem::FindFreePages(UIntPtr BitMap, UIntPtr Count, UIntPtr &Out) {
         if (aval >= Count) {
             Out = i + bit;
             return Status::Success;
+        } else if (i + bit + aval >= bc) {
+            /* There might be enough pages, but we need to cross into the next bitmap, let's set Out so that AllocInt
+             * knows that. */
+
+            Out = i + bit;
+            Avaliable = aval;
+
+            return Status::OutOfMemory;
         }
 
         BitMap >>= bit + aval;
@@ -373,10 +354,10 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out) {
             continue;
         }
 
-        for (UIntPtr j = 0; j < (1 << MM_REGION_SHIFT) / (1 << MM_REGION_PAGE_SHIFT); j++) {
-            UIntPtr bit;
+        for (UIntPtr j = 0; j < MM_REGION_BITMAP_LEN; j++) {
+            UIntPtr bit = 0, aval;
 
-            if (FindFreePages(Regions[i].Pages[j], Count, bit) == Status::Success) {
+            if (FindFreePages(Regions[i].Pages[j], Count, bit, aval) == Status::Success) {
                 /* Oh, we actually found enough free pages! we need to set all the bits that we're going to use,
                  * increase the used bytes variable, and calculate the return value. */
 
@@ -387,11 +368,74 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out) {
                 Regions[i].Free -= Count;
                 Regions[i].Used += Count;
                 UsedBytes += Count * MM_PAGE_SIZE;
-
                 Out = MinAddress + (i * (1 << MM_REGION_SHIFT)) + (j * (1 << MM_REGION_PAGE_SHIFT)) +
                       (bit * MM_PAGE_SIZE);
 
                 return Status::Success;
+            } else if (bit) {
+                /* Differently from the normal error/out of memory in this region, if the output wasn't null it means
+                 * that we should try crossing into the next region/bitmap. */
+
+                UIntPtr ci = i, cj = j, cur = aval;
+
+                while (True) {
+                    UIntPtr cbit = 0, caval = 0;
+                
+                    if (++cj >= MM_REGION_BITMAP_LEN && ++ci >= RegionCount) {
+                        break;
+                    } else if (FindFreePages(Regions[ci].Pages[cj], Count - cur, cbit, caval) != Status::Success &&
+                               (cbit || !caval)) {
+                        break;
+                    } else if (!cbit && caval) {
+                        cur += caval;
+                        continue;
+                    }
+
+                    /* Finally, we know that we have enough free physical memory (though it is going through multiple
+                     * region bitmaps lol)! First, update the first and last regions, as the might be only partially
+                     * filled. */
+
+                    Regions[i].Free -= aval;
+                    Regions[i].Used += aval;
+                    Regions[ci].Free -= Count - cur;
+                    Regions[ci].Used += Count - cur;
+
+                    for (UIntPtr k = bit; k < bit + aval; k++) {
+                        Regions[i].Pages[j] |= (UIntPtr)1 << k;
+                    }
+
+                    for (UIntPtr k = cbit; k < cbit + Count - cur; k++) {
+                        Regions[ci].Pages[cj] |= (UIntPtr)1 << k;
+                    }
+
+                    /* Now fill the remaining/middle regions (first for the first and last i values, and then for the
+                     * middle ones, which we will be able to set to 0xFF/max). */
+
+                    for (cj++; cj < MM_REGION_BITMAP_LEN; cj++) {
+                        Regions[ci].Free -= sizeof(UIntPtr) * 8;
+                        Regions[ci].Used += sizeof(UIntPtr) * 8;
+                        Regions[ci].Pages[cj] = UINTPTR_MAX;
+                    }
+
+                    for (cj = j + 1; cj < MM_REGION_BITMAP_LEN; cj++) {
+                        Regions[i].Free -= sizeof(UIntPtr) * 8;
+                        Regions[i].Used += sizeof(UIntPtr) * 8;
+                        Regions[i].Pages[cj] = UINTPTR_MAX;
+                    }
+
+                    for (cj = i + 1; cj < ci; cj++) {
+                        Regions[cj].Free = 0;
+                        Regions[cj].Used = MM_REGION_BITMAP_LEN;
+
+                        for (UIntPtr k = 0; k < MM_REGION_BITMAP_LEN; k++) {
+                            Regions[cj].Pages[k] = 0xFF;
+                        }
+                    }
+
+                    UsedBytes += Count * MM_PAGE_SIZE;
+                    Out = MinAddress + (i * (1 << MM_REGION_SHIFT)) + (j * (1 << MM_REGION_PAGE_SHIFT)) +
+                          (bit * MM_PAGE_SIZE);
+                }
             }
         }
     }
@@ -405,26 +449,50 @@ Status PhysMem::FreeInt(UIntPtr Start, UIntPtr Count) {
         return Status::InvalidArg;
     }
 
-    Start -= MinAddress;
+    while (Count) {
+        /* Save the indexes of this page into the region bitmap. */
+    
+        UIntPtr i = Start >> MM_REGION_SHIFT, j = (Start - (i << MM_REGION_SHIFT)) >> MM_REGION_PAGE_SHIFT,
+                k = (Start - (i << MM_REGION_SHIFT) - (j << MM_REGION_PAGE_SHIFT)) >> MM_PAGE_SHIFT;
 
-    /* Just as we did on the InitializeRegion function, save some indexes that will make our job a bit easier. After
-     * that, we can check if the region even has enough bytes used, and then, finally, unset the bits on the region's
-     * bitmap and update the amount of free/used pages. */
+        /* Now check if we can just free a whole bitmap or region (those cases are easier to handle). */
 
-    UIntPtr i = Start >> MM_REGION_SHIFT, j = (Start - (i << MM_REGION_SHIFT)) >> MM_REGION_PAGE_SHIFT,
-            k = (Start - (i << MM_REGION_SHIFT) - (j << MM_REGION_PAGE_SHIFT)) >> MM_PAGE_SHIFT;
+        if (j == 0 && k == 0 && Count >= MM_REGION_BITMAP_LEN * sizeof(UIntPtr) * 8 &&
+            Regions[i].Used == 0) {
+            Regions[i].Free = MM_REGION_BITMAP_LEN * sizeof(UIntPtr) * 8;
+            Regions[i].Used = 0;
+            UsedBytes -= MM_PAGE_SIZE * MM_REGION_BITMAP_LEN * sizeof(UIntPtr) * 8;
+            Start += MM_PAGE_SIZE * MM_REGION_BITMAP_LEN * sizeof(UIntPtr) * 8;
+            Count -= MM_REGION_BITMAP_LEN * sizeof(UIntPtr) * 8;
 
-    if (Regions[i].Used < Count) {
-        return Status::InvalidArg;
+            for (; j < MM_REGION_BITMAP_LEN; j++) {
+                Regions[i].Pages[j] = 0xFF;
+            }
+            
+            continue;
+        } else if (k == 0 && Count >= sizeof(UIntPtr) * 8 && Regions[i].Used >= sizeof(UIntPtr) * 8) {
+            Regions[i].Free += sizeof(UIntPtr) * 8;
+            Regions[i].Used -= sizeof(UIntPtr) * 8;
+            Regions[i].Pages[j] = 0xFF;
+            UsedBytes += MM_PAGE_SIZE * sizeof(UIntPtr) * 8;
+            Start += MM_PAGE_SIZE * sizeof(UIntPtr) * 8;
+            Count -= sizeof(UIntPtr) * 8;
+            continue;
+        }
+
+        /* If none of the above, first do error checking, and then free a single page. */
+
+        if (!Regions[i].Used) {
+            return Status::InvalidArg;
+        }
+
+        Regions[i].Pages[j] &= ~((UIntPtr)1 << k);
+        Regions[i].Free--;
+        Regions[i].Used--;
+        UsedBytes -= MM_PAGE_SIZE;
+        Start += MM_PAGE_SIZE;
+        Count--;
     }
-
-    for (UIntPtr b = k; b < k + Count; b++) {
-        Regions[i].Pages[j] &= ~((UIntPtr)1 << b);
-    }
-
-    Regions[i].Free += Count;
-    Regions[i].Used -= Count;
-    UsedBytes -= Count * MM_PAGE_SIZE;
 
     return Status::Success;
 }
