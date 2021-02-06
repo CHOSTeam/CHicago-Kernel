@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 05 of 2021, at 20:33 BRT
- * Last edited on February 05 of 2021, at 20:37 BRT */
+ * Last edited on February 06 of 2021, at 11:54 BRT */
 
 #pragma once
 
@@ -43,3 +43,5 @@ struct packed BootInfo {
 
     UInt8 KernelStack[0x10000];
 };
+
+extern "C" Void _init(Void);
