@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on May 11 of 2018, at 13:15 BRT
- * Last edited on February 05 of 2021, at 20:24 BRT */
+ * Last edited on February 06 of 2021, at 17:06 BRT */
 
 #pragma once
 
@@ -66,10 +66,10 @@
 
 /* Boolean and other defines */
 
-typedef Char Boolean;
+typedef bool Boolean;
 
-#define True 1
-#define False 0
+#define True true
+#define False false
 
 #define Null nullptr
 

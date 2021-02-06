@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 05 of 2021, at 20:33 BRT
- * Last edited on February 06 of 2021, at 15:33 BRT */
+ * Last edited on February 06 of 2021, at 17:17 BRT */
 
 #pragma once
 
@@ -18,7 +18,7 @@
 #define BOOT_INFO_MEM_FREE 0x06
 
 struct packed BootInfoMemMap {
-    UIntPtr Base, Size;
+    UIntPtr Base, Count;
     UInt8 Type;
 };
 
