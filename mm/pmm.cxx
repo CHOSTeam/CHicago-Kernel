@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on February 07 of 2021, at 11:49 BRT */
+ * Last edited on February 07 of 2021, at 11:57 BRT */
 
 #include <mm.hxx>
 
@@ -21,26 +21,26 @@ PhysMem::Region *PhysMem::Regions = Null;
 UInt8 *PhysMem::References = Null;
 Boolean PhysMem::Initialized = False;
 
-Void PhysMem::Initialize(BootInfo *Info) {
+Void PhysMem::Initialize(BootInfo &Info) {
     /* This function should only be called once by the kernel entry. It is responsible for initializing the physical
      * memory manager (allocate/deallocate physical memory, and manage how many references the pages have around all
      * the tasks/CPUs/whatever). */
 
-    if (Initialized || Info == Null) {
+    if (Initialized) {
         return;
     }
 
     /* First, setup some of the basic fields, including the InInit field, that indicates that the we were called, but
      * the FinishInitialization functions isn't haven't been called (that is, we can call InitializeRegion). */
 
-    UInt8 *start = reinterpret_cast<UInt8*>(Info->RegionsStart);
+    UInt8 *start = reinterpret_cast<UInt8*>(Info.RegionsStart);
 
-    RegionCount = ((Info->MaxPhysicalAddress - Info->MinPhysicalAddress) >> MM_PAGE_SHIFT) >> 10;
-    KernelStart = Info->KernelStart;
-    KernelEnd = Info->KernelEnd;
-    MinAddress = Info->MinPhysicalAddress;
-    MaxAddress = Info->MaxPhysicalAddress;
-    MaxBytes = Info->PhysicalMemorySize;
+    RegionCount = ((Info.MaxPhysicalAddress - Info.MinPhysicalAddress) >> MM_PAGE_SHIFT) >> 10;
+    KernelStart = Info.KernelStart;
+    KernelEnd = Info.KernelEnd;
+    MinAddress = Info.MinPhysicalAddress;
+    MaxAddress = Info.MaxPhysicalAddress;
+    MaxBytes = Info.PhysicalMemorySize;
     UsedBytes = MaxBytes;
 
     /* Now, we need to initialize the region list, and the reference list, we need to do this before setting the
@@ -69,11 +69,11 @@ Void PhysMem::Initialize(BootInfo *Info) {
     /* Now using the boot memory map, we can free the free (duh) regions (those entries will be marked as
      * BOOT_INFO_MEM_FREE). */
 
-    for (UIntPtr i = 0; i < Info->MemoryMap.Count; i++) {
-        BootInfoMemMap *ent = &Info->MemoryMap.Entries[i];
+    for (UIntPtr i = 0; i < Info.MemoryMap.Count; i++) {
+        BootInfoMemMap &ent = Info.MemoryMap.Entries[i];
 
-        if (ent->Type == BOOT_INFO_MEM_FREE) {
-            FreeInt(ent->Base, ent->Count);
+        if (ent.Type == BOOT_INFO_MEM_FREE) {
+            FreeInt(ent.Base, ent.Count);
         }
     }
 }

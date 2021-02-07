@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 16:07 BRT
- * Last edited on February 06 of 2021, at 18:41 BRT */
+ * Last edited on February 07 of 2021, at 11:56 BRT */
 
 #pragma once
 
@@ -40,7 +40,7 @@ public:
 		UIntPtr Pages[MM_REGION_BITMAP_LEN];
 	};
 	
-	static Void Initialize(BootInfo*);
+	static Void Initialize(BootInfo&);
 	
 	/* Each one of the functions (allocate/free/reference/dereference) needs three different versions of itself, one
 	 * for doing said operation on a single page, one for multiple, contiguous, pages, and one for multiple, but
