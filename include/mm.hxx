@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 16:07 BRT
- * Last edited on February 08 of 2021, at 10:41 BRT */
+ * Last edited on February 08 of 2021, at 13:47 BRT */
 
 #pragma once
 
@@ -31,6 +31,13 @@
 #endif
 
 #define MM_REGION_BITMAP_LEN ((1 << MM_REGION_SHIFT) / (1 << MM_REGION_PAGE_SHIFT))
+#define MM_REGION_BITMAP_PSIZE (sizeof(UIntPtr) * 8)
+#define MM_REGION_BITMAP_BSIZE (MM_PAGE_SIZE * MM_REGION_BITMAP_PSIZE)
+#define MM_REGION_BITMAP_MASK (MM_REGION_BITMAP_BSIZE - 1)
+
+#define MM_REGION_PSIZE (MM_REGION_BITMAP_LEN * MM_REGION_BITMAP_PSIZE)
+#define MM_REGION_BSIZE (MM_PAGE_SIZE * MM_REGION_PSIZE)
+#define MM_REGION_MASK (MM_REGION_BSIZE - 1)
 
 class PhysMem {
 public:
