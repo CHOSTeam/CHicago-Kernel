@@ -1,29 +1,29 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 15:57 BRT
- * Last edited on February 07 of 2021 at 17:22 BRT */
+ * Last edited on February 07 of 2021 at 21:57 BRT */
 
 #include <string.hxx>
 
 /* Some macros to make our life a bit easier. */
 
 #define WRITE_CHAR(c) \
-    Buffer = WriteCharacter(c, Function, Buffer, Size, Limit, pos, err); \
+    Buffer = WriteCharacter(c, Function, Context, Buffer, Size, Limit, written, err); \
     \
     if (err) { \
-        return pos; \
+        return written; \
     } \
     \
-    pos++
+    written++
 
 #define WRITE_STRING(str, sz) \
-    Buffer = WriteString(str, sz, Function, Buffer, Size, Limit, pos, err); \
+    Buffer = WriteString(str, sz, Function, Context, Buffer, Size, Limit, written, err); \
     \
     if (err) { \
-        return pos; \
+        return written; \
     } \
     \
-    pos += sz
+    written += sz
 
 #define PAD_NO_COND(cnt, c) \
     for (UIntPtr i = 0; i < cnt; i++) { \
@@ -64,17 +64,17 @@ static const Char *FindFirst(const Char *Data, Char Value, UIntPtr Length) {
     return Null;
 }
 
-static UIntPtr ParseFlags(const String &Format, VariadicList &Arguments, Boolean &LeftJust, UInt8 &Sign,
-                          Boolean &Zero, Boolean &WidthSet, Boolean &PrecisionSet, UIntPtr &Width,
+static UIntPtr ParseFlags(const String &Format, VariadicList &Arguments, UIntPtr Current, Boolean &LeftJust,
+                          UInt8 &Sign, Boolean &Zero, Boolean &WidthSet, Boolean &PrecisionSet, UIntPtr &Width,
                           UIntPtr &Precision) {
     UInt8 state = 0;
-    UIntPtr ret = 0;
+    UIntPtr ret = Current;
 
 	/* The minus sign indicated that we should justify to the left (instead of right).
 	 * The plus sign indicates that we should always append the sign.
 	 * A zero indicates that the padding should use zeroes instead of spaces.
-	 * A space indicates that the padding should use spaces instead of zeroes, or that we should use a space instead of
-	 * the plus sign (if it is a positive number that we're printing).
+	 * A space indicates that the padding should use spaces instead of zeroes, or that we should use a space instead
+	 * of the plus sign (if it is a positive number that we're printing).
 	 * An asterisk indicates that we should set the field width (using the VariadicList).
 	 * A dot indicates that we should set the precision/number of digits after the floating point (well, it's actually
 	 * not only for floats/doubles).
@@ -85,7 +85,7 @@ static UIntPtr ParseFlags(const String &Format, VariadicList &Arguments, Boolean
         if (state == 1) {
             return 0;
         } else if (state == 2) {
-            return ret;
+            return ret - Current;
         }
 
         switch (Format[ret]) {
@@ -167,26 +167,26 @@ static UIntPtr ParseFlags(const String &Format, VariadicList &Arguments, Boolean
     }
 }
 
-static Char *WriteCharacter(Char Data, Boolean (*Function)(Char), Char *Buffer, UIntPtr Size, UIntPtr Limit,
-                            UIntPtr Position, Boolean &Error) {
+static Char *WriteCharacter(Char Data, Boolean (*Function)(Char, Void*), Void *Context, Char *Buffer, UIntPtr Size,
+                            UIntPtr Limit, UIntPtr Position, Boolean &Error) {
     /* We have to handle both when the output is a function, and when we just have to write to the screen. We
      * determine which one is the correct using the Function pointer. */
 
     Error = False;
 
-    if (Function != Null && !(Limit && (Position + 1) >= Size)) {
+    if (Function == Null && !(Limit && (Position + 1) >= Size)) {
         *Buffer++ = Data;
-    } else if (Function != Null) {
+    } else if (Function == Null) {
         Error = True;
     } else {
-        Error = Function(Data);
+        Error = !Function(Data, Context);
     }
 
     return Buffer;
 }
 
-static Char *WriteString(const Char *Data, UIntPtr DataSize, Boolean (*Function)(Char), Char *Buffer, UIntPtr Size,
-                         UIntPtr Limit, UIntPtr Position, Boolean &Error) {
+static Char *WriteString(const Char *Data, UIntPtr DataSize, Boolean (*Function)(Char, Void*), Void *Context,
+                         Char *Buffer, UIntPtr Size, UIntPtr Limit, UIntPtr Position, Boolean &Error) {
     /* Same as above, but now we have to do it for each character in the string (while taking caution with the
      * DataSize field). */
 
@@ -195,12 +195,12 @@ static Char *WriteString(const Char *Data, UIntPtr DataSize, Boolean (*Function)
     while (*Data) {
         if (!(DataSize--)) {
             break;
-        } else if (Function != Null && !(Limit && (Position + 1) >= Size)) {
+        } else if (Function == Null && !(Limit && (Position + 1) >= Size)) {
             *Buffer++ = *Data++;
-        } else if (Function != Null) {
+        } else if (Function == Null) {
             Error = True;
         } else {
-            Error = Function(*Data++);
+            Error = !Function(*Data++, Context);
         }
 
         if (Error) {
@@ -211,13 +211,13 @@ static Char *WriteString(const Char *Data, UIntPtr DataSize, Boolean (*Function)
     return Buffer;
 }
 
-UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*Function)(Char), Char *Buffer,
-                       UIntPtr Size, UIntPtr Limit) {
+UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*Function)(Char, Void*), Void *Context,
+                       Char *Buffer, UIntPtr Size, UIntPtr Limit) {
     if (Function == Null && Buffer == Null) {
         return 0;
     }
 
-    UIntPtr pos = 0;
+    UIntPtr pos = 0, written = 0;
     Boolean err = False;
 
     /* Let's parse the format string. */
@@ -231,13 +231,14 @@ UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*
             const Char *end = FindFirst(Format.GetValue() + pos, '%', Format.GetLength() - pos);
             UIntPtr size = end != Null ? end - Format.GetValue() : Format.GetLength() - pos;
 
-            Buffer = WriteString(Format.GetValue() + pos, size, Function, Buffer, Size, Limit, pos, err);
+            Buffer = WriteString(Format.GetValue() + pos, size, Function, Context, Buffer, Size, Limit, pos, err);
 
             if (err) {
-                return pos;
+                return written;
             }
 
             pos += size;
+            written += size;
 
             continue;
         }
@@ -250,12 +251,10 @@ UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*
         UIntPtr width = 0, pr = 0;
         Boolean lj = False, zero = False, wset = False, pset = False;
 
-        pos += ParseFlags(Format, Arguments, lj, sign, zero, wset, pset, width, pr);
+        pos += ParseFlags(Format, Arguments, pos + 1, lj, sign, zero, wset, pset, width, pr) + 1;
 
-        /* Save the padding character. */
-
-        Char padc = pset ? ' ' : (zero ? '0' : ' '), fmtc = Format[pos++];
-        UIntPtr spaces = width > pr && !zero ? width - pr : 0, pad = zero ? (width > pr ? width : pr) : pr;
+        Char fmtc = Format[pos++];
+        UIntPtr spaces = !zero && width > pr ? width - pr : 0, pad = zero ? (width > pr ? width : pr) : 0;
 
         switch (fmtc) {
         case 'd': case 'i':
@@ -278,19 +277,19 @@ UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*
 
             pad -= len;
 
-            PAD_COND(!lj && (width > len || pr > len), spaces - len - (val < 0 || sign), padc);
+            PAD_COND(!zero && !lj && (width > len || pr > len), spaces - len - (val < 0 || sign), ' ');
 
             if (val < 0) {
                 WRITE_CHAR('-');
             } else if (sign == 1) {
                 WRITE_CHAR('+');
-            } else {
+            } else if (sign == 2) {
                 WRITE_CHAR(' ');
             }
 
-            PAD_COND(width > len || pr > len, pad, '0');
+            PAD_COND(zero && (width > len || pr > len), pad - (val < 0 || sign), '0');
             WRITE_STRING(str.GetValue(), len);
-            PAD_COND(lj && (width > len || pr > len), spaces - len - (val < 0 || sign), padc);
+            PAD_COND(!zero && lj && (width > len || pr > len), spaces - len - (val < 0 || sign), ' ');
 
             break;
         }
@@ -318,10 +317,10 @@ UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*
 
             pad -= len;
 
-            PAD_COND(!lj && (width > len || pr > len), spaces - len, padc);
-            PAD_COND(width > len || pr > len, pad, '0');
+            PAD_COND(!zero && !lj && (width > len || pr > len), spaces, ' ');
+            PAD_COND(zero && (width > len || pr < len), pad, '0');
             WRITE_STRING(str.GetValue(), len);
-            PAD_COND(lj && (width > len || pr > len), spaces - len, padc);
+            PAD_COND(!zero && lj && (width > len || pr > len), spaces, ' ');
 
             break;
         }
@@ -329,7 +328,7 @@ UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*
             /* Single character + padding. */
 
             PAD_COND(!lj && width > 2, width - 1, ' ');
-            WRITE_CHAR((Char)VariadicArg(Arguments, IntPtr));
+            WRITE_CHAR(VariadicArg(Arguments, IntPtr));
             PAD_COND(lj && width > 2, width - 1, ' ');
 
             break;

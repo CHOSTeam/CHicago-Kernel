@@ -1,9 +1,10 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on February 07 of 2021, at 11:57 BRT */
+ * Last edited on February 07 of 2021, at 18:03 BRT */
 
 #include <mm.hxx>
+#include <string.hxx>
 
 /* This is probably the only code (non-header) file with some type of macro definition on it lol. */
 
@@ -56,15 +57,10 @@ Void PhysMem::Initialize(BootInfo &Info) {
     for (UIntPtr i = 0; i < RegionCount; i++) {
         Regions[i].Free = 0;
         Regions[i].Used = MM_REGION_BITMAP_LEN * sizeof(UIntPtr) * 8;
-
-        for (UIntPtr i = 0; i < MM_REGION_BITMAP_LEN; i++) {
-            Regions[i].Pages[i] = UINTPTR_MAX;
-        }
+        SetMemory(Regions[i].Pages, 0xFF, MM_REGION_BITMAP_LEN * sizeof(UIntPtr));
     }
 
-    for (UIntPtr i = 0; i < RegionCount << 10; i++) {
-        References[i] = 0;
-    }
+    SetMemory(References, 0, RegionCount << 10);
 
     /* Now using the boot memory map, we can free the free (duh) regions (those entries will be marked as
      * BOOT_INFO_MEM_FREE). */
@@ -413,7 +409,7 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out) {
                         Regions[i].Pages[j] = UINTPTR_MAX;
                     } else {
                         for (UIntPtr k = bit; k < bit + aval; k++) {
-                            Regions[i].Pages[j] |= (UIntPtr)1 << k;
+                            Regions[i].Pages[j] |= 1u << k;
                         }
                     }
 
@@ -421,7 +417,7 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out) {
                         Regions[ci].Pages[cj] = UINTPTR_MAX;
                     } else {
                         for (UIntPtr k = cbit; k < cbit + Count - cur; k++) {
-                            Regions[ci].Pages[cj] |= (UIntPtr)1 << k;
+                            Regions[ci].Pages[cj] |= 1u << k;
                         }
                     }
 
@@ -443,10 +439,7 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out) {
                     for (cj = i + 1; cj < ci; cj++) {
                         Regions[cj].Free = 0;
                         Regions[cj].Used = MM_REGION_BITMAP_LEN;
-
-                        for (UIntPtr k = 0; k < MM_REGION_BITMAP_LEN; k++) {
-                            Regions[cj].Pages[k] = UINTPTR_MAX;
-                        }
+                        SetMemory(Regions[cj].Pages, 0xFF, MM_REGION_BITMAP_LEN * sizeof(UIntPtr));
                     }
 
                     UsedBytes += Count * MM_PAGE_SIZE;
@@ -484,11 +477,7 @@ Status PhysMem::FreeInt(UIntPtr Start, UIntPtr Count) {
             UsedBytes -= MM_PAGE_SIZE * MM_REGION_BITMAP_LEN * sizeof(UIntPtr) * 8;
             Start += MM_PAGE_SIZE * MM_REGION_BITMAP_LEN * sizeof(UIntPtr) * 8;
             Count -= MM_REGION_BITMAP_LEN * sizeof(UIntPtr) * 8;
-
-            for (; j < MM_REGION_BITMAP_LEN; j++) {
-                Regions[i].Pages[j] = 0;
-            }
-            
+            SetMemory(Regions[i].Pages, 0, MM_REGION_BITMAP_LEN * sizeof(UIntPtr));
             continue;
         } else if (!k && Count >= sizeof(UIntPtr) * 8 && Regions[i].Used >= sizeof(UIntPtr) * 8) {
             Regions[i].Free += sizeof(UIntPtr) * 8;

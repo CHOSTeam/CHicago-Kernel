@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 07 of 2021 at 14:39 BRT */
+ * Last edited on February 07 of 2021 at 17:47 BRT */
 
 #include <string.hxx>
 
@@ -89,13 +89,7 @@ Boolean String::Compare(const String &Value) const {
         return False;
     }
 
-    for (UIntPtr i = 0; i < Length; i++) {
-        if (this->Value[i] != Value.Value[i]) {
-            return False;
-        }
-    }
-
-    return True;
+    return CompareMemory(this->Value, Value.Value, Length);
 }
 
 Void String::CalculateLength(Void) {

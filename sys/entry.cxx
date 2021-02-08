@@ -1,10 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on February 07 of 2021 at 11:55 BRT */
+ * Last edited on February 07 of 2021 at 22:18 BRT */
 
 #include <arch.hxx>
 #include <mm.hxx>
+#include <img.hxx>
 
 extern "C" Void KernelEntry(BootInfo *Info) {
     /* Hello, World! The loader just exited the EFI environment, and gave control to the kernel! Right now the MMU
@@ -20,16 +21,12 @@ extern "C" Void KernelEntry(BootInfo *Info) {
         Arch::Halt();
     }
 
-    /* Initialize the memory manager (we just need to pass our Info struct, as the init functions will know what to do
-     * with it). */
+    /* Initialize a test Image (with our screen as the buffer), and print something to the screen (we expect the screen
+     * to be already cleared/black). */
 
-    PhysMem::Initialize(*Info);
-
-    /* Clear the screen (to indicate that everything went well) and halt. */
-
-    for (UIntPtr i = 0; i < Info->FrameBuffer.Width * Info->FrameBuffer.Height; i++) {
-        reinterpret_cast<UInt32*>(Info->FrameBuffer.Address)[i] = 0xFF00FF00;
-    }
+    Image img(reinterpret_cast<UInt32*>(Info->FrameBuffer.Address), Info->FrameBuffer.Width, Info->FrameBuffer.Height);
+    img.DrawString(0, 0, 0xFFFFFFFF, "Hello, World!\nDrawString uses VariadicFormat to write this! (0x%016X)\n",
+                   0xDEADBEEFull);
 
     Arch::Halt();
 }
