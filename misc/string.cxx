@@ -1,11 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 07 of 2021 at 17:47 BRT */
+ * Last edited on February 08 of 2021 at 00:08 BRT */
 
 #include <string.hxx>
 
-String::String() : Value(Null), Length(0) { }
+String::String(Void) : Value(Null), Length(0) { }
 String::String(const String &Value) : Value(Value.Value), Length(Value.Length) { }
 
 String::String(const Char *Value) : Value(Value), Length(0) {

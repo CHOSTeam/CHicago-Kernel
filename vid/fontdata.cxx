@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on August 06 of 2020, at 19:53 BRT
- * Last edited on February 07 of 2021 at 20:37 BRT */
+ * Last edited on February 08 of 2021 at 00:21 BRT */
 
 #include <img.hxx>
 
@@ -1250,4 +1250,4 @@ static const FontGlyph DefaultFontGlyphs[] = {
     { 0x30F9, 10, 13, 0, 12, 10  }
 };
 
-FontData DefaultFontData = { 15, 5, 20, DefaultFontGlyphs, DefaultFontGlyphData };
+FontData DefaultFont = { 15, 5, 20, DefaultFontGlyphs, DefaultFontGlyphData };

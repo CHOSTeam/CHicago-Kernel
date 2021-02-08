@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 05 of 2021, at 20:33 BRT
- * Last edited on February 06 of 2021, at 17:17 BRT */
+ * Last edited on February 08 of 2021, at 10:28 BRT */
 
 #pragma once
 
@@ -24,8 +24,8 @@ struct packed BootInfoMemMap {
 
 struct packed BootInfo {
     UInt32 Magic;
-    UIntPtr KernelStart, RegionsStart, KernelEnd, EfiTempAddress;
-    UInt64 MinPhysicalAddress, MaxPhysicalAddress, PhysicalMemorySize;
+    UIntPtr KernelStart, RegionsStart, KernelEnd, EfiTempAddress,
+            MinPhysicalAddress, MaxPhysicalAddress, PhysicalMemorySize;
     Void *Directory;
 
     struct packed {

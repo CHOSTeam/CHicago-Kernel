@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on February 07 of 2021 at 21:57 BRT */
+ * Last edited on February 08 of 2021 at 00:08 BRT */
 
 #pragma once
 
@@ -13,7 +13,7 @@ public:
      * change/go back to the normal String class after the memory allocator is readded).
      * Also, at least for now, the whole string is read-only. */
 
-    String();
+    String(Void);
     String(const Char*);
     String(const String&);
 

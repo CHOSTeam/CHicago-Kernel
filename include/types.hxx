@@ -1,9 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on May 11 of 2018, at 13:15 BRT
- * Last edited on February 06 of 2021, at 17:06 BRT */
+ * Last edited on February 08 of 2021, at 11:02 BRT */
 
 #pragma once
+
+#define VERSION "next-4"
 
 #define Void void
 
@@ -25,15 +27,23 @@
 /* Define our IntPtr type */
 
 #ifdef _LP64
+#define UINTPTR_HEX "0x%016X"
+#define UINTPTR_DEC "%U"
+
 #define UINTPTR_MAX 0xFFFFFFFFFFFFFFFF
 #define INTPTR_MIN -9223372036854775807
 #define INTPTR_MAX 9223372036854775807
+
 #define UIntPtr unsigned long long
 #define IntPtr signed long long
 #else
+#define UINTPTR_HEX "0x%08x"
+#define UINTPTR_DEC "%u"
+
 #define UINTPTR_MAX 0xFFFFFFFF
 #define INTPTR_MIN -2147483648
 #define INTPTR_MAX 2147483647
+
 #define UIntPtr unsigned int
 #define IntPtr signed int
 #endif

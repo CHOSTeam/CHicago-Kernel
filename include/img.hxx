@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:37 BRT
- * Last edited on February 07 of 2021 at 21:39 BRT */
+ * Last edited on February 08 of 2021 at 10:57 BRT */
 
 #pragma once
 
@@ -47,6 +47,7 @@ public:
      * instead of the Vector2D class (at least for now, might readd the Vector2D class later, or maybe in
      * userspace). */
 
+    Image(Void);
     Image(UInt32*, UInt16, UInt16);
     Image(const Image &Source);
 
@@ -90,7 +91,7 @@ public:
 
     inline Void Scroll(UInt32 Height, UInt32 Color) {
         if (Buffer != Null) {
-            MoveMemory(Buffer, &Buffer[Height * Width], (this->Height - Height) * Width * 4);
+            CopyMemory32(Buffer, &Buffer[Height * Width], (this->Height - Height) * Width);
             SetMemory32(&Buffer[(this->Height - Height) * Width], Color, Height * Width);
         }
     }
@@ -132,4 +133,4 @@ private:
     UInt16 Width, Height;
 };
 
-extern FontData DefaultFontData;
+extern FontData DefaultFont;

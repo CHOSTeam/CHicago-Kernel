@@ -1,10 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 21:14 BRT
- * Last edited on February 07 of 2021 at 22:19 BRT */
+ * Last edited on February 08 of 2021 at 00:21 BRT */
 
 #include <img.hxx>
 
+Image::Image(Void) : Buffer(Null), Width(0), Height(0) { }
 Image::Image(UInt32 *Buffer, UInt16 Width, UInt16 Height) : Buffer(Buffer), Width(Width), Height(Height) { }
 Image::Image(const Image &Value) : Buffer(Value.Buffer), Width(Value.Width), Height(Value.Height) { }
 
@@ -115,7 +116,7 @@ Void Image::DrawRectangle(UInt16 X, UInt16 Y, UInt16 Width, UInt16 Height, UInt3
     }
 }
 
-Boolean Image::DrawCharacter(UInt16 X, UInt16 Y, Char Value, UInt32 Color) {
+Boolean Image::DrawCharacter(UInt16 X, UInt16 Y, Char Data, UInt32 Color) {
     if (Buffer == Null || X >= Width || Y >= Height) {
         return False;
     }
@@ -128,9 +129,9 @@ Boolean Image::DrawCharacter(UInt16 X, UInt16 Y, Char Value, UInt32 Color) {
 	 * transform it into a 0-1 value, that we can treat as the alpha value of the pixel. With that, we can just call
 	 * Blend, and let it do the job of changing the brightness for us. */
 
-    const FontGlyph &info = DefaultFontData.GlyphInfo[Value];
-    const UInt8 *data = &DefaultFontData.GlyphData[info.Offset];
-    UInt16 gx = info.Left, gy = DefaultFontData.Ascender - info.Top;
+    const FontGlyph &info = DefaultFont.GlyphInfo[Data];
+    const UInt8 *data = &DefaultFont.GlyphData[info.Offset];
+    UInt16 gx = info.Left, gy = DefaultFont.Ascender - info.Top;
     UInt32 *start = &Buffer[(Y + gy) * Width + X + gx];
 
     for (UInt16 y = 0; y < info.Height; y++) {
@@ -176,7 +177,7 @@ Void Image::DrawString(UInt16 X, UInt16 Y, UInt32 Color, const String &Format, .
 
         switch (Data) {
         case '\n': {
-            ctx[2] += DefaultFontData.Height;
+            ctx[2] += DefaultFont.Height;
         }
         case '\r': {
             ctx[1] = 0;
@@ -187,7 +188,7 @@ Void Image::DrawString(UInt16 X, UInt16 Y, UInt32 Color, const String &Format, .
                 return False;
             }
 
-            ctx[1] += DefaultFontData.GlyphInfo[Data].Advance;
+            ctx[1] += DefaultFont.GlyphInfo[Data].Advance;
 
             return True;
         }

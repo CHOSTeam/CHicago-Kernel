@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 16:07 BRT
- * Last edited on February 07 of 2021, at 11:56 BRT */
+ * Last edited on February 08 of 2021, at 10:41 BRT */
 
 #pragma once
 
@@ -68,19 +68,18 @@ public:
 	static UInt8 GetReferences(UIntPtr);
 	static UIntPtr GetKernelStart(Void) { return KernelStart; }
 	static UIntPtr GetKernelEnd(Void) { return KernelEnd; }
-	static UInt64 GetMinAddress(Void) { return MinAddress; }
-	static UInt64 GetMaxAddress(Void) { return MaxAddress; }
-	static UInt64 GetSize(Void) { return MaxBytes; }
-	static UInt64 GetUsage(Void) { return UsedBytes; }
-	static UInt64 GetFree(Void) { return MaxBytes - UsedBytes; }
+	static UIntPtr GetMinAddress(Void) { return MinAddress; }
+	static UIntPtr GetMaxAddress(Void) { return MaxAddress; }
+	static UIntPtr GetSize(Void) { return MaxBytes; }
+	static UIntPtr GetUsage(Void) { return UsedBytes; }
+	static UIntPtr GetFree(Void) { return MaxBytes - UsedBytes; }
 private:
 	static UIntPtr CountFreePages(UIntPtr, UIntPtr, UIntPtr);
 	static Status FindFreePages(UIntPtr, UIntPtr, UIntPtr&, UIntPtr&);
 	static Status AllocInt(UIntPtr, UIntPtr&);
 	static Status FreeInt(UIntPtr, UIntPtr);
 	
-	static UIntPtr KernelStart, KernelEnd, RegionCount;
-	static UInt64 MinAddress, MaxAddress, MaxBytes, UsedBytes;
+	static UIntPtr KernelStart, KernelEnd, RegionCount, MinAddress, MaxAddress, MaxBytes, UsedBytes;
 	static Region *Regions;
 	static UInt8 *References;
 	static Boolean Initialized;

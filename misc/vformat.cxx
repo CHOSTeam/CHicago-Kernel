@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 15:57 BRT
- * Last edited on February 07 of 2021 at 21:57 BRT */
+ * Last edited on February 08 of 2021 at 10:38 BRT */
 
 #include <string.hxx>
 
@@ -229,7 +229,7 @@ UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*
 
         if (Format[pos] != '%') {
             const Char *end = FindFirst(Format.GetValue() + pos, '%', Format.GetLength() - pos);
-            UIntPtr size = end != Null ? end - Format.GetValue() : Format.GetLength() - pos;
+            UIntPtr size = end != Null ? end - Format.GetValue() - pos : Format.GetLength() - pos;
 
             Buffer = WriteString(Format.GetValue() + pos, size, Function, Context, Buffer, Size, Limit, pos, err);
 

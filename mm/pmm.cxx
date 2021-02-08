@@ -1,10 +1,10 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on February 07 of 2021, at 18:03 BRT */
+ * Last edited on February 08 of 2021, at 11:07 BRT */
 
 #include <mm.hxx>
-#include <string.hxx>
+#include <textout.hxx>
 
 /* This is probably the only code (non-header) file with some type of macro definition on it lol. */
 
@@ -16,8 +16,8 @@
 
 /* All of the static private variables. */
 
-UIntPtr PhysMem::KernelStart = 0, PhysMem::KernelEnd = 0, PhysMem::RegionCount = 0;
-UInt64 PhysMem::MinAddress = 0, PhysMem::MaxAddress = 0, PhysMem::MaxBytes = 0, PhysMem::UsedBytes = 0;
+UIntPtr PhysMem::KernelStart = 0, PhysMem::KernelEnd = 0, PhysMem::RegionCount = 0,
+        PhysMem::MinAddress = 0, PhysMem::MaxAddress = 0, PhysMem::MaxBytes = 0, PhysMem::UsedBytes = 0;
 PhysMem::Region *PhysMem::Regions = Null;
 UInt8 *PhysMem::References = Null;
 Boolean PhysMem::Initialized = False;
@@ -28,6 +28,9 @@ Void PhysMem::Initialize(BootInfo &Info) {
      * the tasks/CPUs/whatever). */
 
     if (Initialized) {
+        Debug.SetForeground(0xFFFF0000);
+        Debug.Write("tried initializing the physical memory manager twice\n");
+        Debug.RestoreForeground();
         return;
     }
 
@@ -43,6 +46,10 @@ Void PhysMem::Initialize(BootInfo &Info) {
     MaxAddress = Info.MaxPhysicalAddress;
     MaxBytes = Info.PhysicalMemorySize;
     UsedBytes = MaxBytes;
+
+    Debug.Write("the kernel starts at " UINTPTR_HEX ", and ends at " UINTPTR_HEX "\n", KernelStart, KernelEnd);
+    Debug.Write("minimum physical address is " UINTPTR_HEX ", and max is " UINTPTR_HEX "\n", MinAddress, MaxAddress);
+    Debug.Write("memory size is " UINTPTR_HEX "\n", MaxBytes);
 
     /* Now, we need to initialize the region list, and the reference list, we need to do this before setting the
      * kernel end, as we're going to put those lists after the current kernel end. There is one very important thing,
@@ -65,13 +72,18 @@ Void PhysMem::Initialize(BootInfo &Info) {
     /* Now using the boot memory map, we can free the free (duh) regions (those entries will be marked as
      * BOOT_INFO_MEM_FREE). */
 
-    for (UIntPtr i = 0; i < Info.MemoryMap.Count; i++) {
+    for (UInt32 i = 0; i < Info.MemoryMap.Count; i++) {
         BootInfoMemMap &ent = Info.MemoryMap.Entries[i];
 
+        Debug.Write("memory map entry no. " UINTPTR_DEC ", base = " UINTPTR_HEX ", size = " UINTPTR_HEX
+                    ", type = %d\n", i, ent.Base, ent.Count << 12, ent.Type);
+
         if (ent.Type == BOOT_INFO_MEM_FREE) {
-            FreeInt(ent.Base, ent.Count);
+            FreeInt(ent.Base == 0 ? ent.Base + MM_PAGE_SIZE : ent.Base, ent.Count);
         }
     }
+
+    Debug.Write(UINTPTR_HEX " of memory is being used, " UINTPTR_HEX " is free\n", UsedBytes, MaxBytes - UsedBytes);
 }
 
 /* Most of the alloc/free functions only redirect to the AllocInt function, the exception for this is the NonContig
@@ -92,6 +104,10 @@ Status PhysMem::AllocNonContig(UIntPtr Count, UIntPtr *Out) {
      * consecutive pages. */
 
     if (!Count || Out == Null) {
+        Debug.SetForeground(0xFFFF0000);
+        Debug.Write("invalid non-contig PhysMem::Alloc arguments (count = " UINTPTR_DEC ", out = " UINTPTR_HEX ")\n",
+                    Count, Out);
+        Debug.RestoreForeground();
         return Status::InvalidArg;
     }
 
@@ -123,6 +139,10 @@ Status PhysMem::FreeNonContig(UIntPtr *Pages, UIntPtr Count) {
      * to save anything after doing that. */
 
     if (!Count || Pages == Null) {
+        Debug.SetForeground(0xFFFF0000);
+        Debug.Write("invalid non-contig PhysMem::Free arguments (pages = " UINTPTR_HEX ", count = " UINTPTR_DEC ")\n",
+                    Pages, Count);
+        Debug.RestoreForeground();
         return Status::InvalidArg;
     }
 
@@ -151,6 +171,9 @@ Status PhysMem::ReferenceSingle(UIntPtr Page, UIntPtr &Out) {
         return ReferenceSingle(Page, Out);
     } else if (References == Null || UsedBytes < MM_PAGE_SIZE || (Page & MM_PAGE_MASK) || Page < MinAddress ||
                Page >= MaxAddress) {
+        Debug.SetForeground(0xFFFF0000);
+        Debug.Write("invalid PhysMem::Reference arguments (page = " UINTPTR_HEX ")\n", Page);
+        Debug.RestoreForeground();
         return Status::InvalidArg;
     } else if (References[(Page - MinAddress) >> MM_PAGE_SHIFT] < 0xFF) {
         References[(Page - MinAddress) >> MM_PAGE_SHIFT]++;
@@ -174,7 +197,11 @@ Status PhysMem::ReferenceContig(UIntPtr Start, UIntPtr Count, UIntPtr &Out) {
 
         return ReferenceContig(Start, Count, Out);
     } else if (References == Null || !Count || UsedBytes < Count * MM_PAGE_SIZE || (Start & MM_PAGE_MASK) ||
-               Start < MinAddress || Start + Count * MM_PAGE_SIZE >= MaxAddress) {
+               Start < MinAddress || Start + Count * MM_PAGE_SIZE > MaxAddress) {
+        Debug.SetForeground(0xFFFF0000);
+        Debug.Write("invalid contig PhysMem::Reference arguments (start = " UINTPTR_HEX ", count = " UINTPTR_DEC
+                    ")\n", Start, Count);
+        Debug.RestoreForeground();
         return Status::InvalidArg;
     }
 
@@ -194,6 +221,10 @@ Status PhysMem::ReferenceNonContig(UIntPtr *Pages, UIntPtr Count, UIntPtr *Out) 
     /* For non-contig pages, we just call ReferenceSingle on each of the pages. */
 
     if (References == Null || !Count || UsedBytes < Count * MM_PAGE_SIZE || Pages == Null || Out == Null) {
+        Debug.SetForeground(0xFFFF0000);
+        Debug.Write("invalid non-contig PhysMem::Reference arguments (pages = " UINTPTR_HEX ", count = " UINTPTR_DEC
+                    ")\n", Pages, Count);
+        Debug.RestoreForeground();
         return Status::InvalidArg;
     }
 
@@ -215,6 +246,9 @@ Status PhysMem::DereferenceSingle(UIntPtr Page) {
 
     if (References == Null || UsedBytes < MM_PAGE_SIZE || !Page || (Page & MM_PAGE_MASK) || Page < MinAddress ||
         Page >= MaxAddress || !References[(Page - MinAddress) >> MM_PAGE_SHIFT]) {
+        Debug.SetForeground(0xFFFF0000);
+        Debug.Write("invalid PhysMem::Dereference arguments (page = " UINTPTR_HEX ")\n", Page);
+        Debug.RestoreForeground();
         return Status::InvalidArg;
     }
 
@@ -231,7 +265,11 @@ Status PhysMem::DereferenceSingle(UIntPtr Page) {
 
 Status PhysMem::DereferenceContig(UIntPtr Start, UIntPtr Count) {
     if (References == Null || !Count || UsedBytes < Count * MM_PAGE_SIZE || !Start || (Start & MM_PAGE_MASK) ||
-        Start < MinAddress || Start + Count * MM_PAGE_SIZE >= MaxAddress) {
+        Start < MinAddress || Start + Count * MM_PAGE_SIZE > MaxAddress) {
+        Debug.SetForeground(0xFFFF0000);
+        Debug.Write("Invalid contig PhysMem::Dereference arguments (start = " UINTPTR_HEX ", count = " UINTPTR_DEC
+                    ")\n", Start, Count);
+        Debug.RestoreForeground();
         return Status::InvalidArg;
     }
 
@@ -248,6 +286,10 @@ Status PhysMem::DereferenceContig(UIntPtr Start, UIntPtr Count) {
 
 Status PhysMem::DereferenceNonContig(UIntPtr *Pages, UIntPtr Count) {
     if (References == Null || !Count || UsedBytes < Count * MM_PAGE_SIZE || Pages == Null) {
+        Debug.SetForeground(0xFFFF0000);
+        Debug.Write("invalid non-contig PhysMem::Dereference arguments (pages = " UINTPTR_HEX ", count = " UINTPTR_DEC
+                    ")\n", Pages, Count);
+         Debug.SetForeground(0xFFFFFFF);
         return Status::InvalidArg;
     }
 
@@ -265,6 +307,9 @@ Status PhysMem::DereferenceNonContig(UIntPtr *Pages, UIntPtr Count) {
 UInt8 PhysMem::GetReferences(UIntPtr Page) {
     if (References == Null || !Page || Page < MM_PAGE_SIZE || (Page & MM_PAGE_MASK) || Page < MinAddress ||
         Page >= MaxAddress) {
+        Debug.SetForeground(0xFFFF0000);
+        Debug.Write("Invalid PhysMem::GetReference arguments (page = " UINTPTR_HEX ")\n", Page);
+        Debug.RestoreForeground();
         return 0;
     }
 
@@ -328,8 +373,14 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out) {
      * initialized. */
 
     if (!Count) {
+        Debug.SetForeground(0xFFFF0000);
+        Debug.Write("invalid PhysMem::AllocInt arguments (count = " UINTPTR_DEC ")\n", Count);
+        Debug.RestoreForeground();
         return Status::InvalidArg;
     } else if (Regions == Null || UsedBytes + Count * MM_PAGE_SIZE > MaxBytes) {
+        Debug.SetForeground(0xFFFF0000);
+        Debug.Write("not enough free memory for PhysMem::AllocInt (count = " UINTPTR_DEC ")\n", Count);
+        Debug.RestoreForeground();
         return Status::OutOfMemory;
     }
 
@@ -389,7 +440,7 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out) {
 
                         break;
                     } else if ((FindFreePages(Regions[ci].Pages[cj], Count - cur, cbit, caval) != Status::Success &&
-                         caval != sizeof(UIntPtr) * 8) || cbit) {
+                               caval != sizeof(UIntPtr) * 8) || cbit) {
                         break;
                     } else if (caval) {
                         cur += caval;
@@ -457,7 +508,11 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out) {
 
 Status PhysMem::FreeInt(UIntPtr Start, UIntPtr Count) {
     if (!Start || !Count || UsedBytes < Count * MM_PAGE_SIZE || (Start & MM_PAGE_MASK) || Start < MinAddress ||
-        Start + Count * MM_PAGE_SIZE >= MaxAddress) {
+        Start + Count * MM_PAGE_SIZE > MaxAddress) {
+        Debug.SetForeground(0xFFFF0000);
+        Debug.Write("invalid PhysMem::FreeInt arguments (start = " UINTPTR_HEX ", count = " UINTPTR_DEC ")\n",
+                    Start, Count);
+        Debug.RestoreForeground();
         return Status::InvalidArg;
     }
 
@@ -492,6 +547,10 @@ Status PhysMem::FreeInt(UIntPtr Start, UIntPtr Count) {
         /* If none of the above, first do error checking, and then free a single page. */
 
         if (!Regions[i].Used) {
+            Debug.SetForeground(0xFFFF0000);
+            Debug.Write("invalid PhysMem::FreeInt arguments (cross into unallocated area, start = " UINTPTR_HEX
+                        ", count = " UINTPTR_DEC ")\n", Start, Count);
+            Debug.RestoreForeground();
             return Status::InvalidArg;
         }
 
