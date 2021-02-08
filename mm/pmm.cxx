@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on February 08 of 2021, at 11:07 BRT */
+ * Last edited on February 08 of 2021, at 13:27 BRT */
 
 #include <mm.hxx>
 #include <textout.hxx>
@@ -414,8 +414,7 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out) {
                 Regions[i].Free -= Count;
                 Regions[i].Used += Count;
                 UsedBytes += Count * MM_PAGE_SIZE;
-                Out = MinAddress + (i * (1 << MM_REGION_SHIFT)) + (j * (1 << MM_REGION_PAGE_SHIFT)) +
-                      (bit * MM_PAGE_SIZE);
+                Out = MinAddress + (i << MM_REGION_SHIFT) + (j << MM_REGION_PAGE_SHIFT) + (bit << MM_PAGE_SHIFT);
 
                 return Status::Success;
             } else if (aval) {
@@ -494,8 +493,7 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out) {
                     }
 
                     UsedBytes += Count * MM_PAGE_SIZE;
-                    Out = MinAddress + (i * (1 << MM_REGION_SHIFT)) + (j * (1 << MM_REGION_PAGE_SHIFT)) +
-                          (bit * MM_PAGE_SIZE);
+                    Out = MinAddress + (i << MM_REGION_SHIFT) + (j << MM_REGION_PAGE_SHIFT) + (bit << MM_PAGE_SHIFT);
 
                     return Status::Success;
                 }
@@ -521,8 +519,8 @@ Status PhysMem::FreeInt(UIntPtr Start, UIntPtr Count) {
     while (Count) {
         /* Save the indexes of this page into the region bitmap. */
     
-        UIntPtr i = Start >> MM_REGION_SHIFT, j = (Start - (i << MM_REGION_SHIFT)) >> MM_REGION_PAGE_SHIFT,
-                k = (Start - (i << MM_REGION_SHIFT) - (j << MM_REGION_PAGE_SHIFT)) >> MM_PAGE_SHIFT;
+        UIntPtr i = Start >> MM_REGION_SHIFT, j = (Start >> MM_REGION_PAGE_SHIFT) & (MM_REGION_BITMAP_LEN - 1),
+                k = (Start >> MM_PAGE_SHIFT) & (sizeof(UIntPtr) * 8 - 1);
 
         /* Now check if we can just free a whole bitmap or region (those cases are easier to handle). */
 
@@ -548,14 +546,14 @@ Status PhysMem::FreeInt(UIntPtr Start, UIntPtr Count) {
 
         if (!Regions[i].Used) {
             Debug.SetForeground(0xFFFF0000);
-            Debug.Write("invalid PhysMem::FreeInt arguments (cross into unallocated area, start = " UINTPTR_HEX
-                        ", count = " UINTPTR_DEC ")\n", Start, Count);
+            Debug.Write("invalid PhysMem::FreeInt arguments (cross into unallocated area, address = " UINTPTR_HEX
+                        ", remaining count = " UINTPTR_DEC ")\n", Start, Count);
             Debug.RestoreForeground();
             return Status::InvalidArg;
         }
 
         Regions[i].Pages[j] &= ~((UIntPtr)1 << k);
-        Regions[i].Free--;
+        Regions[i].Free++;
         Regions[i].Used--;
         UsedBytes -= MM_PAGE_SIZE;
         Start += MM_PAGE_SIZE;
