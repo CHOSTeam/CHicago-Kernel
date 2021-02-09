@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 26 of 2020, at 13:16 BRT
- * Last edited on February 08 of 2021, at 11:08 BRT */
+ * Last edited on February 09 of 2021, at 18:36 BRT */
 
 #pragma once
 
@@ -26,6 +26,7 @@ public:
     TextConsole(BootInfo&, UInt32 = 0, UInt32 = 0xFFFFFFFF);
 
     Void Clear(Void);
+    Void Update(Void);
 
     Void SetBackground(UInt32);
     Void SetForeground(UInt32);
@@ -35,9 +36,10 @@ public:
     UInt32 GetBackground(Void) const { return Background; }
     UInt32 GetForeground(Void) const { return Foreground; }
 private:
+    Void AfterWrite(Void) override;
     Boolean WriteInt(Char) override;
 
-    Image Screen;
+    Image Back, Front;
     UInt16 X, Y;
     UInt32 Background, Foreground, BackgroundSP, ForegroundSP, BackgroundStack[32], ForegroundStack[32];
 };

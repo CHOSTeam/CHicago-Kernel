@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 05 of 2021, at 20:33 BRT
- * Last edited on February 08 of 2021, at 21:13 BRT */
+ * Last edited on February 09 of 2021, at 18:34 BRT */
 
 #pragma once
 
@@ -49,10 +49,10 @@ struct packed BootInfo {
     } BootImage;
 
     struct packed {
-        UIntPtr Width, Height, Size, Address;
+        UIntPtr Width, Height, BackBuffer, FrontBuffer;
     } FrameBuffer;
 
-    UInt8 KernelStack[0x10000];
+    UInt8 KernelStack[0x2000];
 };
 
 #ifdef USE_INIT_ARRAY

@@ -1,22 +1,28 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 00:14 BRT
- * Last edited on February 08 of 2021 at 21:19 BRT */
+ * Last edited on February 09 of 2021 at 18:40 BRT */
 
 #include <textout.hxx>
 
-TextConsole::TextConsole(Void) : Screen(), X(0), Y(0), Background(0), Foreground(0) { }
+TextConsole::TextConsole(Void) : Back(), Front(), X(0), Y(0), Background(0), Foreground(0) { }
 
 TextConsole::TextConsole(BootInfo &Info, UInt32 Background, UInt32 Foreground)
-    : Screen(reinterpret_cast<UInt32*>(Info.FrameBuffer.Address), Info.FrameBuffer.Width, Info.FrameBuffer.Height),
+    : Back(reinterpret_cast<UInt32*>(Info.FrameBuffer.BackBuffer), Info.FrameBuffer.Width, Info.FrameBuffer.Height),
+      Front(reinterpret_cast<UInt32*>(Info.FrameBuffer.FrontBuffer), Info.FrameBuffer.Width, Info.FrameBuffer.Height),
       X(0), Y(0), Background(Background), Foreground(Foreground), BackgroundSP(0), ForegroundSP(0) {
     Clear();
+    Update();
     SetMemory(BackgroundStack, 0, sizeof(BackgroundStack));
     SetMemory(ForegroundStack, 0, sizeof(ForegroundStack));
 }
 
 Void TextConsole::Clear(Void) {
-    Screen.Clear(Background);
+    Front.Clear(Background);
+}
+
+Void TextConsole::Update(Void) {
+    CopyMemory32(Back.GetBuffer(), Front.GetBuffer(), Front.GetWidth() * Front.GetHeight());
 }
 
 Void TextConsole::SetBackground(UInt32 Color) {
@@ -51,22 +57,26 @@ Void TextConsole::RestoreForeground(Void) {
         Foreground = ForegroundStack[--ForegroundSP];
     }
 }
- 
+
+Void TextConsole::AfterWrite(Void) {
+    Update();
+}
+
 Boolean TextConsole::WriteInt(Char Data) {
     /* Handle both overflow on the X axis (move into the next line) and overflow on the Y axis (scroll the screen). */
 
     if (!Data) {
-        return Screen.GetBuffer() != Null;
+        return Front.GetBuffer() != Null;
     }
 
-    if (X + DefaultFont.GlyphInfo[(UInt8)Data].Advance > Screen.GetWidth()) {
+    if (X + DefaultFont.GlyphInfo[(UInt8)Data].Advance > Front.GetWidth()) {
         Y += DefaultFont.Height;
         X = 0;
     }
 
-    if (Y + DefaultFont.Height > Screen.GetHeight()) {
-        Screen.Scroll(DefaultFont.Height, Background);
-        Y = ((Screen.GetHeight() / DefaultFont.Height) - 1) * DefaultFont.Height;
+    if (Y + DefaultFont.Height > Front.GetHeight()) {
+        Front.Scroll(DefaultFont.Height, Background);
+        Y = ((Front.GetHeight() / DefaultFont.Height) - 1) * DefaultFont.Height;
         X = 0;
     }
 
@@ -81,7 +91,7 @@ Boolean TextConsole::WriteInt(Char Data) {
         return True;
     }
     default: {
-        if (!Screen.DrawCharacter(X, Y, Data, Foreground)) {
+        if (!Front.DrawCharacter(X, Y, Data, Foreground)) {
             return False;
         }
 
