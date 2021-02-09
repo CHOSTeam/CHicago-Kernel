@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  * 
  * Created on February 06 of 2021, at 12:54 BRT
- * Last edited on February 06 of 2021, at 16:09 BRT */
+ * Last edited on February 08 of 2021, at 22:33 BRT */
 
 ENTRY(KernelEntry)
 
@@ -18,6 +18,40 @@ SECTIONS {
         KEEP(*(SORT_NONE(.init)))
     } :text
 
+    .fini : {
+        KEEP(*(SORT_NONE(.fini)))
+    } :text
+
+    .init_array : {
+        __init_array_start = .;
+        KEEP(*(SORT(.init_array.*)))
+        KEEP(*(.init_array))
+        __init_array_end = .;
+    } :text
+
+    .fini_array : {
+        __fini_array_start = .;
+        KEEP(*(SORT(.fini_array.*)))
+        KEEP(*(.fini_array))
+        __fini_array_end = .;
+    } :text
+
+    .ctors : {
+        KEEP(*crtbegin.o(.ctors))
+        KEEP(*crtbegin?.o(.ctors))
+        KEEP(*(EXCLUDE_FILE(*crtend.o *crtend?.o) .ctors))
+        KEEP(*(SORT(.ctors.*)))
+        KEEP(*(.ctors))
+    } :text
+
+    .dtors : {
+        KEEP(*crtbegin.o(.dtors))
+        KEEP(*crtbegin?.o(.dtors))
+        KEEP(*(EXCLUDE_FILE(*crtend.o *crtend?.o) .dtors))
+        KEEP(*(SORT(.dtors.*)))
+        KEEP(*(.dtors))
+    } :text
+
     .text : {
         *(.text.unlikely .text.*_unlikely .text.unlikely.*)
         *(.text.exit .text.exit.*)
@@ -25,10 +59,6 @@ SECTIONS {
         *(.text.hot .text.hot.*)
         *(.text .stub .text.* .gnu.linkonce.t.*)
         *(.gnu.warning)
-    } :text
-
-    .fini : {
-        KEEP(*(SORT_NONE(.fini)))
     } :text
 
     . = ALIGN(4K);
@@ -42,22 +72,6 @@ SECTIONS {
     } :rodata
 
     . = ALIGN(4K);
-
-    .ctors : {
-        KEEP(*crtbegin.o(.ctors))
-        KEEP(*crtbegin?.o(.ctors))
-        KEEP(*(EXCLUDE_FILE(*crtend.o *crtend?.o) .ctors))
-        KEEP(*(SORT(.ctors.*)))
-        KEEP(*(.ctors))
-    } :data
-    
-    .dtors : {
-        KEEP(*crtbegin.o(.dtors))
-        KEEP(*crtbegin?.o(.dtors))
-        KEEP(*(EXCLUDE_FILE(*crtend.o *crtend?.o) .dtors))
-        KEEP(*(SORT(.dtors.*)))
-        KEEP(*(.dtors))
-    } :data
 
     .tm_clone_table : {
         KEEP(*(.tm_clone_table))

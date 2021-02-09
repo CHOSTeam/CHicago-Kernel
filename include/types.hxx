@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on May 11 of 2018, at 13:15 BRT
- * Last edited on February 08 of 2021, at 11:02 BRT */
+ * Last edited on February 09 of 2021, at 13:11 BRT */
 
 #pragma once
 
@@ -27,7 +27,8 @@
 /* Define our IntPtr type */
 
 #ifdef _LP64
-#define UINTPTR_HEX "0x%016X"
+#define UINTPTR_MAX_HEX "0x%016X"
+#define UINTPTR_HEX "0x%X"
 #define UINTPTR_DEC "%U"
 
 #define UINTPTR_MAX 0xFFFFFFFFFFFFFFFF
@@ -37,7 +38,8 @@
 #define UIntPtr unsigned long long
 #define IntPtr signed long long
 #else
-#define UINTPTR_HEX "0x%08x"
+#define UINTPTR_MAX_HEX "0x%08x"
+#define UINTPTR_HEX "0x%x"
 #define UINTPTR_DEC "%u"
 
 #define UINTPTR_MAX 0xFFFFFFFF
@@ -70,9 +72,11 @@
 /* Attributes */
 
 #define packed __attribute__((packed))
+#define unused __attribute__((unused))
 #define no_return __attribute__((noreturn))
 #define no_inline __attribute__((noinline))
 #define section(x) __attribute__((section(x)))
+#define always_inline __attribute__((always_inline))
 
 /* Boolean and other defines */
 

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 00:14 BRT
- * Last edited on February 08 of 2021 at 11:08 BRT */
+ * Last edited on February 08 of 2021 at 21:19 BRT */
 
 #include <textout.hxx>
 
@@ -59,7 +59,7 @@ Boolean TextConsole::WriteInt(Char Data) {
         return Screen.GetBuffer() != Null;
     }
 
-    if (X + DefaultFont.GlyphInfo[Data].Advance > Screen.GetWidth()) {
+    if (X + DefaultFont.GlyphInfo[(UInt8)Data].Advance > Screen.GetWidth()) {
         Y += DefaultFont.Height;
         X = 0;
     }
@@ -73,6 +73,8 @@ Boolean TextConsole::WriteInt(Char Data) {
     switch (Data) {
     case '\n': {
         Y += DefaultFont.Height;
+        X = 0;
+        return True;
     }
     case '\r': {
         X = 0;
@@ -87,7 +89,7 @@ Boolean TextConsole::WriteInt(Char Data) {
     }
     }
 
-    X += DefaultFont.GlyphInfo[Data].Advance;
+    X += DefaultFont.GlyphInfo[(UInt8)Data].Advance;
 
     return True;
 }
