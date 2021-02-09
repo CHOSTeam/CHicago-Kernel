@@ -1,12 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on February 09 of 2021 at 13:22 BRT */
+ * Last edited on February 09 of 2021 at 14:59 BRT */
 
 #include <arch.hxx>
 #include <mm.hxx>
-#include <stacktrace.hxx>
-#include <textout.hxx>
+#include <panic.hxx>
 
 TextConsole Debug;
 
@@ -32,18 +31,17 @@ extern "C" Void KernelEntry(BootInfo *Info) {
 
     Debug = TextConsole(*Info, 0, 0xFFFFFF00);
     Debug.SetForeground(0xFF00FF00);
-    Debug.Write("initializing the kernel, arch = %s, version = %s, %d 0x%08x\n", ARCH, VERSION,
-                Info->Symbols.Count, Info->Symbols.Start);
+    Debug.Write("initializing the kernel, arch = %s, version = %s\n", ARCH, VERSION);
     Debug.RestoreForeground();
 
     /* Initialize some important early system bits (backtrace symbol resolver, memory manager, etc). */
 
     StackTrace::Initialize(*Info);
     PhysMem::Initialize(*Info);
-
+    
     Debug.SetForeground(0xFF00FF00);
     Debug.Write("initialization finished, halting the machine\n");
     Debug.RestoreForeground();
-
-    Arch::Halt();
+    
+    ASSERT(1 == 0);
 }
