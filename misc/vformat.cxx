@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 15:57 BRT
- * Last edited on February 08 of 2021 at 10:38 BRT */
+ * Last edited on February 08 of 2021 at 16:06 BRT */
 
 #include <string.hxx>
 
@@ -254,7 +254,7 @@ UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*
         pos += ParseFlags(Format, Arguments, pos + 1, lj, sign, zero, wset, pset, width, pr) + 1;
 
         Char fmtc = Format[pos++];
-        UIntPtr spaces = !zero && width > pr ? width - pr : 0, pad = zero ? (width > pr ? width : pr) : 0;
+        UIntPtr pad = zero ? (width > pr ? width : pr) : pr;
 
         switch (fmtc) {
         case 'd': case 'i':
@@ -273,11 +273,12 @@ UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*
             }
             
             String str = String::FromUInt(buf, val < 0 ? -val : val, 65, 10);
-            UIntPtr len = str.GetLength();
+            UIntPtr len = str.GetLength(), flen = len + (val < 0 || sign),
+                    spaces = !zero && width > flen && width > pr ? width - pr - (pr ? 0 : flen) : 0;
 
-            pad -= len;
+            pad = pad > flen ? pad - flen : 0;
 
-            PAD_COND(!zero && !lj && (width > len || pr > len), spaces - len - (val < 0 || sign), ' ');
+            PAD_COND(!zero && !lj && width > pr, spaces, ' ');
 
             if (val < 0) {
                 WRITE_CHAR('-');
@@ -287,9 +288,9 @@ UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*
                 WRITE_CHAR(' ');
             }
 
-            PAD_COND(zero && (width > len || pr > len), pad - (val < 0 || sign), '0');
+            PAD_COND(zero || pr, pad, '0');
             WRITE_STRING(str.GetValue(), len);
-            PAD_COND(!zero && lj && (width > len || pr > len), spaces - len - (val < 0 || sign), ' ');
+            PAD_COND(!zero && lj && width > pr, spaces, ' ');
 
             break;
         }
@@ -313,14 +314,15 @@ UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*
             }
 
             String str = String::FromUInt(buf, val, 65, base);
-            UIntPtr len = str.GetLength();
+            UIntPtr len = str.GetLength(),
+                    spaces = !zero && width > len && width > pr ? width - pr - (pr ? 0 : len) : 0;
 
-            pad -= len;
+            pad = pad > len ? pad - len : 0;
 
-            PAD_COND(!zero && !lj && (width > len || pr > len), spaces, ' ');
-            PAD_COND(zero && (width > len || pr < len), pad, '0');
+            PAD_COND(!zero && !lj && width > pr, spaces, ' ');
+            PAD_COND(zero || pr, pad, '0');
             WRITE_STRING(str.GetValue(), len);
-            PAD_COND(!zero && lj && (width > len || pr > len), spaces, ' ');
+            PAD_COND(!zero && lj && width > pr, spaces, ' ');
 
             break;
         }
