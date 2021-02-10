@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 21:14 BRT
- * Last edited on February 08 of 2021 at 21:20 BRT */
+ * Last edited on February 10 of 2021 at 11:18 BRT */
 
 #include <img.hxx>
 
@@ -53,7 +53,7 @@ Void Image::DrawLine(UInt16 StartX, UInt16 StartY, UInt16 EndX, UInt16 EndY, UIn
 	 * and plotting the pixels. No need for any complex algorithm. */
 
     if (sy == ey) {
-        SetMemory32(&Buffer[sy * Width + Min(sx, ex)], Color, Abs(ex - sx) + 1);
+        SetMemory(&Buffer[sy * Width + Min(sx, ex)], Color, (Abs(ex - sx) + 1) * 4);
         return;
     } else if (sx == ex) {
         for (UInt16 y = Min(sy, ey); y <= Max(sy, ey); y++) {
@@ -99,7 +99,7 @@ Void Image::DrawRectangle(UInt16 X, UInt16 Y, UInt16 Width, UInt16 Height, UInt3
     }
 
     /* Unfillled rectangles are just 4 lines, filled rectangles are also just a bunch of lines (we can calc the start
-     * address, and increase it each iteration, while also SetMemory32ing the place we need to fill). */
+     * address, and increase it each iteration, while also SetMemory()ing the place we need to fill). */
 
     if (!Fill) {
         DrawLine(X, Y, X + Width - 1, Y, Color);
@@ -112,7 +112,7 @@ Void Image::DrawRectangle(UInt16 X, UInt16 Y, UInt16 Width, UInt16 Height, UInt3
     UIntPtr start = Y * this->Width + X;
 
     for (UInt16 i = 0; i < Y; i++, start += this->Width) {
-        SetMemory32(&Buffer[start], Color, Width - X);
+        SetMemory(&Buffer[start], Color, (Width - X) * 4);
     }
 }
 

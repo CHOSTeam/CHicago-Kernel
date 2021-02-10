@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 26 of 2020, at 13:16 BRT
- * Last edited on February 09 of 2021, at 18:36 BRT */
+ * Last edited on February 10 of 2021, at 10:45 BRT */
 
 #pragma once
 
@@ -40,7 +40,8 @@ private:
     Boolean WriteInt(Char) override;
 
     Image Back, Front;
-    UInt16 X, Y;
+    Boolean HasUpdate;
+    UInt16 X, Y, UXStart, UXEnd, UYStart, UYEnd;
     UInt32 Background, Foreground, BackgroundSP, ForegroundSP, BackgroundStack[32], ForegroundStack[32];
 };
 

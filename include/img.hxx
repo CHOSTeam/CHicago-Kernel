@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:37 BRT
- * Last edited on February 08 of 2021 at 10:57 BRT */
+ * Last edited on February 10 of 2021 at 11:16 BRT */
 
 #pragma once
 
@@ -85,14 +85,14 @@ public:
 
     inline Void Clear(UInt32 Color) {
         if (Buffer != Null) {
-            SetMemory32(Buffer, Color, Width * Height);
+            SetMemory(Buffer, Color, Width * Height * 4);
         }
     }
 
     inline Void Scroll(UInt32 Height, UInt32 Color) {
         if (Buffer != Null) {
-            CopyMemory32(Buffer, &Buffer[Height * Width], (this->Height - Height) * Width);
-            SetMemory32(&Buffer[(this->Height - Height) * Width], Color, Height * Width);
+            CopyMemory(Buffer, &Buffer[Height * Width], (this->Height - Height) * Width * 4);
+            SetMemory(&Buffer[(this->Height - Height) * Width], Color, Height * Width * 4);
         }
     }
 
@@ -107,7 +107,7 @@ public:
     /* Some extra functions that allow us to access all the internal info about the image that we may need to
      * access. */
 
-    Void *GetBuffer(Void) const { return Buffer; }
+    UInt32 *GetBuffer(Void) const { return Buffer; }
     UInt16 GetWidth(Void) const { return Width; }
     UInt16 GetHeight(Void) const { return Height; }
 private:

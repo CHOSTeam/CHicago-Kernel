@@ -1,15 +1,13 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 09 of 2021, at 12:54 BRT
- * Last edited on February 09 of 2021 at 14:56 BRT */
+ * Last edited on February 10 of 2021 at 10:10 BRT */
 
 #include <stacktrace.hxx>
 
 Boolean StackTrace::Initialized = False;
 UIntPtr StackTrace::SymbolCount = 0;
 BootInfoSymbol *StackTrace::Symbols = Null;
-
-#include <textout.hxx>
 
 Void StackTrace::Initialize(BootInfo &Info) {
     /* We don't really need the symbols, but it's nice to already have which function crashed right in the backtrace. */
@@ -20,8 +18,6 @@ Void StackTrace::Initialize(BootInfo &Info) {
         SymbolCount = Info.Symbols.Count;
     }
 }
-
-#include <textout.hxx>
 
 Boolean StackTrace::GetSymbol(UIntPtr Address, String &Name, UIntPtr &Offset) {
     if (!Initialized) {
