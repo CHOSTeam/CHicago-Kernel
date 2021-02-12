@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on May 11 of 2018, at 13:15 BRT
- * Last edited on February 09 of 2021, at 13:11 BRT */
+ * Last edited on February 11 of 2021, at 13:52 BRT */
 
 #pragma once
 
@@ -77,6 +77,10 @@
 #define no_inline __attribute__((noinline))
 #define section(x) __attribute__((section(x)))
 #define always_inline __attribute__((always_inline))
+
+/* A few builtin functions. */
+
+#define AssumeAligned(x, s) __builtin_assume_aligned(x, s)
 
 /* Boolean and other defines */
 

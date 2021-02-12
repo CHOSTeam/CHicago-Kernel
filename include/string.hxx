@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on February 10 of 2021 at 11:15 BRT */
+ * Last edited on February 11 of 2021 at 12:46 BRT */
 
 #pragma once
 
@@ -48,5 +48,6 @@ UIntPtr VariadicFormat(const String&, VariadicList&, Boolean (*)(Char, Void*), V
 
 Void CopyMemory(Void*, const Void*, UIntPtr);
 Void SetMemory(Void*, UInt8, UIntPtr);
+Void SetMemory32(Void*, UInt32, UIntPtr);
 Void MoveMemory(Void*, const Void*, UIntPtr);
 Boolean CompareMemory(const Void *const, const Void *const, UIntPtr);

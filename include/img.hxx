@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:37 BRT
- * Last edited on February 10 of 2021 at 11:16 BRT */
+ * Last edited on February 11 of 2021 at 12:47 BRT */
 
 #pragma once
 
@@ -85,14 +85,14 @@ public:
 
     inline Void Clear(UInt32 Color) {
         if (Buffer != Null) {
-            SetMemory(Buffer, Color, Width * Height * 4);
+            DrawRectangle(0, 0, Width, Height, Color, True);
         }
     }
 
     inline Void Scroll(UInt32 Height, UInt32 Color) {
         if (Buffer != Null) {
             CopyMemory(Buffer, &Buffer[Height * Width], (this->Height - Height) * Width * 4);
-            SetMemory(&Buffer[(this->Height - Height) * Width], Color, Height * Width * 4);
+            SetMemory32(&Buffer[(this->Height - Height) * Width], Color, Height * Width);
         }
     }
 

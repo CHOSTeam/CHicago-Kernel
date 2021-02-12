@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:45 BRT
- * Last edited on February 10 of 2021 at 11:18 BRT */
+ * Last edited on February 12 of 2021 at 12:21 BRT */
 
 #include <types.hxx>
 
@@ -24,6 +24,18 @@ Void SetMemory(Void *Buffer, UInt8 Value, UIntPtr Length) {
     }
 
     for (UInt8 *buf = reinterpret_cast<UInt8*>(Buffer); Length--;) {
+        *buf++ = Value;
+    }
+}
+
+Void SetMemory32(Void *Buffer, UInt32 Value, UIntPtr Length) {
+    /* We kind of depend on this function for properly filling lines/the whole screen with the same color... */
+
+    if (Buffer == Null || !Length) {
+        return;
+    }
+
+    for (UInt32 *buf = reinterpret_cast<UInt32*>(Buffer); Length--;) {
         *buf++ = Value;
     }
 }

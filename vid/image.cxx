@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 21:14 BRT
- * Last edited on February 10 of 2021 at 11:18 BRT */
+ * Last edited on February 11 of 2021 at 12:52 BRT */
 
 #include <img.hxx>
 
@@ -53,7 +53,7 @@ Void Image::DrawLine(UInt16 StartX, UInt16 StartY, UInt16 EndX, UInt16 EndY, UIn
 	 * and plotting the pixels. No need for any complex algorithm. */
 
     if (sy == ey) {
-        SetMemory(&Buffer[sy * Width + Min(sx, ex)], Color, (Abs(ex - sx) + 1) * 4);
+        SetMemory32(&Buffer[sy * Width + Min(sx, ex)], Color, Abs(ex - sx) + 1);
         return;
     } else if (sx == ex) {
         for (UInt16 y = Min(sy, ey); y <= Max(sy, ey); y++) {
@@ -109,10 +109,10 @@ Void Image::DrawRectangle(UInt16 X, UInt16 Y, UInt16 Width, UInt16 Height, UInt3
         return;
     }
 
-    UIntPtr start = Y * this->Width + X;
+    UInt32 *buf = &Buffer[Y * this->Width + X];
 
-    for (UInt16 i = 0; i < Y; i++, start += this->Width) {
-        SetMemory(&Buffer[start], Color, (Width - X) * 4);
+    for (UInt16 i = 0; i < Height; i++, buf += this->Width) {
+        SetMemory32(buf, Color, Width - X);
     }
 }
 
@@ -176,15 +176,8 @@ Void Image::DrawString(UInt16 X, UInt16 Y, UInt32 Color, const String &Format, .
         UIntPtr *ctx = reinterpret_cast<UIntPtr*>(Context);
 
         switch (Data) {
-        case '\n': {
-            ctx[2] += DefaultFont.Height;
-            ctx[1] = 0;
-            return True;
-        }
-        case '\r': {
-            ctx[1] = 0;
-            return True;
-        }
+        case '\n': ctx[2] += DefaultFont.Height;
+        case '\r': ctx[1] = 0; return True;
         default: {
             if (!reinterpret_cast<Image*>(ctx[0])->DrawCharacter(ctx[1], ctx[2], Data, ctx[3])) {
                 return False;

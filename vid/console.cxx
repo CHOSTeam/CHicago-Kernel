@@ -1,18 +1,16 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 00:14 BRT
- * Last edited on February 10 of 2021 at 11:17 BRT */
+ * Last edited on February 12 of 2021 at 10:58 BRT */
 
 #include <textout.hxx>
 
-TextConsole::TextConsole(Void)
-    : Back(), Front(), X(0), Y(0), UXStart(0), UXEnd(0), UYStart(0), UYEnd(0), Background(0), Foreground(0) { }
+TextConsole::TextConsole(Void) : Back(), Front(), X(0), BackY(0), FrontY(0), Background(0), Foreground(0) { }
 
 TextConsole::TextConsole(BootInfo &Info, UInt32 Background, UInt32 Foreground)
     : Back(reinterpret_cast<UInt32*>(Info.FrameBuffer.BackBuffer), Info.FrameBuffer.Width, Info.FrameBuffer.Height),
       Front(reinterpret_cast<UInt32*>(Info.FrameBuffer.FrontBuffer), Info.FrameBuffer.Width, Info.FrameBuffer.Height),
-      HasUpdate(False), X(0), Y(0), UXStart(0), UXEnd(0), UYStart(0), UYEnd(0), Background(Background),
-      Foreground(Foreground), BackgroundSP(0), ForegroundSP(0) {
+      X(0), BackY(0), FrontY(0), Background(Background), Foreground(Foreground), BackgroundSP(0), ForegroundSP(0) {
     Clear();
     SetMemory(BackgroundStack, 0, sizeof(BackgroundStack));
     SetMemory(ForegroundStack, 0, sizeof(ForegroundStack));
@@ -21,27 +19,7 @@ TextConsole::TextConsole(BootInfo &Info, UInt32 Background, UInt32 Foreground)
 Void TextConsole::Clear(Void) {
     Back.Clear(Background);
     Front.Clear(Background);
-    UXStart = UXEnd = UYStart = UYEnd = 0;
-    HasUpdate = False;
-}
-
-Void TextConsole::Update(Void) {
-    /* There is no need to redraw the whole screen everytime (unless we just scrolled), this is why we have the UX/UY
-     * variables (UpdateX and UpdateY), they indicate which region of the screen has to be updated. */
-
-    if (!HasUpdate) {
-        return;
-    } else if (UXStart != UXEnd && UYStart != UYEnd) {
-        UIntPtr start = UYStart * Front.GetWidth() + UXStart;
-        UInt32 *bpos = &Back.GetBuffer()[start], *fpos = &Front.GetBuffer()[start];
-
-        for (; UYStart < UYEnd; UYStart++, bpos += Front.GetWidth(), fpos += Front.GetWidth()) {
-            CopyMemory(bpos, fpos, (UXEnd - UXStart) * 4);
-        }
-    }
-
-    UXStart = UXEnd = UYStart = UYEnd = 0;
-    HasUpdate = False;
+    X = BackY = FrontY = 0;
 }
 
 Void TextConsole::SetBackground(UInt32 Color) {
@@ -81,10 +59,6 @@ Void TextConsole::RestoreForeground(Void) {
     }
 }
 
-Void TextConsole::AfterWrite(Void) {
-    Update();
-}
-
 Boolean TextConsole::WriteInt(Char Data) {
     /* Handle both overflow on the X axis (move into the next line) and overflow on the Y axis (scroll the screen). */
 
@@ -92,46 +66,42 @@ Boolean TextConsole::WriteInt(Char Data) {
         return Front.GetBuffer() != Null;
     }
 
-    if (X + DefaultFont.GlyphInfo[(UInt8)Data].Advance > Front.GetWidth()) {
-        Y += DefaultFont.Height;
+    if (X + DefaultFont.GlyphInfo[(UInt8)Data].Advance > Back.GetWidth()) {
+        FrontY += DefaultFont.Height;
+        BackY += DefaultFont.Height;
         X = 0;
     }
 
-    if (Y + DefaultFont.Height > Front.GetHeight()) {
-        Front.Scroll(DefaultFont.Height, Background);
+    if (BackY + DefaultFont.Height > Back.GetHeight()) {
+        /* FrontY controls our scrolling, as it contains the current position that this function can write to (before
+         * copying the written data into the framebuffer), when we scroll, we have to copy everything from start to
+         * end of the writtable section into the beginning of the framebuffer (remembering that as we are a ring
+         * buffer, it may start in the middle of the buffer, and end at the start, and for that we need two different
+         * CopyMemory() calls). */
 
-        /* Scrolling invalidates the whole screen, so let's set the update region to be 0;0 - w;h. */
+        if (FrontY + DefaultFont.Height > Back.GetHeight()) {
+            FrontY = 0;
+        }
 
-        UXStart = UYStart = 0;
-        UXEnd = Front.GetWidth() - 1;
-        UYEnd = Front.GetHeight() - 1;
+        UIntPtr size = Back.GetHeight() / DefaultFont.Height;
 
-        Y = ((Front.GetHeight() / DefaultFont.Height) - 1) * DefaultFont.Height;
         X = 0;
-    } else {
-        /* Setup our update X/Y start values. */
+        BackY = (size - 1) * DefaultFont.Height;
 
-        if (X < UXStart) {
-            UXStart = X;
-        }
+        CopyMemory(Back.GetBuffer(), &Front.GetBuffer()[(FrontY + DefaultFont.Height) * Back.GetWidth()],
+                   (Back.GetHeight() - FrontY - DefaultFont.Height) * Back.GetWidth() * 4);
+        CopyMemory(&Back.GetBuffer()[(size - (FrontY / DefaultFont.Height) - 1) *
+                   DefaultFont.Height * Back.GetWidth()], Front.GetBuffer(), FrontY * Back.GetWidth() * 4);
 
-        if (Y < UYStart) {
-            UYStart = Y;
-        }
+        Front.DrawRectangle(0, FrontY, Back.GetWidth(), DefaultFont.Height, Background, True);
+        Back.DrawRectangle(0, BackY, Back.GetWidth(), DefaultFont.Height, Background, True);
     }
 
     switch (Data) {
-    case '\n': {
-        Y += DefaultFont.Height;
-        X = 0;
-        return True;
-    }
-    case '\r': {
-        X = 0;
-        return True;
-    }
+    case '\n': BackY += DefaultFont.Height; FrontY += DefaultFont.Height;
+    case '\r': X = 0; return True;
     default: {
-        if (!Front.DrawCharacter(X, Y, Data, Foreground)) {
+        if (!Front.DrawCharacter(X, FrontY, Data, Foreground)) {
             return False;
         }
 
@@ -139,18 +109,17 @@ Boolean TextConsole::WriteInt(Char Data) {
     }
     }
 
+    /* Copy the data from the double buffer into the main framebuffer (this is so that we don't need to read the video
+     * memory, while blending the pixels). */
+
+    UInt32 *bpos = &Back.GetBuffer()[BackY * Back.GetWidth() + X],
+           *fpos = &Front.GetBuffer()[FrontY * Back.GetWidth() + X];
+
     X += DefaultFont.GlyphInfo[(UInt8)Data].Advance;
 
-    /* At the end, set our update X/Y end values. Also, if we reached this place, we did write something to the screen
-     * (probably), so we can set that we want to update. */
-
-    if (X > UXEnd) {
-        UXEnd = X;
+    for (UInt16 i = 0; i < DefaultFont.Height; i++, bpos += Back.GetWidth(), fpos += Back.GetWidth()) {
+        CopyMemory(bpos, fpos, DefaultFont.GlyphInfo[(UInt8)Data].Advance * 4);
     }
 
-    if (Y + DefaultFont.Height > UYEnd) {
-        UYEnd = Y + DefaultFont.Height;
-    }
-
-    return (HasUpdate = True);
+    return True;
 }

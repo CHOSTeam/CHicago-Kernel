@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 15:57 BRT
- * Last edited on February 08 of 2021 at 16:06 BRT */
+ * Last edited on February 11 of 2021 at 12:06 BRT */
 
 #include <string.hxx>
 
@@ -35,7 +35,7 @@
         PAD_NO_COND(cnt, c); \
     }
 
-/* TODO: Move those functions before PareFlags somewhere else (as we will probably need them not only here). */
+/* TODO: Move those functions before ParseFlags somewhere else (as we will probably need them not only here). */
 
 static Boolean IsDigit(Char Value) {
     return Value >= '0' && Value <= '9';
@@ -89,21 +89,9 @@ static UIntPtr ParseFlags(const String &Format, VariadicList &Arguments, UIntPtr
         }
 
         switch (Format[ret]) {
-        case '-': {
-            LeftJust = True;
-            ret++;
-            break;
-        }
-        case '+': {
-            Sign = 1;
-            ret++;
-            break;
-        }
-        case '0': {
-            Zero = True;
-            ret++;
-            break;
-        }
+        case '-': LeftJust = True; ret++; break;
+        case '+': Sign = 1; ret++; break;
+        case '0': Zero = True; ret++; break;
         case ' ': {
             if (Sign) {
                 Sign++;
