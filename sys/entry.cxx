@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on February 09 of 2021 at 18:21 BRT */
+ * Last edited on February 14 of 2021 at 19:38 BRT */
 
 #include <arch.hxx>
 #include <mm.hxx>
@@ -38,14 +38,11 @@ extern "C" Void KernelEntry(BootInfo *Info) {
 
     StackTrace::Initialize(*Info);
     PhysMem::Initialize(*Info);
+    VirtMem::Initialize(*Info);
 
     Debug.SetForeground(0xFF00FF00);
     Debug.Write("initialization finished, halting the machine\n");
     Debug.RestoreForeground();
-
-    for (UInt32 i = 0; i < 200; i++) {
-        Debug.Write("Line %.3d\n", i);
-    }
 
     ASSERT(1 == 0);
 }

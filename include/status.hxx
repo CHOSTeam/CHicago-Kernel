@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 16:12 BRT
- * Last edited on February 08 of 2021, at 14:30 BRT */
+ * Last edited on February 12 of 2021, at 17:58 BRT */
 
 #pragma once
 
@@ -17,5 +17,5 @@ enum class Status : Int32 {
 	
 	/* Memory errors. */
 	
-	OutOfMemory
+	OutOfMemory, NotMapped, AlreadyMapped
 };

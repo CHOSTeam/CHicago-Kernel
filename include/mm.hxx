@@ -1,50 +1,59 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 16:07 BRT
- * Last edited on February 08 of 2021, at 13:47 BRT */
+ * Last edited on February 14 of 2021, at 13:59 BRT */
 
 #pragma once
 
 #include <boot.hxx>
 #include <status.hxx>
 
-#ifndef MM_PAGE_SIZE
-#define MM_PAGE_SIZE 0x1000
+#ifndef PAGE_SIZE
+#define PAGE_SHIFT 12
+#define PAGE_SIZE 0x1000
 #ifdef _LP64
-#define MM_HUGE_PAGE_SIZE 0x200000
+#define HUGE_PAGE_SHIFT 21
+#define HUGE_PAGE_SIZE 0x200000
 #else
-#define MM_HUGE_PAGE_SIZE 0x400000
+#define HUGE_PAGE_SHIFT 22
+#define HUGE_PAGE_SIZE 0x400000
 #endif
 #endif
 
-#define MM_PAGE_MASK (MM_PAGE_SIZE - 1)
-#define MM_HUGE_PAGE_MASK (MM_HUGE_PAGE_SIZE - 1)
+#define PAGE_MASK (PAGE_SIZE - 1)
+#define HUGE_PAGE_MASK (HUGE_PAGE_SIZE - 1)
 
-#ifndef MM_PAGE_SHIFT
-#define MM_PAGE_SHIFT 12
-#define MM_REGION_SHIFT 22
+#define PHYS_REGION_SHIFT 22
 #ifdef _LP64
-#define MM_REGION_PAGE_SHIFT 18
+#define PHYS_REGION_PAGE_SHIFT 18
 #else
-#define MM_REGION_PAGE_SHIFT 17
-#endif
+#define PHYS_REGION_PAGE_SHIFT 17
 #endif
 
-#define MM_REGION_BITMAP_LEN ((1 << MM_REGION_SHIFT) / (1 << MM_REGION_PAGE_SHIFT))
-#define MM_REGION_BITMAP_PSIZE (sizeof(UIntPtr) * 8)
-#define MM_REGION_BITMAP_BSIZE (MM_PAGE_SIZE * MM_REGION_BITMAP_PSIZE)
-#define MM_REGION_BITMAP_MASK (MM_REGION_BITMAP_BSIZE - 1)
+#define PHYS_REGION_BITMAP_LEN ((1 << PHYS_REGION_SHIFT) / (1 << PHYS_REGION_PAGE_SHIFT))
+#define PHYS_REGION_BITMAP_PSIZE (sizeof(UIntPtr) * 8)
+#define PHYS_REGION_BITMAP_BSIZE (PAGE_SIZE * PHYS_REGION_BITMAP_PSIZE)
+#define PHYS_REGION_BITMAP_MASK (PHYS_REGION_BITMAP_BSIZE - 1)
 
-#define MM_REGION_PSIZE (MM_REGION_BITMAP_LEN * MM_REGION_BITMAP_PSIZE)
-#define MM_REGION_BSIZE (MM_PAGE_SIZE * MM_REGION_PSIZE)
-#define MM_REGION_MASK (MM_REGION_BSIZE - 1)
+#define PHYS_REGION_PSIZE (PHYS_REGION_BITMAP_LEN * PHYS_REGION_BITMAP_PSIZE)
+#define PHYS_REGION_BSIZE (PAGE_SIZE * PHYS_REGION_PSIZE)
+#define PHYS_REGION_MASK (PHYS_REGION_BSIZE - 1)
+
+#define MAP_USER 0x01
+#define MAP_KERNEL 0x02
+#define MAP_READ 0x04
+#define MAP_WRITE 0x08
+#define MAP_EXEC 0x10
+#define MAP_HUGE 0x20
+#define MAP_AOR 0x40
+#define MAP_COW 0x80
+#define MAP_RX (MAP_READ | MAP_EXEC)
+#define MAP_RW (MAP_READ | MAP_WRITE)
 
 class PhysMem {
 public:
-	struct Region {
-		UIntPtr Free;
-		UIntPtr Used;
-		UIntPtr Pages[MM_REGION_BITMAP_LEN];
+	struct packed Region {
+		UIntPtr Free, Used, Pages[PHYS_REGION_BITMAP_LEN];
 	};
 	
 	static Void Initialize(BootInfo&);
@@ -53,17 +62,17 @@ public:
 	 * for doing said operation on a single page, one for multiple, contiguous, pages, and one for multiple, but
 	 * non-contiguous, pages. */
 	
-	static Status AllocSingle(UIntPtr&);
-	static Status AllocContig(UIntPtr, UIntPtr&);
-	static Status AllocNonContig(UIntPtr, UIntPtr*);
+	static Status AllocSingle(UIntPtr&, UIntPtr = PAGE_SIZE);
+	static Status AllocContig(UIntPtr, UIntPtr&, UIntPtr = PAGE_SIZE);
+	static Status AllocNonContig(UIntPtr, UIntPtr*, UIntPtr = PAGE_SIZE);
 	
 	static Status FreeSingle(UIntPtr);
 	static Status FreeContig(UIntPtr, UIntPtr);
 	static Status FreeNonContig(UIntPtr*, UIntPtr);
 	
-	static Status ReferenceSingle(UIntPtr, UIntPtr&);
-	static Status ReferenceContig(UIntPtr, UIntPtr, UIntPtr&);
-	static Status ReferenceNonContig(UIntPtr*, UIntPtr, UIntPtr*);
+	static Status ReferenceSingle(UIntPtr, UIntPtr&, UIntPtr = PAGE_SIZE);
+	static Status ReferenceContig(UIntPtr, UIntPtr, UIntPtr&, UIntPtr = PAGE_SIZE);
+	static Status ReferenceNonContig(UIntPtr*, UIntPtr, UIntPtr*, UIntPtr = PAGE_SIZE);
 	
 	static Status DereferenceSingle(UIntPtr);
 	static Status DereferenceContig(UIntPtr, UIntPtr);
@@ -83,11 +92,21 @@ public:
 private:
 	static UIntPtr CountFreePages(UIntPtr, UIntPtr, UIntPtr);
 	static Status FindFreePages(UIntPtr, UIntPtr, UIntPtr&, UIntPtr&);
-	static Status AllocInt(UIntPtr, UIntPtr&);
+	static Status AllocInt(UIntPtr, UIntPtr&, UIntPtr);
 	static Status FreeInt(UIntPtr, UIntPtr);
 	
 	static UIntPtr KernelStart, KernelEnd, RegionCount, MinAddress, MaxAddress, MaxBytes, UsedBytes;
 	static Region *Regions;
 	static UInt8 *References;
 	static Boolean Initialized;
+};
+
+class VirtMem {
+public:
+    static Void Initialize(BootInfo&);
+
+    static Status GetPhys(UIntPtr, UIntPtr&);
+    static Status Query(UIntPtr, UInt32&);
+    static Status Map(UIntPtr, UIntPtr, UIntPtr, UInt32);
+    static Status Unmap(UIntPtr, UIntPtr, Boolean = False);
 };
