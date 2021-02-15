@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 12 of 2021, at 14:52 BRT
- * Last edited on February 14 of 2021 at 19:37 BRT */
+ * Last edited on February 14 of 2021 at 21:32 BRT */
 
 #include <mm.hxx>
 #include <string.hxx>
@@ -11,7 +11,7 @@
  * macros are just so that we don't have as much repetition on the CheckDirectory function. */
 
 #define FULL_CHECK(a, i) \
-        if ((ret = CheckLevel((a), (i), Level, Entry, Clean)) < 0) { \
+        if ((ret = CheckLevel((a), (i), Entry, Clean)) < 0) { \
             return ret; \
         } \
         \
@@ -19,21 +19,139 @@
         Level++
 
 #define LAST_CHECK(a, i) \
-        ret = CheckLevel((a), (i), Level, Entry, Clean); \
+        ret = CheckLevel((a), (i), Entry, Clean); \
         break
 
-static Int8 CheckLevel(UIntPtr Address, UIntPtr Index, UIntPtr Level, UIntPtr *&Entry, Boolean Clean) {
+/* Get offset for two of the valid level counts (may add a third one if we add L5 support to some arch). */
+
+#if !defined(CUSTOM_VMM_GET_OFFSET) && LEVEL_COUNT == 2
+static inline UIntPtr GetOffset(UIntPtr Address, UIntPtr Level) {
+    return Address & (Level == 1 ? PAGE_MASK : HUGE_PAGE_MASK);
+}
+#elif !defined(CUSTOM_VMM_GET_OFFSET) && LEVEL_COUNT == 4
+static inline UIntPtr GetOffset(UIntPtr Address, UIntPtr Level) {
+    return Address & (Level == 1 ? PAGE_MASK : (Level == 2 ? HUGE_PAGE_MASK : 0x3FFFFFFF));
+}
+#endif
+
+/* If the user just defined that we can use the PAGE_* macros for the flags, we can try using some extra generic
+ * functions (other than the ones that will be defined afterwards). */
+
+#ifndef CUSTOM_VMM_FLAGS
+#ifndef IS_PRESENT
+#define IS_PRESENT(e) (e & PAGE_PRESENT)
+#endif
+
+#ifndef IS_WRITE
+#define IS_WRITE(e) (e & PAGE_WRITE)
+#define SET_WRITE(f) f |= PAGE_WRITE
+#endif
+
+#ifndef IS_USER
+#define IS_USER(e) (e & PAGE_USER)
+#define SET_USER(f) f |= PAGE_USER
+#endif
+
+#ifndef IS_HUGE
+#define IS_HUGE(e) (e & PAGE_HUGE)
+#define SET_HUGE(f) f |= PAGE_HUGE
+#endif
+
+#ifndef IS_AOR
+#define IS_AOR(e) (e & PAGE_AOR)
+#endif
+
+#ifndef IS_COW
+#define IS_COW(e) (e & PAGE_COW)
+#endif
+
+#ifndef SET_COW
+#define SET_COW(f) \
+    f |= PAGE_COW; \
+    f &= ~PAGE_WRITE
+#endif
+
+/* A bit out of the pattern of the others, but most archs will probably have a NX (never execute) bit instead of some
+ * "allow-execute" bit. */
+
+#ifndef IS_EXEC
+#define IS_EXEC(e) (!(e & PAGE_NO_EXEC))
+#define SET_EXEC(f) f &= ~PAGE_NO_EXEC
+#endif
+
+#ifndef DEFAULT_FLAGS
+#define DEFAULT_FLAGS (((Flags & MAP_AOR) ? PAGE_AOR : PAGE_PRESENT) | PAGE_NO_EXEC)
+#endif
+
+static inline Int8 CheckEntry(UIntPtr Entry) {
+    return !IS_PRESENT(Entry) ? -1 : (IS_HUGE(Entry) ? -2 : 0);
+}
+
+static inline UInt32 ToFlags(UIntPtr Entry) {
+    /* Generic version of the ToFlags function. */
+
+    UInt32 ret = MAP_READ | MAP_KERNEL;
+
+    if (IS_WRITE(Entry)) {
+        ret |= MAP_WRITE;
+    }
+
+    if (IS_USER(Entry)) {
+        ret |= MAP_USER;
+    }
+
+    /* Let's not distinguish between differently sized huge pages here. */
+
+    if (IS_HUGE(Entry)) {
+        ret |= MAP_HUGE;
+    }
+
+    if (IS_EXEC(Entry)) {
+        ret |= MAP_EXEC;
+    }
+
+    return ret;
+}
+
+static inline UInt32 FromFlags(UInt32 Flags) {
+    /* Inverse of the FromFlags function. */
+
+    UInt32 ret = DEFAULT_FLAGS;
+
+    if (Flags & MAP_COW) {
+        SET_COW(ret);
+    } else if (Flags & MAP_WRITE) {
+        SET_WRITE(ret);
+    }
+
+    if (Flags & MAP_USER) {
+        SET_USER(ret);
+    }
+
+    if (Flags & MAP_HUGE) {
+        SET_HUGE(ret);
+    }
+
+    if (Flags & MAP_EXEC) {
+        SET_EXEC(ret);
+    }
+
+    return ret;
+}
+#endif
+
+static Int8 CheckLevel(UIntPtr Address, UIntPtr Index, UIntPtr *&Entry, Boolean Clean) {
     /* If asked for, clean the table entry. */
 
     if (Clean) {
-        UpdateTLB(Address);
+        UpdateTLB(Address + (Index * sizeof(UIntPtr)));
         SetMemory(reinterpret_cast<Void*>(Address), 0, PAGE_SIZE);
         return -1;
     }
 
     /* Now, get/save the entry and check if it is present/huge. */
 
-    return CheckEntry(*(Entry = &reinterpret_cast<UIntPtr*>(Address)[Index]), Level);
+    return CheckEntry(*(Entry = &reinterpret_cast<UIntPtr*>(Address)[Index]));
 }
 
 static Int8 CheckDirectory(UIntPtr Address, UIntPtr *&Entry, UIntPtr &Level, Boolean Clean = False) {
@@ -86,33 +204,18 @@ static Int8 CheckDirectory(UIntPtr Address, UIntPtr *&Entry, UIntPtr &Level, Boo
     return ret;
 }
 
-Status VirtMem::GetPhys(UIntPtr Address, UIntPtr &Out) {
-    /* We can use the CheckDirectory function, it will error out if the page is not mapped, or return the entry if it
-     * is valid/is huge. */
+Status VirtMem::Query(UIntPtr Virtual, UIntPtr &Physical, UInt32 &Flags) {
+    /* Use CheckDirectory (stopping at the first unallocated/huge entry, or going until the last level). Extract both
+     * the physical address and the flags (at the same time). */
 
     Int8 res;
     UIntPtr *ent, lvl = 1;
 
-    if ((res = CheckDirectory(Address, ent, lvl)) == -1) {
+    if ((res = CheckDirectory(Virtual, ent, lvl)) == -1) {
         return Status::NotMapped;
     }
 
-    return Out = (*ent & ~PAGE_MASK) | GetOffset(Address, lvl), Status::Success;
-}
-
-Status VirtMem::Query(UIntPtr Address, UInt32 &Out) {
-    /* Use CheckDirectory again (stopping at the first unallocated/huge entry, or going until the last level). But
-     * this time we don't care about the physical address, but about the flags (that btw we need to use an arch
-     * specific function to extract). */
-
-    Int8 res;
-    UIntPtr *ent, lvl = 1;
-
-    if ((res = CheckDirectory(Address, ent, lvl)) == -1) {
-        return Status::NotMapped;
-    }
-
-    return Out = ExtractFlags(*ent), Status::Success;
+    return Physical = (*ent & ~PAGE_MASK) | GetOffset(Virtual, lvl), Flags = ToFlags(*ent), Status::Success;
 }
 
 static Status DoMap(UIntPtr Virtual, UIntPtr Physical, UInt32 Flags) {

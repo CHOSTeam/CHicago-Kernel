@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 16:07 BRT
- * Last edited on February 14 of 2021, at 13:59 BRT */
+ * Last edited on February 14 of 2021, at 20:50 BRT */
 
 #pragma once
 
@@ -105,8 +105,7 @@ class VirtMem {
 public:
     static Void Initialize(BootInfo&);
 
-    static Status GetPhys(UIntPtr, UIntPtr&);
-    static Status Query(UIntPtr, UInt32&);
+    static Status Query(UIntPtr, UIntPtr&, UInt32&);
     static Status Map(UIntPtr, UIntPtr, UIntPtr, UInt32);
     static Status Unmap(UIntPtr, UIntPtr, Boolean = False);
 };
