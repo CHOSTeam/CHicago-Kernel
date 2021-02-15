@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 15:57 BRT
- * Last edited on February 11 of 2021 at 12:06 BRT */
+ * Last edited on February 15 of 2021 at 10:21 BRT */
 
 #include <string.hxx>
 
@@ -109,7 +109,7 @@ static UIntPtr ParseFlags(const String &Format, VariadicList &Arguments, UIntPtr
                 state = 1;
             } else {
                 Width = VariadicArg(Arguments, UIntPtr);
-                WidthSet = 1;
+                WidthSet = True;
                 ret++;
             }
 
@@ -286,7 +286,7 @@ UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*
         case 'b': case 'B':
         case 'o': case 'O':
         case 'x': case 'X': {
-            /* All of them are unsigned integers (the upper case ones are 64-bits), what we gonna do is very simillar
+            /* All of them are unsigned integers (the upper case ones are 64-bits), what we gonna do is very similar
              * to what we did above, but instead of handling the sign, we have to handle the base.
              * u and U are base 10, b and B are base 2, o and O are base 8, x and X are base 16. */
 

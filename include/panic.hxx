@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 09 of 2021, at 14:24 BRT
- * Last edited on February 09 of 2021 at 14:56 BRT */
+ * Last edited on February 15 of 2021 at 10:01 BRT */
 
 #pragma once
 
@@ -15,15 +15,15 @@ public:
     static no_return Void AssertFailed(const String&, const String&, const String&, UInt32);
 private:
     static always_inline Void DumpBacktrace(Void) {
-        /* We have to take caution with the backtrace. If possible, we want to skip the first entry to the stacktrace (as
-         * that would be the panic function), but if not possible, we just want to print that there is no backtrace
-         * avaliable. */
+        /* We have to take caution with the backtrace. If possible, we want to skip the first entry to the stacktrace
+         * (as that would be the panic function), but if not possible, we just want to print that there is no backtrace
+         * available. */
 
         UIntPtr addr[32];
         StackFrame *frame = GetStackFrame();
 
         if (frame == Null || frame->Parent == Null) {
-            Debug.Write("no backtrace avaliable\n");
+            Debug.Write("no backtrace available\n");
             return;
         }
 
@@ -40,7 +40,7 @@ private:
             if (StackTrace::GetSymbol(addr[i], name, off)) {
                 Debug.Write("    " UINTPTR_MAX_HEX ": %s +" UINTPTR_HEX "\n", addr[i], name.GetValue(), off);
             } else {
-                Debug.Write("    " UINTPTR_MAX_HEX ": <no symbol information avaliable>\n", addr[i]);
+                Debug.Write("    " UINTPTR_MAX_HEX ": <no symbol information available>\n", addr[i]);
             }
         }
     }

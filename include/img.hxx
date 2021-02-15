@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:37 BRT
- * Last edited on February 11 of 2021 at 12:47 BRT */
+ * Last edited on February 15 of 2021 at 09:59 BRT */
 
 #pragma once
 
@@ -43,13 +43,12 @@ struct FontData {
 class Image {
 public:
     /* Just like we modified the String class to, at least for now, not do any allocation, this class now also doesn't
-     * do any allocations (it uses preallocated buffers that the user will pass). Also, now we're using UInt16s
-     * instead of the Vector2D class (at least for now, might readd the Vector2D class later, or maybe in
+     * do any allocations (it uses pre-allocated buffers that the user will pass). Also, now we're using UInt16s
+     * instead of the Vector2D class (at least for now, might re-add the Vector2D class later, or maybe in
      * userspace). */
 
     Image(Void);
     Image(UInt32*, UInt16, UInt16);
-    Image(const Image &Source);
 
     Image &operator =(const Image&);
 
@@ -59,9 +58,9 @@ public:
     static inline UInt32 Blend(UInt32 Background, UInt32 Foreground, Float Alpha, Boolean UseForeAlpha = False) {
         UInt8 a, r1, r2, g1, g2, b1, b2;
 
-        /* The alpha value from the colors don't matter, as we expect the user to pass an alpha value in the range 0-1 to
-         * us (Well, the user can also pass UseForeAlpha = True if he wants to use the alpha value from the foreground
-         * as the blend alpha value). */
+        /* The alpha value from the colors don't matter, as we expect the user to pass an alpha value in the range 0-1
+         * to us (Well, the user can also pass UseForeAlpha = True if he wants to use the alpha value from the
+         * foreground as the blend alpha value). */
 
         EXTRACT_ARGB(Background, a, r1, g1, b1);
         EXTRACT_ARGB(Foreground, a, r2, g2, b2);
@@ -80,8 +79,8 @@ public:
     }
 
 	/* Now we start with the functions that manipulate the image, beginning with Clear, which fills the image with a
-	 * solid color. We DO have a function that can do that in the most optimzed way possible (well, at least would be if
-	 * we weren't depending on the compiler for doing the optimization), so we can just call it. */
+	 * solid color. We DO have a function that can do that in the most optimized way possible (well, at least would be
+	 * if we weren't depending on the compiler for doing the optimization), so we can just call it. */
 
     inline Void Clear(UInt32 Color) {
         if (Buffer != Null) {
@@ -111,7 +110,7 @@ public:
     UInt16 GetWidth(Void) const { return Width; }
     UInt16 GetHeight(Void) const { return Height; }
 private:
-    /* Some math functions that we're going to put here for now (later we should readd the math.hxx header). */
+    /* Some math functions that we're going to put here for now (later we should re-add the math.hxx header). */
 
     static inline IntPtr Round(Float Value) {
         return static_cast<IntPtr>(Value < 0 ? Value - 0.5 : Value + 0.5);

@@ -1,10 +1,10 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 12 of 2021, at 14:52 BRT
- * Last edited on February 14 of 2021 at 21:32 BRT */
+ * Last edited on February 15 of 2021 at 00:01 BRT */
 
 #include <mm.hxx>
-#include <string.hxx>
+#include <panic.hxx>
 
 /* A bit of a not so common thing to do, but we actually expect whichever arch is going to use us, to #include this
  * file, while defining some arch specific static inline functions and some macros before. The FULL_CHECK/LAST_CHECK
@@ -144,8 +144,9 @@ static Int8 CheckLevel(UIntPtr Address, UIntPtr Index, UIntPtr *&Entry, Boolean 
     /* If asked for, clean the table entry. */
 
     if (Clean) {
-        UpdateTLB(Address + (Index * sizeof(UIntPtr)));
-        SetMemory(reinterpret_cast<Void*>(Address), 0, PAGE_SIZE);
+        UIntPtr start = (Address + (Index * sizeof(UIntPtr))) & ~PAGE_MASK;
+        UpdateTLB(start);
+        SetMemory(reinterpret_cast<Void*>(start), 0, PAGE_SIZE);
         return -1;
     }
 
@@ -208,10 +209,9 @@ Status VirtMem::Query(UIntPtr Virtual, UIntPtr &Physical, UInt32 &Flags) {
     /* Use CheckDirectory (stopping at the first unallocated/huge entry, or going until the last level). Extract both
      * the physical address and the flags (at the same time). */
 
-    Int8 res;
     UIntPtr *ent, lvl = 1;
 
-    if ((res = CheckDirectory(Virtual, ent, lvl)) == -1) {
+    if (CheckDirectory(Virtual, ent, lvl) == -1) {
         return Status::NotMapped;
     }
 
@@ -237,9 +237,8 @@ static Status DoMap(UIntPtr Virtual, UIntPtr Physical, UInt32 Flags) {
             return status;
         }
 
-        *ent = phys | TABLE_FLAGS;
-
         lvl++;
+        *ent = phys | TABLE_FLAGS(Virtual, IS_USER_TABLE(Virtual));
         CheckDirectory(Virtual, ent, lvl, True);
     }
 
@@ -280,10 +279,9 @@ static Status DoUnmap(UIntPtr Virtual, Boolean Huge) {
     /* Just go though the directory levels, searching for what we want to unmap (no need to check for alignment, as
      * the caller should have done it). */
 
-    Int8 res;
     UIntPtr *ent, lvl = 1, dlvl = UNMAP_DEST_LEVEL;
 
-    if ((res = CheckDirectory(Virtual, ent, lvl)) == -1) {
+    if (CheckDirectory(Virtual, ent, lvl) == -1) {
         return Status::NotMapped;
     } else if (lvl != dlvl) {
         return Status::InvalidArg;
@@ -315,3 +313,33 @@ Status VirtMem::Unmap(UIntPtr Virtual, UIntPtr Size, Boolean Huge) {
 
     return Status::Success;
 }
+
+#ifndef CUSTOM_VMM_INIT
+Void VirtMem::Initialize(BootInfo &Info) {
+    /* Generic initialization function: We need to unmap the EFI jump function, and we need pre-alloc the first level of
+     * the heap region (and we can't fail, if we do fail, panic, as the rest of the OS depends on us), and call the heap
+     * init function. Also, we expect that adding HUGE_PAGE_MASK will be enough to make sure that we don't collide with
+     * some huge mapping from the kernel/bootloader. */
+
+    UIntPtr start = (Info.KernelEnd + HUGE_PAGE_MASK) & ~HUGE_PAGE_MASK;
+
+    Unmap(Info.EfiTempAddress & ~PAGE_MASK, PAGE_SIZE);
+
+    for (UIntPtr i = start & ~(LAST_LEVEL_SIZE - 1); i < HEAP_END; i += LAST_LEVEL_SIZE) {
+        UIntPtr *ent, lvl = 1, phys;
+
+        if (CheckDirectory(i, ent, lvl) != -1 || lvl != 1) {
+            continue;
+        }
+
+        ASSERT(PhysMem::ReferenceSingle(0, phys) == Status::Success);
+
+        lvl++;
+        *ent = phys | TABLE_FLAGS(i, False);
+        CheckDirectory(i, ent, lvl, True);
+    }
+
+    Heap::Initialize(start, HEAP_END);
+    Debug.Write("the kernel heap starts at " UINTPTR_MAX_HEX " and ends at " UINTPTR_MAX_HEX "\n", start, HEAP_END);
+}
+#endif

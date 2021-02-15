@@ -1,11 +1,15 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 00:14 BRT
- * Last edited on February 12 of 2021 at 10:58 BRT */
+ * Last edited on February 12 of 2021 at 10:59 BRT */
 
 #include <textout.hxx>
 
-TextConsole::TextConsole(Void) : Back(), Front(), X(0), BackY(0), FrontY(0), Background(0), Foreground(0) { }
+TextConsole::TextConsole(Void) : Back(), Front(), X(0), BackY(0), FrontY(0), Background(0), Foreground(0),
+                                 BackgroundSP(0), ForegroundSP(0) {
+    SetMemory(BackgroundStack, 0, sizeof(BackgroundStack));
+    SetMemory(ForegroundStack, 0, sizeof(ForegroundStack));
+}
 
 TextConsole::TextConsole(BootInfo &Info, UInt32 Background, UInt32 Foreground)
     : Back(reinterpret_cast<UInt32*>(Info.FrameBuffer.BackBuffer), Info.FrameBuffer.Width, Info.FrameBuffer.Height),
@@ -75,8 +79,8 @@ Boolean TextConsole::WriteInt(Char Data) {
     if (BackY + DefaultFont.Height > Back.GetHeight()) {
         /* FrontY controls our scrolling, as it contains the current position that this function can write to (before
          * copying the written data into the framebuffer), when we scroll, we have to copy everything from start to
-         * end of the writtable section into the beginning of the framebuffer (remembering that as we are a ring
-         * buffer, it may start in the middle of the buffer, and end at the start, and for that we need two different
+         * end of the writable section into the beginning of the framebuffer (remembering that as we are a ring buffer,
+         * it may start in the middle of the buffer, and end at the start, and for that we need two different
          * CopyMemory() calls). */
 
         if (FrontY + DefaultFont.Height > Back.GetHeight()) {

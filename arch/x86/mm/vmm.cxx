@@ -1,16 +1,17 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 12 of 2021, at 14:54 BRT
- * Last edited on February 14 of 2021 at 21:32 BRT */
+ * Last edited on February 14 of 2021 at 23:25 BRT */
 
 /* A few arch-specific functions (and macros) for the not so arch-specific generic VMM. */
 
 #include <arch/mm.hxx>
-#include <mm.hxx>
-#include <textout.hxx>
 
 #ifdef __i386__
+#define HEAP_END 0xFFC00000
+
 #define LEVEL_COUNT 2
+#define LAST_LEVEL_SIZE HUGE_PAGE_SIZE
 #define UNMAP_DEST_LEVEL (Huge ? 1 : 2)
 #define MAP_DEST_LEVEL ((Flags & PAGE_HUGE) ? 1 : 2)
 
@@ -24,9 +25,13 @@
 #define IS_EXEC(e) True
 #define SET_EXEC(f)
 
-#define TABLE_FLAGS (PAGE_PRESENT | PAGE_WRITE | (Virtual < 0xC0000000 ? PAGE_USER : 0))
+#define IS_USER_TABLE(a) (a >= 0xC0000000)
+#define TABLE_FLAGS(a, u) (PAGE_PRESENT | PAGE_WRITE | (u ? PAGE_USER : 0))
 #else
+#define HEAP_END 0xFFFFFF8000000000
+
 #define LEVEL_COUNT 4
+#define LAST_LEVEL_SIZE 0x8000000000
 #define UNMAP_DEST_LEVEL (Huge ? 3 : 4)
 #define MAP_DEST_LEVEL ((Flags & PAGE_HUGE) ? 3 : 4)
 
@@ -39,7 +44,8 @@
     UIntPtr l1e = (Address >> 39) & 0x1FF, l2e = (Address >> 30) & 0x3FFFF, l3e = (Address >> 21) & 0x7FFFFFF, \
             l4e = (Address >> 12) & 0xFFFFFFFFF
 
-#define TABLE_FLAGS (PAGE_PRESENT | PAGE_WRITE | (Virtual < 0xFFFF800000000000 ? PAGE_USER : 0))
+#define IS_USER_TABLE(a) (a >= 0xFFFF800000000000)
+#define TABLE_FLAGS(a, u) (PAGE_PRESENT | PAGE_WRITE | (u ? PAGE_USER : 0))
 #endif
 
 static inline Void UpdateTLB(UIntPtr Address) {
@@ -47,5 +53,3 @@ static inline Void UpdateTLB(UIntPtr Address) {
 }
 
 #include "../../vmm.cxx"
-
-Void VirtMem::Initialize(BootInfo&) { }

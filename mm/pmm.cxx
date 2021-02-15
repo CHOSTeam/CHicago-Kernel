@@ -1,12 +1,10 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on February 14 of 2021, at 12:58 BRT */
+ * Last edited on February 15 of 2021, at 10:27 BRT */
 
 #include <mm.hxx>
 #include <panic.hxx>
-
-/* This is probably the only code (non-header) file with some type of macro definition on it lol. */
 
 #ifdef _LP64
 #define GET_FIRST_UNSET_BIT(bm) __builtin_ctzll(~(bm))
@@ -34,12 +32,12 @@ Void PhysMem::Initialize(BootInfo &Info) {
     /* First, setup some of the basic fields, including the InInit field, that indicates that the we were called, but
      * the FinishInitialization functions isn't haven't been called (that is, we can call InitializeRegion). */
 
-    UInt8 *start = reinterpret_cast<UInt8*>(Info.RegionsStart);
+    auto start = reinterpret_cast<UInt8*>(Info.RegionsStart);
 
     ASSERT(start != Null);
 
     if (Info.MaxPhysicalAddress - Info.MinPhysicalAddress + PHYS_REGION_MASK < Info.MaxPhysicalAddress -
-                                                                            Info.MinPhysicalAddress) {
+                                                                               Info.MinPhysicalAddress) {
         RegionCount = (UINTPTR_MAX >> PHYS_REGION_SHIFT) + 1;
     } else {
         RegionCount = ((Info.MaxPhysicalAddress - Info.MinPhysicalAddress + PHYS_REGION_MASK) & ~PHYS_REGION_MASK)
@@ -110,7 +108,7 @@ Status PhysMem::AllocContig(UIntPtr Count, UIntPtr &Out, UIntPtr Align) {
 }
 
 Status PhysMem::AllocNonContig(UIntPtr Count, UIntPtr *Out, UIntPtr Align) {
-    /* We need to manually check the two paramenter here, as we're going to alloc page-by-page, and we're going to
+    /* We need to manually check the two parameters here, as we're going to alloc page-by-page, and we're going to
      * return multiple addresses, instead of returning only a single one that points to the start of a bunch of
      * consecutive pages. */
 
@@ -338,8 +336,8 @@ UIntPtr PhysMem::CountFreePages(UIntPtr BitMap, UIntPtr Start, UIntPtr End) {
     return ret;
 }
 
-Status PhysMem::FindFreePages(UIntPtr BitMap, UIntPtr Count, UIntPtr &Out, UIntPtr &Avaliable) {
-    /* Each unset bit is one free page, for finding consective free pages, we can iterate through the bits of the
+Status PhysMem::FindFreePages(UIntPtr BitMap, UIntPtr Count, UIntPtr &Out, UIntPtr &Available) {
+    /* Each unset bit is one free page, for finding consecutive free pages, we can iterate through the bits of the
      * bitmap and search for free bits. */
 
     UIntPtr bc = PHYS_REGION_BITMAP_PSIZE;
@@ -349,12 +347,12 @@ Status PhysMem::FindFreePages(UIntPtr BitMap, UIntPtr Count, UIntPtr &Out, UIntP
             return Status::OutOfMemory;
         } else if (!BitMap) {
             Out = i;
-            Avaliable = bc - i >= Count ? 0 : bc - i;
-            return Avaliable ? Status::OutOfMemory : Status::Success;
+            Available = bc - i >= Count ? 0 : bc - i;
+            return Available ? Status::OutOfMemory : Status::Success;
         }
 
         /* Well, we need to check how many unset bits we have, first, get the location of the first unset bit here,
-         * after that, count how many avaliable bits we have. */
+         * after that, count how many available bits we have. */
 
         UIntPtr bit = GET_FIRST_UNSET_BIT(BitMap);
         UIntPtr aval = CountFreePages(BitMap, bit, bc - i);
@@ -367,7 +365,7 @@ Status PhysMem::FindFreePages(UIntPtr BitMap, UIntPtr Count, UIntPtr &Out, UIntP
              * knows that. */
 
             Out = i + bit;
-            Avaliable = aval;
+            Available = aval;
 
             return Status::OutOfMemory;
         }

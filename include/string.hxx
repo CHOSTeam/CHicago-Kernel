@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on February 11 of 2021 at 12:46 BRT */
+ * Last edited on February 15 of 2021 at 10:07 BRT */
 
 #pragma once
 
@@ -10,12 +10,12 @@
 class String {
 public:
     /* For now we only support initializing ourselves in a way that doesn't require any allocations (this is going to
-     * change/go back to the normal String class after the memory allocator is readded).
-     * Also, at least for now, the whole string is read-only. */
+     * change/go back to the normal String class after the memory allocator is re-added). Also, at least for now, the
+     * whole string is read-only. */
 
     String(Void);
     String(const Char*);
-    String(const String&);
+    String(const String&) = default;
 
     String &operator =(const Char*);
     String &operator =(const String&);
@@ -35,7 +35,7 @@ public:
     const Char *end(Void) { return &Value[Length]; }
     const Char *end(Void) const { return &Value[Length]; }
 
-    Char operator [](UIntPtr Index) const { return Index >= Length ? 0 : Value[Index]; }
+    Char operator [](UIntPtr Index) const { return Index >= Length ? '\0' : Value[Index]; }
 private:
     static Void FromUInt(Char*, UInt64, UInt8, IntPtr&, IntPtr);
     Void CalculateLength(Void);
@@ -50,4 +50,4 @@ Void CopyMemory(Void*, const Void*, UIntPtr);
 Void SetMemory(Void*, UInt8, UIntPtr);
 Void SetMemory32(Void*, UInt32, UIntPtr);
 Void MoveMemory(Void*, const Void*, UIntPtr);
-Boolean CompareMemory(const Void *const, const Void *const, UIntPtr);
+Boolean CompareMemory(const Void*, const Void*, UIntPtr);

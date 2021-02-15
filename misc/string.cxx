@@ -1,12 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 08 of 2021 at 00:08 BRT */
+ * Last edited on February 15 of 2021 at 10:12 BRT */
 
 #include <string.hxx>
 
 String::String(Void) : Value(Null), Length(0) { }
-String::String(const String &Value) : Value(Value.Value), Length(Value.Length) { }
 
 String::String(const Char *Value) : Value(Value), Length(0) {
     /* Precalculate the length, so that the we can just use a .GetLength(), instead of calculating it every time. */
@@ -29,7 +28,7 @@ String &String::operator =(const Char *Value) {
 String &String::operator =(const String &Value) {
     /* Same as above, but fortunately the length is already calculated. */
 
-    if (this->Value != Value.Value) {
+    if (this != &Value) {
         this->Value = Value.Value;
         this->Length = Value.Length;
     }

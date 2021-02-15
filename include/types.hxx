@@ -1,13 +1,15 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on May 11 of 2018, at 13:15 BRT
- * Last edited on February 11 of 2021, at 13:52 BRT */
+ * Last edited on February 15 of 2021, at 10:08 BRT */
 
 #pragma once
 
 #define VERSION "next-4"
 
 #define Void void
+
+#define Char char
 
 /* Unsigned types */
 
@@ -50,13 +52,6 @@
 #define IntPtr signed int
 #endif
 
-/* Other types */
-
-#define Char char
-#define Short short
-#define Int int
-#define Long long
-
 /* I know it's a bit confusing, but our default float type is double... */
 
 #define Float double
@@ -91,15 +86,9 @@ typedef bool Boolean;
 
 #define Null nullptr
 
-#define TextifyMacro1(n) TextifyMacro2(#n)
-#define TextifyMacro2(n) L##n
-#define TextifyMacro3(n) #n
-#define TextifyMacro(n) TextifyMacro1(n)
-#define TextifyMacroC(n) TextifyMacro3(n)
-
-/* We use this for aligning an allocation (from ::new or ::delete), the type name NEEDS to be align_val_t btw.
- * And yes, this is hackish as hell, I know. */
+/* We use this for aligning an allocation (from ::new or ::delete), the type name NEEDS to be align_val_t btw. nd yes,
+ * this is hackish as hell, I know. */
 
 #define AlignAlloc align_val_t
-namespace std { enum class AlignAlloc : Long UInt32 { }; }
+namespace std { enum class AlignAlloc : long UInt32 { }; }
 using namespace std;

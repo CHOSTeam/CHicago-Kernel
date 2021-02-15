@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 16:07 BRT
- * Last edited on February 14 of 2021, at 20:50 BRT */
+ * Last edited on February 15 of 2021, at 10:00 BRT */
 
 #pragma once
 
@@ -108,4 +108,26 @@ public:
     static Status Query(UIntPtr, UIntPtr&, UInt32&);
     static Status Map(UIntPtr, UIntPtr, UIntPtr, UInt32);
     static Status Unmap(UIntPtr, UIntPtr, Boolean = False);
+};
+
+class Heap {
+public:
+    /* The VirtMem::Initialize (that may be arch-specific, instead of our generic one) will call the init function, and
+     * pre-map the entries that will be used (on the top level, so that we don't accidentally waste too much
+     * memory). */
+
+    static Void Initialize(UIntPtr, UIntPtr);
+
+    static Status Increment(UIntPtr);
+    static Status Decrement(UIntPtr);
+
+    static Void *GetStart(Void) { return reinterpret_cast<Void*>(Start); }
+    static Void *GetEnd(Void) { return reinterpret_cast<Void*>(End); }
+    static Void *GetCurrent(Void) { return reinterpret_cast<Void*>(Current); }
+    static UIntPtr GetSize(Void) { return End - Start; }
+    static UIntPtr GetUsage(Void) { return CurrentAligned - Start; }
+    static UIntPtr GetFree(Void) { return End - CurrentAligned; }
+private:
+    static Boolean Initialized;
+    static UIntPtr Start, End, Current, CurrentAligned;
 };

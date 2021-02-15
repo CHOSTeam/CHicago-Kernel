@@ -1,19 +1,18 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 21:14 BRT
- * Last edited on February 11 of 2021 at 12:52 BRT */
+ * Last edited on February 15 of 2021 at 09:57 BRT */
 
 #include <img.hxx>
 
 Image::Image(Void) : Buffer(Null), Width(0), Height(0) { }
 Image::Image(UInt32 *Buffer, UInt16 Width, UInt16 Height) : Buffer(Buffer), Width(Width), Height(Height) { }
-Image::Image(const Image &Value) : Buffer(Value.Buffer), Width(Value.Width), Height(Value.Height) { }
 
 Image &Image::operator =(const Image &Value) {
     /* No need to handle allocations, freeing stuff, nor anything like that, just set the buffer, width, and height (if
      * necessary), and return. */
 
-    if (Buffer != Value.Buffer || Width != Value.Width || Height != Value.Height) {
+    if (this != &Value) {
         Buffer = Value.Buffer;
         Width = Value.Width;
         Height = Value.Height;
@@ -37,7 +36,7 @@ Void Image::PutPixel(UInt16 X, UInt16 Y, UInt32 Color) {
 }
 
 Void Image::DrawLine(UInt16 StartX, UInt16 StartY, UInt16 EndX, UInt16 EndY, UInt32 Color) {
-    /* Here we just need to return/do nothing if the line is completly outside the screen (or the screen is Null, for
+    /* Here we just need to return/do nothing if the line is completely outside the screen (or the screen is Null, for
      * some reason). */
 
     if (Buffer == Null || (StartX >= Width && EndX >= Width) || (StartY >= Height && EndY >= Height)) {
@@ -98,7 +97,7 @@ Void Image::DrawRectangle(UInt16 X, UInt16 Y, UInt16 Width, UInt16 Height, UInt3
         Height = this->Height - Y;
     }
 
-    /* Unfillled rectangles are just 4 lines, filled rectangles are also just a bunch of lines (we can calc the start
+    /* Unfilled rectangles are just 4 lines, filled rectangles are also just a bunch of lines (we can calc the start
      * address, and increase it each iteration, while also SetMemory()ing the place we need to fill). */
 
     if (!Fill) {
@@ -173,7 +172,7 @@ Void Image::DrawString(UInt16 X, UInt16 Y, UInt32 Color, const String &Format, .
         /* We don't handle here reaching the end of the screen and going into the next line, nor scrolling when we
          * reach the end of the screen. And also we don't handle TAB anywhere (for now). */
 
-        UIntPtr *ctx = reinterpret_cast<UIntPtr*>(Context);
+        auto ctx = reinterpret_cast<UIntPtr*>(Context);
 
         switch (Data) {
         case '\n': ctx[2] += DefaultFont.Height;
