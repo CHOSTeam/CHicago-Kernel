@@ -1,13 +1,20 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on February 15 of 2021 at 20:59 BRT */
+ * Last edited on February 16 of 2021 at 00:27 BRT */
 
 #include <arch.hxx>
 #include <mm.hxx>
 #include <panic.hxx>
 
 TextConsole Debug;
+
+Void Crash(Void) {
+    /* CHicago is now built with SSP enabled, so doing this should crash this system: */
+
+    UInt8 buf[8];
+    SetMemory(buf, 0, 16);
+}
 
 extern "C" Void KernelEntry(BootInfo *Info) {
     /* Hello, World! The loader just exited the EFI environment, and gave control to the kernel! Right now the MMU
@@ -44,5 +51,6 @@ extern "C" Void KernelEntry(BootInfo *Info) {
     Debug.Write("initialization finished, halting the machine\n");
     Debug.RestoreForeground();
 
-    ASSERT(1 == 0);
+    Crash();
+    ASSERT(False);
 }

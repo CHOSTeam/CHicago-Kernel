@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  * 
  * Created on February 06 of 2021, at 12:54 BRT
- * Last edited on February 08 of 2021, at 22:33 BRT */
+ * Last edited on February 15 of 2021, at 23:38 BRT */
 
 ENTRY(KernelEntry)
 
@@ -63,7 +63,13 @@ SECTIONS {
 
     . = ALIGN(4K);
 
+    /* The boot loader expects the very first bytes of the read only section to be our stack guard magic number (that it
+     * will set). We go 8-bytes forward just to make sure (as we can't, afaik, get if the machine is 32 or 64-bits
+     * here). */
+
     .rodata : {
+        __stack_chk_guard = .;
+        . += 8;
         *(.rodata .rodata.* .gnu.linkonce.r.*)
     } :rodata
 
