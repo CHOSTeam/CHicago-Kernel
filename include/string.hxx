@@ -1,11 +1,13 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on February 15 of 2021 at 10:07 BRT */
+ * Last edited on February 16 of 2021 at 10:26 BRT */
 
 #pragma once
 
 #include <status.hxx>
+
+namespace CHicago {
 
 class String {
 public:
@@ -51,3 +53,5 @@ Void SetMemory(Void*, UInt8, UIntPtr);
 Void SetMemory32(Void*, UInt32, UIntPtr);
 Void MoveMemory(Void*, const Void*, UIntPtr);
 Boolean CompareMemory(const Void*, const Void*, UIntPtr);
+
+}

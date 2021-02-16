@@ -1,10 +1,12 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 14 of 2021, at 23:45 BRT
- * Last edited on February 15 of 2021, at 10:23 BRT */
+ * Last edited on February 16 of 2021, at 10:31 BRT */
 
 #include <mm.hxx>
 #include <panic.hxx>
+
+using namespace CHicago;
 
 Boolean Heap::Initialized = False;
 UIntPtr Heap::Start = 0, Heap::End = 0, Heap::Current = 0, Heap::CurrentAligned = 0;

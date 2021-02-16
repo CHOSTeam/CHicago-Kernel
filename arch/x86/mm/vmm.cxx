@@ -1,11 +1,13 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 12 of 2021, at 14:54 BRT
- * Last edited on February 15 of 2021 at 21:37 BRT */
+ * Last edited on February 16 of 2021 at 10:28 BRT */
 
 #include <arch/mm.hxx>
 #include <mm.hxx>
 #include <panic.hxx>
+
+using namespace CHicago;
 
 /* Some convenience macros to extract the index that we need to pass to CheckLevel. */
 

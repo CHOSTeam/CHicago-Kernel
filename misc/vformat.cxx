@@ -1,9 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 15:57 BRT
- * Last edited on February 15 of 2021 at 10:21 BRT */
+ * Last edited on February 15 of 2021 at 10:31 BRT */
 
 #include <string.hxx>
+
+using namespace CHicago;
 
 /* Some macros to make our life a bit easier. */
 
@@ -199,6 +201,8 @@ static Char *WriteString(const Char *Data, UIntPtr DataSize, Boolean (*Function)
     return Buffer;
 }
 
+namespace CHicago {
+
 UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*Function)(Char, Void*), Void *Context,
                        Char *Buffer, UIntPtr Size, UIntPtr Limit) {
     if (Function == Null && Buffer == Null) {
@@ -259,7 +263,7 @@ UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*
             } else {
                 val = VariadicArg(Arguments, Int64);
             }
-            
+
             String str = String::FromUInt(buf, val < 0 ? -val : val, 65, 10);
             UIntPtr len = str.GetLength(), flen = len + (val < 0 || sign),
                     spaces = !zero && width > flen && width > pr ? width - pr - (pr ? 0 : flen) : 0;
@@ -351,4 +355,6 @@ UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*
     }
 
     return pos;
+}
+
 }

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:37 BRT
- * Last edited on February 15 of 2021 at 09:59 BRT */
+ * Last edited on February 16 of 2021 at 10:27 BRT */
 
 #pragma once
 
@@ -29,6 +29,8 @@
 #define FIX_ARGB(c) \
     ((c) & 0xFF) << 24) | ((((c) >> 8) & 0xFF) << 16) | ((((c) >> 16) & 0xFF) << 8) | (((c) >> 24) & 0xFF)
 #endif
+
+namespace CHicago {
 
 struct FontGlyph {
     Int32 Offset, Width, Height, Left, Top, Advance;
@@ -133,3 +135,5 @@ private:
 };
 
 extern FontData DefaultFont;
+
+}

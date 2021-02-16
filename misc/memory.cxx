@@ -1,9 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:45 BRT
- * Last edited on February 15 of 2021 at 10:10 BRT */
+ * Last edited on February 15 of 2021 at 10:29 BRT */
 
 #include <types.hxx>
+
+namespace CHicago {
 
 Void CopyMemory(Void *Buffer, const Void *Source, UIntPtr Length) {
     if (Buffer == Null || Source == Null || Buffer == Source || !Length) {
@@ -19,7 +21,7 @@ Void CopyMemory(Void *Buffer, const Void *Source, UIntPtr Length) {
 }
 
 Void SetMemory(Void *Buffer, UInt8 Value, UIntPtr Length) {
-    if (Buffer == Null || !Length) { 
+    if (Buffer == Null || !Length) {
         return;
     }
 
@@ -75,4 +77,6 @@ Boolean CompareMemory(const Void *const Left, const Void *const Right, UIntPtr L
     }
 
     return True;
+}
+
 }

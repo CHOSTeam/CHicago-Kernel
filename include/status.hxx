@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 16:12 BRT
- * Last edited on February 15 of 2021, at 11:02 BRT */
+ * Last edited on February 16 of 2021, at 10:25 BRT */
 
 #pragma once
 
@@ -9,6 +9,8 @@
 
 /* With C++, we can use an "enum class", instead of using a bunch of defines, this makes everything a bit prettier, and
  * also easier to relocate the codes up and down/add new ones lol. */
+
+namespace CHicago {
 
 enum class Status : Int32 {
     /* Misc status codes. */
@@ -19,3 +21,5 @@ enum class Status : Int32 {
 
     OutOfMemory, NotMapped, AlreadyMapped
 };
+
+}

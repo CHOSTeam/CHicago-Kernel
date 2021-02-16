@@ -1,9 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 09 of 2021, at 12:54 BRT
- * Last edited on February 10 of 2021 at 10:27 BRT */
+ * Last edited on February 16 of 2021 at 10:33 BRT */
 
 #include <stacktrace.hxx>
+
+using namespace CHicago;
 
 Boolean StackTrace::Initialized = False;
 UIntPtr StackTrace::SymbolCount = 0;

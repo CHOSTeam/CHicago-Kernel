@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 05 of 2021, at 20:33 BRT
- * Last edited on February 09 of 2021, at 18:34 BRT */
+ * Last edited on February 16 of 2021, at 10:20 BRT */
 
 #pragma once
 
@@ -16,6 +16,8 @@
 #define BOOT_INFO_MEM_DEV 0x04
 #define BOOT_INFO_MEM_RES 0x05
 #define BOOT_INFO_MEM_FREE 0x06
+
+namespace CHicago {
 
 struct packed BootInfoSymbol {
     UIntPtr Start, End;
@@ -54,6 +56,8 @@ struct packed BootInfo {
 
     UInt8 KernelStack[0x2000];
 };
+
+}
 
 #ifdef USE_INIT_ARRAY
 extern "C" UIntPtr __init_array_start, __init_array_end;

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 15:57 BRT
- * Last edited on February 15 of 2021 at 21:46 BRT */
+ * Last edited on February 16 of 2021 at 10:25 BRT */
 
 #pragma once
 
@@ -10,6 +10,8 @@
 
 /* On some archs (well, on all the three currently supported archs), we can just use __builtin_frame_address(0), and
  * what we get will already be a valid StackFrame pointer. */
+
+namespace CHicago {
 
 #ifndef CUSTOM_STACK_FRAME
 struct packed StackFrame {
@@ -34,17 +36,17 @@ public:
     static inline always_inline UIntPtr Trace(StackFrame *Frame, UIntPtr *Addresses, UIntPtr Max) {
         /* While we wouldn't page fault accidentally if didn't handle the frame pointer here, we do have to make sure
          * we handle the null Addresses pointer (and the Max size has to be at least 1). */
-    
+
         if (Frame == Null || Addresses == Null || !Max) {
             return 0;
         }
-    
+
         UIntPtr i = 0;
-    
+
         for (; Frame != Null && i < Max; Frame = Frame->Parent) {
             Addresses[i++] = Frame->Address;
         }
-    
+
         return i;
     }
 
@@ -83,3 +85,5 @@ private:
     static UIntPtr SymbolCount;
     static BootInfoSymbol *Symbols;
 };
+
+}

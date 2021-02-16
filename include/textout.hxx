@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 26 of 2020, at 13:16 BRT
- * Last edited on February 15 of 2021, at 11:03 BRT */
+ * Last edited on February 16 of 2021, at 10:26 BRT */
 
 #pragma once
 
@@ -10,6 +10,8 @@
 
 /* To inherit this class you only need to implement the ->WriteInt(Char) function (AfterWrite is empty by default and
  * is not fully virtual, so you don't need to overwrite it if you don't want). */
+
+namespace CHicago {
 
 class TextOutput {
 public:
@@ -43,3 +45,5 @@ private:
 };
 
 extern TextConsole Debug;
+
+}

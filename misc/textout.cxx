@@ -1,9 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 23:22 BRT
- * Last edited on February 08 of 2021, at 00:29 BRT */
+ * Last edited on February 16 of 2021, at 10:30 BRT */
 
 #include <textout.hxx>
+
+using namespace CHicago;
 
 Void TextOutput::Write(Char Data) {
     WriteInt(Data);

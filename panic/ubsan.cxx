@@ -1,11 +1,12 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 15 of 2021, at 11:36 BRT
- * Last edited on February 15 of 2021 at 22:57 BRT */
+ * Last edited on February 16 of 2021 at 10:32 BRT */
 
 #include <arch.hxx>
 #include <panic.hxx>
 
+using namespace CHicago;
 using namespace UBSan;
 
 static const Char *TypeMismatchKind[] = {

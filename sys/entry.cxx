@@ -1,13 +1,13 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on February 16 of 2021 at 00:27 BRT */
+ * Last edited on February 16 of 2021 at 10:33 BRT */
 
 #include <arch.hxx>
 #include <mm.hxx>
 #include <panic.hxx>
 
-TextConsole Debug;
+using namespace CHicago;
 
 Void Crash(Void) {
     /* CHicago is now built with SSP enabled, so doing this should crash this system: */

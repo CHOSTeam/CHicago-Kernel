@@ -1,9 +1,13 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 00:14 BRT
- * Last edited on February 12 of 2021 at 10:59 BRT */
+ * Last edited on February 16 of 2021 at 10:36 BRT */
 
 #include <textout.hxx>
+
+namespace CHicago {
+
+TextConsole Debug;
 
 TextConsole::TextConsole(Void) : Back(), Front(), X(0), BackY(0), FrontY(0), Background(0), Foreground(0),
                                  BackgroundSP(0), ForegroundSP(0) {
@@ -126,4 +130,6 @@ Boolean TextConsole::WriteInt(Char Data) {
     }
 
     return True;
+}
+
 }

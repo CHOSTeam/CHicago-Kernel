@@ -1,12 +1,14 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on August 06 of 2020, at 19:53 BRT
- * Last edited on February 15 of 2021 at 10:29 BRT */
+ * Last edited on February 16 of 2021 at 10:35 BRT */
 
 #include <img.hxx>
 
 /* The font data was extracted from the Fira Code font (https://github.com/tonsky/FiraCode)./
  * The font's license is available at the root directory of both CHicago and CHicago-Kernel projects. */
+
+namespace CHicago {
 
 static const UInt8 DefaultFontGlyphData[] = {
     /* U+0000 */
@@ -1250,4 +1252,6 @@ static const FontGlyph DefaultFontGlyphs[] = {
     { 0x30F9, 10, 13, 0, 12, 10  }
 };
 
-FontData DefaultFont = { 15, 5, 20, DefaultFontGlyphs, DefaultFontGlyphData };
+FontData DefaultFont = {15, 5, 20, DefaultFontGlyphs, DefaultFontGlyphData};
+
+}

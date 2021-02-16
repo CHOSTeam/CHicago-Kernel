@@ -1,9 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 15 of 2021 at 10:12 BRT */
+ * Last edited on February 16 of 2021 at 10:29 BRT */
 
 #include <string.hxx>
+
+using namespace CHicago;
 
 String::String(Void) : Value(Null), Length(0) { }
 

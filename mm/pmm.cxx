@@ -1,10 +1,12 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on February 16 of 2021, at 10:09 BRT */
+ * Last edited on February 16 of 2021, at 10:31 BRT */
 
 #include <mm.hxx>
 #include <panic.hxx>
+
+using namespace CHicago;
 
 #ifdef _LP64
 #define GET_FIRST_UNSET_BIT(bm) __builtin_ctzll(~(bm))

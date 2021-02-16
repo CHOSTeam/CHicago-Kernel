@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 16:07 BRT
- * Last edited on February 16 of 2021, at 09:42 BRT */
+ * Last edited on February 16 of 2021, at 10:23 BRT */
 
 #pragma once
 
@@ -49,6 +49,8 @@
 #define MAP_COW 0x80
 #define MAP_RX (MAP_READ | MAP_EXEC)
 #define MAP_RW (MAP_READ | MAP_WRITE)
+
+namespace CHicago {
 
 class PhysMem {
 public:
@@ -131,3 +133,5 @@ private:
     static Boolean Initialized;
     static UIntPtr Start, End, Current, CurrentAligned;
 };
+
+}
