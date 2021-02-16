@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 16:07 BRT
- * Last edited on February 16 of 2021, at 10:23 BRT */
+ * Last edited on February 16 of 2021, at 12:26 BRT */
 
 #pragma once
 
@@ -50,7 +50,23 @@
 #define MAP_RX (MAP_READ | MAP_EXEC)
 #define MAP_RW (MAP_READ | MAP_WRITE)
 
+#ifdef _LP64
+#define ALLOC_BLOCK_MAGIC 0xBEEFD337CE8DB73F
+#else
+#define ALLOC_BLOCK_MAGIC 0xCE8DB73F
+#endif
+
 namespace CHicago {
+
+struct AllocBlock {
+    UIntPtr Magic;
+    Boolean Free;
+    UIntPtr Start, Size;
+#ifndef _LP64
+    UInt8 Pad[8];
+#endif
+    AllocBlock *Next, *Prev;
+};
 
 class PhysMem {
 public:
@@ -123,6 +139,10 @@ public:
     static Status Increment(UIntPtr);
     static Status Decrement(UIntPtr);
 
+    static Void *Allocate(UIntPtr);
+    static Void *Allocate(UIntPtr, UIntPtr);
+    static Void Deallocate(Void*);
+
     static Void *GetStart(Void) { return reinterpret_cast<Void*>(Start); }
     static Void *GetEnd(Void) { return reinterpret_cast<Void*>(End); }
     static Void *GetCurrent(Void) { return reinterpret_cast<Void*>(Current); }
@@ -130,6 +150,12 @@ public:
     static UIntPtr GetUsage(Void) { return CurrentAligned - Start; }
     static UIntPtr GetFree(Void) { return End - CurrentAligned; }
 private:
+    static Void SplitBlock(AllocBlock*, UIntPtr);
+    static AllocBlock *FuseBlock(AllocBlock*);
+    static AllocBlock *FindBlock(AllocBlock*&, UIntPtr);
+    static AllocBlock *CreateBlock(AllocBlock*, UIntPtr);
+
+    static AllocBlock *Base;
     static Boolean Initialized;
     static UIntPtr Start, End, Current, CurrentAligned;
 };
