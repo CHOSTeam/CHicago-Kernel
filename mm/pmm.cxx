@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on February 15 of 2021, at 12:42 BRT */
+ * Last edited on February 16 of 2021, at 10:09 BRT */
 
 #include <mm.hxx>
 #include <panic.hxx>
@@ -76,10 +76,16 @@ Void PhysMem::Initialize(BootInfo &Info) {
     SetMemory(References, 0, (Info.MaxPhysicalAddress - Info.MinPhysicalAddress) >> PAGE_SHIFT);
 
     /* Now using the boot memory map, we can free the free (duh) regions (those entries will be marked as
-     * BOOT_INFO_MEM_FREE). */
+     * BOOT_INFO_MEM_FREE). Also, if we find some 0-base entry after the first entry, it is probably some entry that
+     * goes beyond the UIntPtr size (like some PAE entry on x86), and we don't support those (yet). */
 
     for (UIntPtr i = 0; i < Info.MemoryMap.Count; i++) {
         BootInfoMemMap &ent = Info.MemoryMap.Entries[i];
+
+        if (i && !ent.Base) {
+            Debug.Write("memory map entry no. " UINTPTR_DEC ", possible extended entry, not printing info\n", i);
+            continue;
+        }
 
         Debug.Write("memory map entry no. " UINTPTR_DEC ", base = " UINTPTR_MAX_HEX ", size = " UINTPTR_HEX
                     ", type = %d\n", i, ent.Base, ent.Count << 12, ent.Type);
@@ -325,22 +331,22 @@ UInt8 PhysMem::GetReferences(UIntPtr Page) {
     return References[(Page - MinAddress) >> PAGE_SHIFT];
 }
 
-UInt8 PhysMem::CountFreePages(UIntPtr BitMap, UInt8 Start, UInt8 End) {
+UIntPtr PhysMem::CountFreePages(UIntPtr BitMap, UIntPtr Start, UIntPtr End) {
     /* As each bit of the bitmap is one physical memory page, to count the amount of free pages we just need to count
      * how many (consecutive) bits are NOT set. */
 
-    UInt8 ret = 0;
+    UIntPtr ret = 0;
 
     for (; Start + ret < End && !(BitMap & ((UIntPtr)1 << (Start + ret))); ret++) ;
 
     return ret;
 }
 
-Status PhysMem::FindFreePages(UIntPtr BitMap, UInt8 Count, UInt8 &Out, UInt8 &Available) {
+Status PhysMem::FindFreePages(UIntPtr BitMap, UIntPtr Count, UIntPtr &Out, UIntPtr &Available) {
     /* Each unset bit is one free page, for finding consecutive free pages, we can iterate through the bits of the
      * bitmap and search for free bits. */
 
-    for (UInt8 bc = PHYS_REGION_BITMAP_PSIZE, i = 0; i < bc;) {
+    for (UIntPtr bc = PHYS_REGION_BITMAP_PSIZE, i = 0; i < bc;) {
         if (BitMap == UINTPTR_MAX) {
             return Status::OutOfMemory;
         } else if (!BitMap) {
@@ -352,8 +358,8 @@ Status PhysMem::FindFreePages(UIntPtr BitMap, UInt8 Count, UInt8 &Out, UInt8 &Av
         /* Well, we need to check how many unset bits we have, first, get the location of the first unset bit here,
          * after that, count how many available bits we have. */
 
-        UInt8 bit = GET_FIRST_UNSET_BIT(BitMap);
-        UInt8 aval = CountFreePages(BitMap, bit, bc - i);
+        UIntPtr bit = GET_FIRST_UNSET_BIT(BitMap);
+        UIntPtr aval = CountFreePages(BitMap, bit, bc - i);
 
         if (aval >= Count) {
             Out = i + bit;
@@ -411,15 +417,15 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out, UIntPtr Align) {
                 continue;
             }
 
-            UInt8 bit = 0, aval = 0;
+            UIntPtr bit = 0, aval = 0;
 
             if (FindFreePages(Regions[i].Pages[j], Count, bit, aval) == Status::Success &&
-                !((Out = MinAddress + (i << PHYS_REGION_SHIFT) + (j << PHYS_REGION_PAGE_SHIFT) +
-                                      (static_cast<UIntPtr>(bit) << PAGE_SHIFT)) & Align)) {
+                !((Out = MinAddress + (i << PHYS_REGION_SHIFT) + (j << PHYS_REGION_PAGE_SHIFT) + (bit << PAGE_SHIFT))
+                       & Align)) {
                 /* Oh, we actually found enough free pages! we need to set all the bits that we're going to use,
                  * increase the used bytes variable, and calculate the return value. */
 
-                for (UInt8 k = bit; k < static_cast<UInt8>(bit + Count); k++) {
+                for (UIntPtr k = bit; k < bit + Count; k++) {
                     Regions[i].Pages[j] |= (UIntPtr)1 << k;
                 }
 
@@ -433,10 +439,10 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out, UIntPtr Align) {
                 /* Differently from the normal error/out of memory in this region, if the output wasn't null it means
                  * that we should try crossing into the next region/bitmap. */
 
-                UInt8 ci = i, cj = j, cur = aval;
+                UIntPtr ci = i, cj = j, cur = aval;
 
                 while (True) {
-                    UInt8 cbit = 0, caval = 0;
+                    UIntPtr cbit = 0, caval = 0;
                 
                     if (++cj >= PHYS_REGION_BITMAP_LEN) {
                         if (++ci >= RegionCount) {
@@ -466,7 +472,7 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out, UIntPtr Align) {
                     if (aval == PHYS_REGION_BITMAP_PSIZE) {
                         Regions[i].Pages[j] = UINTPTR_MAX;
                     } else {
-                        for (UInt8 k = bit; k < bit + aval; k++) {
+                        for (UIntPtr k = bit; k < bit + aval; k++) {
                             Regions[i].Pages[j] |= (UIntPtr)1 << k;
                         }
                     }
@@ -474,7 +480,7 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out, UIntPtr Align) {
                     if (Count - cur == PHYS_REGION_BITMAP_PSIZE) {
                         Regions[ci].Pages[cj] = UINTPTR_MAX;
                     } else {
-                        for (UInt8 k = cbit; k < static_cast<UInt8>(cbit + Count - cur); k++) {
+                        for (UIntPtr k = cbit; k < cbit + Count - cur; k++) {
                             Regions[ci].Pages[cj] |= (UIntPtr)1 << k;
                         }
                     }
@@ -526,8 +532,8 @@ Status PhysMem::FreeInt(UIntPtr Start, UIntPtr Count) {
     while (Count) {
         /* Save the indexes of this page into the region bitmap. */
     
-        UInt8 i = Start >> PHYS_REGION_SHIFT, j = (Start >> PHYS_REGION_PAGE_SHIFT) & (PHYS_REGION_BITMAP_LEN - 1),
-              k = (Start >> PAGE_SHIFT) & (PHYS_REGION_BITMAP_PSIZE - 1);
+        UIntPtr i = Start >> PHYS_REGION_SHIFT, j = (Start >> PHYS_REGION_PAGE_SHIFT) & (PHYS_REGION_BITMAP_LEN - 1),
+                k = (Start >> PAGE_SHIFT) & (PHYS_REGION_BITMAP_PSIZE - 1);
 
         /* Now check if we can just free a whole bitmap or region (those cases are easier to handle). */
 

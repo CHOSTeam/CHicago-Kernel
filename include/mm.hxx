@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 16:07 BRT
- * Last edited on February 15 of 2021, at 12:15 BRT */
+ * Last edited on February 16 of 2021, at 09:42 BRT */
 
 #pragma once
 
@@ -90,8 +90,8 @@ public:
     static UIntPtr GetUsage(Void) { return UsedBytes; }
     static UIntPtr GetFree(Void) { return MaxBytes - UsedBytes; }
 private:
-    static UInt8 CountFreePages(UIntPtr, UInt8, UInt8);
-    static Status FindFreePages(UIntPtr, UInt8, UInt8&, UInt8&);
+    static UIntPtr CountFreePages(UIntPtr, UIntPtr, UIntPtr);
+    static Status FindFreePages(UIntPtr, UIntPtr, UIntPtr&, UIntPtr&);
     static Status AllocInt(UIntPtr, UIntPtr&, UIntPtr);
     static Status FreeInt(UIntPtr, UIntPtr);
 
