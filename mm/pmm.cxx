@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on February 16 of 2021, at 10:31 BRT */
+ * Last edited on February 16 of 2021, at 14:48 BRT */
 
 #include <mm.hxx>
 #include <panic.hxx>
@@ -92,9 +92,9 @@ Void PhysMem::Initialize(BootInfo &Info) {
         Debug.Write("memory map entry no. " UINTPTR_DEC ", base = " UINTPTR_MAX_HEX ", size = " UINTPTR_HEX
                     ", type = %d\n", i, ent.Base, ent.Count << 12, ent.Type);
 
-        if (ent.Type == BOOT_INFO_MEM_FREE && ent.Base) {
+        if (ent.Type == 0x06 && ent.Base) {
             FreeInt(ent.Base, ent.Count);
-        } else if (ent.Type == BOOT_INFO_MEM_FREE && ent.Count > 1) {
+        } else if (ent.Type == 0x06 && ent.Count > 1) {
             FreeInt(ent.Base + PAGE_SIZE, ent.Count - 1);
         }
     }

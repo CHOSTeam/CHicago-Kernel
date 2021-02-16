@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 14 of 2021, at 23:45 BRT
- * Last edited on February 16 of 2021, at 12:29 BRT */
+ * Last edited on February 16 of 2021, at 14:49 BRT */
 
 #include <mm.hxx>
 #include <panic.hxx>
@@ -60,8 +60,8 @@ Status Heap::Decrement(UIntPtr Amount) {
     Current -= Amount;
 
     for (; CurrentAligned - PAGE_SIZE >= Current;) {
-        UInt32 flags;
         UIntPtr phys;
+        UInt32 flags;
 
         CurrentAligned -= PAGE_SIZE;
 

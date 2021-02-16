@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 12 of 2021, at 14:54 BRT
- * Last edited on February 16 of 2021 at 10:28 BRT */
+ * Last edited on February 16 of 2021 at 14:54 BRT */
 
 #include <arch/mm.hxx>
 #include <mm.hxx>
@@ -48,9 +48,9 @@ static inline Void UpdateTLB(UIntPtr Address) {
 
 static inline UIntPtr GetOffset(UIntPtr Address, UIntPtr Level) {
 #ifdef __i386__
-    return Address & (Level == 1 ? PAGE_MASK : HUGE_PAGE_MASK);
+    return Address & (Level == 2 ? PAGE_MASK : HUGE_PAGE_MASK);
 #else
-    return Address & (Level == 1 ? PAGE_MASK : (Level == 2 ? HUGE_PAGE_MASK : 0x3FFFFFFF));
+    return Address & (Level == 4 ? PAGE_MASK : (Level == 3 ? HUGE_PAGE_MASK : 0x3FFFFFFF));
 #endif
 }
 

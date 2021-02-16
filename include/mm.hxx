@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 16:07 BRT
- * Last edited on February 16 of 2021, at 12:26 BRT */
+ * Last edited on February 16 of 2021, at 14:30 BRT */
 
 #pragma once
 
@@ -33,7 +33,6 @@
 #define PHYS_REGION_BITMAP_LEN ((1 << PHYS_REGION_SHIFT) / (1 << PHYS_REGION_PAGE_SHIFT))
 #define PHYS_REGION_BITMAP_PSIZE (sizeof(UIntPtr) * 8)
 #define PHYS_REGION_BITMAP_BSIZE (PAGE_SIZE * PHYS_REGION_BITMAP_PSIZE)
-#define PHYS_REGION_BITMAP_MASK (PHYS_REGION_BITMAP_BSIZE - 1)
 
 #define PHYS_REGION_PSIZE (PHYS_REGION_BITMAP_LEN * PHYS_REGION_BITMAP_PSIZE)
 #define PHYS_REGION_BSIZE (PAGE_SIZE * PHYS_REGION_PSIZE)

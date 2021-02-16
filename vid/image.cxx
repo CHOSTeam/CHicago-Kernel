@@ -1,23 +1,63 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 21:14 BRT
- * Last edited on February 16 of 2021 at 10:34 BRT */
+ * Last edited on February 16 of 2021 at 15:16 BRT */
 
 #include <img.hxx>
 
 using namespace CHicago;
 
-Image::Image(Void) : Buffer(Null), Width(0), Height(0) { }
-Image::Image(UInt32 *Buffer, UInt16 Width, UInt16 Height) : Buffer(Buffer), Width(Width), Height(Height) { }
+Image::Image(Void) : Buffer(Null), Allocated(False), References(Null), Width(0), Height(0) { }
+Image::Image(UInt32 *Buffer, UInt16 Width, UInt16 Height)
+        : Buffer(Buffer), Allocated(False), References(Null), Width(Width), Height(Height) { }
+
+Image::Image(UInt16 Width, UInt16 Height)
+        : Buffer(new UInt32[Width * Height]), Allocated(True), References(new UIntPtr), Width(Width), Height(Height) {
+    /* We just need to handle the case where the allocation failed (and we have to set everything back to zero. */
+
+    if (Buffer == Null) {
+        Allocated = False;
+        this->Width = this->Height = 0;
+    }
+
+    if (References != Null) {
+        (*References)++;
+    }
+}
+
+Void Image::Cleanup(Void) {
+    /* The Allocated variable should always be set to False if the buffer is Null/failed to be allocated, so we don't
+     * need to handle that. The reference counter is what allows us to the stuff like we do on the display
+     * initialization, if it wasn't for that, we would have some random memory overwriting it (and I did had this
+     * problem in the start). */
+
+    if (Allocated && (References == Null || --*References == 0)) {
+        delete[] Buffer;
+        delete References;
+        References = Null;
+    } else if (References != Null && *References == 0) {
+        delete References;
+        References = Null;
+    }
+}
+
+Image::~Image(Void) {
+    Cleanup();
+}
 
 Image &Image::operator =(const Image &Value) {
-    /* No need to handle allocations, freeing stuff, nor anything like that, just set the buffer, width, and height (if
-     * necessary), and return. */
-
     if (this != &Value) {
+        Cleanup();
+
         Buffer = Value.Buffer;
+        Allocated = Value.Allocated;
+        References = Value.References;
         Width = Value.Width;
         Height = Value.Height;
+
+        if (References != Null) {
+            (*References)++;
+        }
     }
 
     return *this;

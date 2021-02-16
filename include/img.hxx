@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:37 BRT
- * Last edited on February 16 of 2021 at 10:27 BRT */
+ * Last edited on February 16 of 2021 at 15:10 BRT */
 
 #pragma once
 
@@ -44,13 +44,11 @@ struct FontData {
 
 class Image {
 public:
-    /* Just like we modified the String class to, at least for now, not do any allocation, this class now also doesn't
-     * do any allocations (it uses pre-allocated buffers that the user will pass). Also, now we're using UInt16s
-     * instead of the Vector2D class (at least for now, might re-add the Vector2D class later, or maybe in
-     * userspace). */
-
     Image(Void);
+    Image(UInt16, UInt16);
     Image(UInt32*, UInt16, UInt16);
+
+    ~Image(Void);
 
     Image &operator =(const Image&);
 
@@ -130,7 +128,11 @@ private:
         return Left > Right ? Left : Right;
     }
 
+    Void Cleanup(Void) ;
+
     UInt32 *Buffer;
+    Boolean Allocated;
+    UIntPtr *References;
     UInt16 Width, Height;
 };
 
