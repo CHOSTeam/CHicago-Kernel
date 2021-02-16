@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on February 16 of 2021, at 14:48 BRT */
+ * Last edited on February 16 of 2021, at 19:35 BRT */
 
 #include <mm.hxx>
 #include <panic.hxx>
@@ -559,13 +559,7 @@ Status PhysMem::FreeInt(UIntPtr Start, UIntPtr Count) {
 
         /* If none of the above, first do error checking, and then free a single page. */
 
-        if (!Regions[i].Used) {
-            Debug.SetForeground(0xFFFF0000);
-            Debug.Write("invalid PhysMem::FreeInt arguments (cross into unallocated area, address = " UINTPTR_MAX_HEX
-                        ", remaining count = " UINTPTR_DEC ")\n", Start, Count);
-            Debug.RestoreForeground();
-            return Status::InvalidArg;
-        }
+        ASSERT(Regions[i].Used);
 
         Regions[i].Pages[j] &= ~((UIntPtr)1 << k);
         Regions[i].Free++;

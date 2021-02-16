@@ -1,15 +1,15 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 14 of 2021, at 23:45 BRT
- * Last edited on February 16 of 2021, at 14:49 BRT */
+ * Last edited on February 16 of 2021, at 19:48 BRT */
 
 #include <mm.hxx>
 #include <panic.hxx>
 
 using namespace CHicago;
 
-AllocBlock *Heap::Base = Null;
 Boolean Heap::Initialized = False;
+AllocBlock *Heap::Base = Null, *Heap::Tail = Null;
 UIntPtr Heap::Start = 0, Heap::End = 0, Heap::Current = 0, Heap::CurrentAligned = 0;
 
 Void Heap::Initialize(UIntPtr Start, UIntPtr End) {
@@ -73,6 +73,63 @@ Status Heap::Decrement(UIntPtr Amount) {
     return Status::Success;
 }
 
+Void Heap::AddFree(AllocBlock *Block) {
+    /* Add the entry to the free list (for faster free block searching). We don't have a non free block list, as even
+     * for getting the block size we don't need it (we would need it for dumping all the allocations though). It's
+     * probably a good idea to find the right place for this block (not just randomly add it to the end). */
+
+    if (Base == Null) {
+        Base = Tail = Block;
+        return;
+    }
+
+    AllocBlock *cur = Base;
+
+    while (cur != Null && cur->Start > Block->Start) {
+        cur = cur->Next;
+    }
+
+    if (cur != Null) {
+        Block->Next = cur;
+
+        if (cur->Prev != Null) {
+            cur->Prev->Next = Block;
+        } else {
+            Base = Block;
+        }
+    } else {
+        Tail->Next = Block;
+        Block->Prev = Tail;
+        Tail = Block;
+    }
+}
+
+Void Heap::RemoveFree(AllocBlock *Block) {
+    /* And here we do the inverse, remove the entry from the free list (nothing to do afterwards, as there is no other
+     * list). */
+
+    if (Block->Next != Null) {
+        Block->Next->Prev = Block->Prev;
+    } else {
+        Tail = Block->Prev;
+
+        if (Tail != Null) {
+            Tail->Next = Null;
+        } else {
+            Base = Null;
+        }
+    }
+
+    if (Block->Prev != Null) {
+        Block->Prev->Next = Block->Next;
+    } else if (Block->Next != Null) {
+        Block->Next->Prev = Null;
+        Base = Block->Next;
+    }
+
+    Block->Next = Block->Prev = Null;
+}
+
 Void Heap::SplitBlock(AllocBlock *Block, UIntPtr Size) {
     /* We probably could skip the Null pointer checks, as the only ones that are going to call this (and the other
      * private functions) is ourselves, but let's do it anyways. We also need to check if the block is big enough to be
@@ -83,64 +140,63 @@ Void Heap::SplitBlock(AllocBlock *Block, UIntPtr Size) {
     }
 
     /* Let's split the block so the current block have exactly the same that the caller asked for, and the new block is
-     * the remainder. */
+     * the remainder (which will be set as free). */
 
     auto nblk = reinterpret_cast<AllocBlock*>(Block->Start + Size);
 
+    SetMemory(nblk, 0, sizeof(AllocBlock));
+
     nblk->Magic = ALLOC_BLOCK_MAGIC;
-    nblk->Free = False;
     nblk->Start = Block->Start + Size + sizeof(AllocBlock);
     nblk->Size = Block->Size - (Size + sizeof(AllocBlock));
-    nblk->Next = Block->Next;
-    nblk->Prev = Block;
-
-    /* And we can't forget to link both blocks together. */
-
     Block->Size = Size;
-    Block->Next = nblk;
 
-    if (nblk->Next != Null) {
-        nblk->Next->Prev = nblk;
-    }
+    AddFree(nblk);
 }
 
 AllocBlock *Heap::FuseBlock(AllocBlock *Block) {
     /* We can only fuse blocks that are just after ourselves, to fuse blocks that are in the ->Prev field, the caller
      * should call the FuseBlock function on the ->Prev field, instead of the current block. */
 
-    if (Block != Null && Block->Next != Null && reinterpret_cast<UIntPtr>(Block->Next) == Block->Start + Block->Size &&
-        Block->Free) {
+    if (Block != Null && Block->Next != Null && reinterpret_cast<UIntPtr>(Block->Next) == Block->Start + Block->Size) {
         Block->Size += sizeof(AllocBlock) + Block->Next->Size;
         Block->Next = Block->Next->Next;
 
         if (Block->Next != Null) {
             Block->Next->Prev = Block;
+        } else {
+            Tail->Prev->Next = Block;
+            Tail = Block;
         }
+
+        return Block;
     }
 
-    return Block;
+    return Null;
 }
 
-AllocBlock *Heap::FindBlock(AllocBlock *&Last, UIntPtr Size) {
+AllocBlock *Heap::FindBlock(UIntPtr Size) {
     /* The block list always ends (or starts, if there are no blocks yet) on a Null pointer, so we can always just keep
-     * on following the ->Next chain until we find a Null pointer. This time, we only have to check if there is at least
-     * the size we were asked for, no need to check if there is space for the header. */
+     * on following the ->Next chain until we find a Null pointer. */
 
     if (!Size) {
         return Null;
     }
 
-    AllocBlock *cur = Base;
+    AllocBlock *cur = Base, *best = Null;
 
-    while (cur != Null && !(cur->Free && cur->Size >= Size)) {
-        Last = cur;
+    while (cur != Null) {
+        if (cur->Size >= Size && (best == Null || cur->Size < best->Size)) {
+            best = cur;
+        }
+
         cur = cur->Next;
     }
 
-    return cur;
+    return best;
 }
 
-AllocBlock *Heap::CreateBlock(AllocBlock *Last, UIntPtr Size) {
+AllocBlock *Heap::CreateBlock(UIntPtr Size) {
     /* The "Last" pointer is not required (for example, this may be the first time we're allocating memory, and this may
      * be the first allocation), but we do need to check if the Size is valid. */
 
@@ -153,24 +209,19 @@ AllocBlock *Heap::CreateBlock(AllocBlock *Last, UIntPtr Size) {
      * the current location of the heap, and call the Increment function (that is going to return if the increment is
      * valid, and if it succeeded). */
 
-    auto Block = reinterpret_cast<AllocBlock*>(Current);
+    auto blk = reinterpret_cast<AllocBlock*>(Current);
 
     if (Increment(Size + sizeof(AllocBlock)) != Status::Success) {
         return Null;
     }
 
-    Block->Magic = ALLOC_BLOCK_MAGIC;
-    Block->Start = reinterpret_cast<UIntPtr>(Block) + sizeof(AllocBlock);
-    Block->Size = Size;
-    Block->Free = False;
-    Block->Next = Null;
-    Block->Prev = Last;
+    SetMemory(blk, 0, sizeof(AllocBlock));
 
-    if (Last != Null) {
-        Last->Next = Block;
-    }
+    blk->Magic = ALLOC_BLOCK_MAGIC;
+    blk->Start = reinterpret_cast<UIntPtr>(blk) + sizeof(AllocBlock);
+    blk->Size = Size;
 
-    return Block;
+    return blk;
 }
 
 Void *Heap::Allocate(UIntPtr Size) {
@@ -179,7 +230,7 @@ Void *Heap::Allocate(UIntPtr Size) {
 
     Size = ((Size > 0 ? Size : 1) + 15) & -16;
 
-    AllocBlock *last = Null, *blk = FindBlock(last, Size);
+    AllocBlock *blk = FindBlock(Size);
 
     if (blk != Null) {
         /* Let's not waste space, and split the block that we found in case it is too big. */
@@ -188,16 +239,9 @@ Void *Heap::Allocate(UIntPtr Size) {
             SplitBlock(blk, Size);
         }
 
-        blk->Free = False;
+        RemoveFree(blk);
     } else {
-        /* There is one extra thing we may need to do after allocating the block: If this is the first allocation, we
-         * need to set the Base pointer. */
-
-        blk = CreateBlock(last, Size);
-
-        if (blk != Null && Base == Null) {
-            Base = blk;
-        }
+        blk = CreateBlock(Size);
     }
 
     /* If everything went well, we can zero the allocated memory (just to be safe) and return, else, we should return a
@@ -250,44 +294,43 @@ Void Heap::Deallocate(Void *Address) {
      * need to convert the address into an UIntPtr pointer, and access ptr[-2] to get the header location, else, we just
      * subtract the size of the header from the address. */
 
-    AllocBlock *blk;
-    auto ai = reinterpret_cast<UIntPtr>(Address), bi = reinterpret_cast<UIntPtr>(Base);
+    AllocBlock *blk, *fblk;
+    auto addr = reinterpret_cast<UIntPtr>(Address);
 
-    ASSERT(Address != Null && ai >= bi + sizeof(AllocBlock) && ai <= Current);
+    ASSERT(Address != Null && addr >= Start + sizeof(AllocBlock) && Start <= Current);
 
-    if (ai - 2 * sizeof(UIntPtr) >= bi + sizeof(AllocBlock) &&
+    if (addr - 2 * sizeof(UIntPtr) >= Start + sizeof(AllocBlock) &&
         (reinterpret_cast<UIntPtr*>(Address))[-1] == ALLOC_BLOCK_MAGIC) {
         blk = reinterpret_cast<AllocBlock*>((reinterpret_cast<UIntPtr*>(Address))[-2]);
     } else {
-        blk = reinterpret_cast<AllocBlock*>(ai - sizeof(AllocBlock));
+        blk = reinterpret_cast<AllocBlock*>(addr - sizeof(AllocBlock));
     }
 
     /* Now, we need to check if this is a valid block, and if we haven't called Deallocate on it before (double
      * free). */
 
     ASSERT(blk->Magic == ALLOC_BLOCK_MAGIC);
-    ASSERT(!blk->Free);
+    ASSERT(blk != Base && blk->Next == Null && blk->Prev == Null);
 
-    /* Set that this is now a free block, and start fusing it with the free blocks that are around. */
+    /* Add this block to the free list, and start fusing it with other block around it. */
 
-    blk->Free = True;
+    AddFree(blk);
 
-    while (blk->Prev != Null && blk->Prev->Free) {
-        blk = FuseBlock(blk->Prev);
+    while ((fblk = FuseBlock(blk->Prev)) != Null) {
+        blk = fblk;
     }
 
-    while (blk->Next != Null && blk->Next->Free) {
-        FuseBlock(blk);
-    }
+    while (FuseBlock(blk) != Null) ;
 
     /* If this is the end of the block list, AND the block is just at the end of the heap, let's free some space on the
      * heap (this will actually free the physical memory). */
 
-    if (blk->Next == Null && reinterpret_cast<UIntPtr>(blk) == Current - (blk->Size + sizeof(AllocBlock))) {
+    if (blk == Tail && reinterpret_cast<UIntPtr>(blk) == Current - (blk->Size + sizeof(AllocBlock))) {
         if (blk->Prev != Null) {
-            blk->Prev->Next = Null;
+            Tail = blk->Prev;
+            Tail->Next = Null;
         } else {
-            Base = Null;
+            Base = Tail = Null;
         }
 
         Decrement(blk->Size + sizeof(AllocBlock));

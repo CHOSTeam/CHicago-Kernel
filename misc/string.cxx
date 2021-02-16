@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 16 of 2021 at 15:08 BRT */
+ * Last edited on February 16 of 2021 at 20:01 BRT */
 
 #include <string.hxx>
 

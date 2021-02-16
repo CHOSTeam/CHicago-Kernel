@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 16:07 BRT
- * Last edited on February 16 of 2021, at 14:30 BRT */
+ * Last edited on February 16 of 2021, at 19:49 BRT */
 
 #pragma once
 
@@ -59,10 +59,10 @@ namespace CHicago {
 
 struct AllocBlock {
     UIntPtr Magic;
-    Boolean Free;
     UIntPtr Start, Size;
+    UInt64 Pad;
 #ifndef _LP64
-    UInt8 Pad[8];
+    UInt32 Pad2;
 #endif
     AllocBlock *Next, *Prev;
 };
@@ -149,13 +149,15 @@ public:
     static UIntPtr GetUsage(Void) { return CurrentAligned - Start; }
     static UIntPtr GetFree(Void) { return End - CurrentAligned; }
 private:
+    static Void AddFree(AllocBlock*);
+    static Void RemoveFree(AllocBlock*);
     static Void SplitBlock(AllocBlock*, UIntPtr);
     static AllocBlock *FuseBlock(AllocBlock*);
-    static AllocBlock *FindBlock(AllocBlock*&, UIntPtr);
-    static AllocBlock *CreateBlock(AllocBlock*, UIntPtr);
+    static AllocBlock *FindBlock(UIntPtr);
+    static AllocBlock *CreateBlock(UIntPtr);
 
-    static AllocBlock *Base;
     static Boolean Initialized;
+    static AllocBlock *Base, *Tail;
     static UIntPtr Start, End, Current, CurrentAligned;
 };
 
