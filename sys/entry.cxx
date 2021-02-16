@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on February 15 of 2021 at 10:39 BRT */
+ * Last edited on February 15 of 2021 at 20:59 BRT */
 
 #include <arch.hxx>
 #include <mm.hxx>
@@ -43,8 +43,6 @@ extern "C" Void KernelEntry(BootInfo *Info) {
     Debug.SetForeground(0xFF00FF00);
     Debug.Write("initialization finished, halting the machine\n");
     Debug.RestoreForeground();
-
-    /* Test the heap allocator. */
 
     ASSERT(1 == 0);
 }

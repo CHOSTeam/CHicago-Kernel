@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on May 11 of 2018, at 13:15 BRT
- * Last edited on February 15 of 2021, at 10:08 BRT */
+ * Last edited on February 15 of 2021, at 11:03 BRT */
 
 #pragma once
 
@@ -16,7 +16,6 @@
 #define UInt8 unsigned char
 #define UInt16 unsigned short
 #define UInt32 unsigned int
-#define ULong unsigned long
 #define UInt64 unsigned long long
 
 /* Signed types */

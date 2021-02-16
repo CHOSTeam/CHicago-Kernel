@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 26 of 2020, at 13:16 BRT
- * Last edited on February 12 of 2021, at 10:19 BRT */
+ * Last edited on February 15 of 2021, at 11:03 BRT */
 
 #pragma once
 
@@ -13,11 +13,11 @@
 
 class TextOutput {
 public:
-	Void Write(Char);
-	Void Write(const String&, ...);
+    Void Write(Char);
+    Void Write(const String&, ...);
 private:
-	virtual Void AfterWrite(Void) { }
-	virtual Boolean WriteInt(Char) = 0;
+    virtual Void AfterWrite(Void) { }
+    virtual Boolean WriteInt(Char) = 0;
 };
 
 class TextConsole : public TextOutput {
