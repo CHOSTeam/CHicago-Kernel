@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 14 of 2021, at 23:45 BRT
- * Last edited on February 16 of 2021, at 19:48 BRT */
+ * Last edited on February 16 of 2021, at 20:17 BRT */
 
 #include <mm.hxx>
 #include <panic.hxx>
@@ -50,14 +50,15 @@ Status Heap::Increment(UIntPtr Amount) {
     return Current = nw, Status::Success;
 }
 
-Status Heap::Decrement(UIntPtr Amount) {
-    if (!Amount || (Current - Amount) > Current || (Current - Amount) >= End) {
-        return Status::InvalidArg;
+Void Heap::Decrement(UIntPtr Amount) {
+    if (Amount && (Current - Amount) <= Current && (Current - Amount) < End) {
+        Current -= Amount;
     }
+}
 
-    /* Decrease all the variables, and free all the physical pages that we allocated. */
-
-    Current -= Amount;
+Void Heap::ReturnPhysical(Void) {
+    /* This function actually returns all the allocated PHYSICAL memory to the system (the system may call us if it is
+     * running out of memory, or regularly to not let the waste accumulate). */
 
     for (; CurrentAligned - PAGE_SIZE >= Current;) {
         UIntPtr phys;
@@ -69,8 +70,6 @@ Status Heap::Decrement(UIntPtr Amount) {
             PhysMem::DereferenceSingle(phys);
         }
     }
-
-    return Status::Success;
 }
 
 Void Heap::AddFree(AllocBlock *Block) {
@@ -323,7 +322,7 @@ Void Heap::Deallocate(Void *Address) {
     while (FuseBlock(blk) != Null) ;
 
     /* If this is the end of the block list, AND the block is just at the end of the heap, let's free some space on the
-     * heap (this will actually free the physical memory). */
+     * heap. */
 
     if (blk == Tail && reinterpret_cast<UIntPtr>(blk) == Current - (blk->Size + sizeof(AllocBlock))) {
         if (blk->Prev != Null) {

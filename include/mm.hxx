@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 16:07 BRT
- * Last edited on February 16 of 2021, at 19:49 BRT */
+ * Last edited on February 16 of 2021, at 20:18 BRT */
 
 #pragma once
 
@@ -136,7 +136,8 @@ public:
     static Void Initialize(UIntPtr, UIntPtr);
 
     static Status Increment(UIntPtr);
-    static Status Decrement(UIntPtr);
+    static Void Decrement(UIntPtr);
+    static Void ReturnPhysical(Void);
 
     static Void *Allocate(UIntPtr);
     static Void *Allocate(UIntPtr, UIntPtr);

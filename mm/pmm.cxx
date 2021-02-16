@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on February 16 of 2021, at 19:35 BRT */
+ * Last edited on February 16 of 2021, at 20:22 BRT */
 
 #include <mm.hxx>
 #include <panic.hxx>
@@ -396,8 +396,14 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out, UIntPtr Align) {
     } else if (Regions == Null || UsedBytes + (Count << PAGE_SHIFT) > MaxBytes) {
         Debug.SetForeground(0xFFFF0000);
         Debug.Write("not enough free memory for PhysMem::AllocInt (count = " UINTPTR_DEC ")\n", Count);
-        Debug.RestoreForeground();
-        return Status::OutOfMemory;
+
+        if (Regions != Null && (Heap::ReturnPhysical(), UsedBytes + (Count << PAGE_SHIFT) <= MaxBytes)) {
+            Debug.Write("enough memory seems to have been freed through Heap::ReturnPhysical\n");
+            Debug.RestoreForeground();
+        } else {
+            Debug.RestoreForeground();
+            return Status::OutOfMemory;
+        }
     }
 
     Align -= 1;
