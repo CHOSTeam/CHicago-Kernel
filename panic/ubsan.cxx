@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 15 of 2021, at 11:36 BRT
- * Last edited on February 16 of 2021 at 10:32 BRT */
+ * Last edited on February 16 of 2021 at 11:10 BRT */
 
 #include <arch.hxx>
 #include <panic.hxx>
@@ -15,7 +15,7 @@ static const Char *TypeMismatchKind[] = {
 };
 
 static inline always_inline Void Prologue(Void) {
-    Debug.SetBackground(0xFFFF0000);
+    Debug.SetForeground(0xFFFF0000);
     Debug.Write("panic: ubsan: ");
 }
 
@@ -39,7 +39,7 @@ extern "C" no_return Void __ubsan_handle_out_of_bounds(TwoArgData &Data, UIntPtr
 
 extern "C" no_return Void __ubsan_handle_shift_out_of_bounds(TwoArgData &Data, UIntPtr, UIntPtr) {
     Prologue();
-    Debug.Write("%s was shifted by %s\n", Data.Left.Name, Data.Right.Name);
+    Debug.Write("shift between %s and %s overflows\n", Data.Left.Name, Data.Right.Name);
     Epilogue(Data.Location);
 }
 
