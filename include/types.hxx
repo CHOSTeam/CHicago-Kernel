@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on May 11 of 2018, at 13:15 BRT
- * Last edited on February 15 of 2021, at 11:03 BRT */
+ * Last edited on February 17 of 2021, at 10:21 BRT */
 
 #pragma once
 
@@ -71,6 +71,7 @@
 #define no_inline __attribute__((noinline))
 #define section(x) __attribute__((section(x)))
 #define always_inline __attribute__((always_inline))
+#define force_align_arg_pointer __attribute__((force_align_arg_pointer))
 
 /* A few builtin functions. */
 

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 09 of 2021, at 12:54 BRT
- * Last edited on February 16 of 2021 at 10:33 BRT */
+ * Last edited on February 16 of 2021 at 11:41 BRT */
 
 #include <stacktrace.hxx>
 
@@ -18,6 +18,10 @@ Void StackTrace::Initialize(BootInfo &Info) {
         Initialized = True;
         Symbols = Info.Symbols.Start;
         SymbolCount = Info.Symbols.Count;
+        Debug.Write("initialized the kernel symbol table, starting at " UINTPTR_MAX_HEX ", and there are " UINTPTR_DEC
+                    " symbols\n", Symbols, SymbolCount);
+    } else {
+        Debug.Write("the kernel symbols are unavailable, and name resolving on backtrace will be also unavailable\n");
     }
 }
 

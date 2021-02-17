@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 15:57 BRT
- * Last edited on February 16 of 2021 at 10:25 BRT */
+ * Last edited on February 17 of 2021 at 09:35 BRT */
 
 #pragma once
 
@@ -50,20 +50,19 @@ public:
         return i;
     }
 
-    static inline always_inline Void Dump(Void) {
+    static inline always_inline Void Dump(StackFrame *Frame = GetStackFrame()) {
         /* We have to take caution with the backtrace. If possible, we want to skip the first entry to the stacktrace
          * (as that would be the panic function), but if not possible, we just want to print that there is no backtrace
          * available. */
 
         UIntPtr addr[32];
-        StackFrame *frame = GetStackFrame();
 
-        if (frame == Null || frame->Parent == Null) {
+        if (Frame == Null || Frame->Parent == Null) {
             Debug.Write("no backtrace available\n");
             return;
         }
 
-        UIntPtr count = Trace(frame->Parent, addr, sizeof(addr) / sizeof(UIntPtr));
+        UIntPtr count = Trace(Frame->Parent, addr, sizeof(addr) / sizeof(UIntPtr));
 
         Debug.Write("backtrace:\n");
 

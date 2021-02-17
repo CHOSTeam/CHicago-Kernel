@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 14 of 2021, at 23:45 BRT
- * Last edited on February 16 of 2021, at 20:17 BRT */
+ * Last edited on February 17 of 2021, at 11:34 BRT */
 
 #include <mm.hxx>
 #include <panic.hxx>
@@ -26,7 +26,7 @@ Status Heap::Increment(UIntPtr Amount) {
 	/* We need to check for two things: First, if the Amount is even valid (if it isn't, return InvalidArg), second, if
 	 * we aren't trying to expand beyond the heap limit. */
 
-    if (!Amount) {
+    if (!Initialized || !Amount) {
         return Status::InvalidArg;
     } else if ((Current + Amount) < Current || (Current + Amount) >= End) {
         return Status::OutOfMemory;
@@ -51,7 +51,7 @@ Status Heap::Increment(UIntPtr Amount) {
 }
 
 Void Heap::Decrement(UIntPtr Amount) {
-    if (Amount && (Current - Amount) <= Current && (Current - Amount) < End) {
+    if (Initialized && (Current - Amount) < Current && (Current - Amount) >= Start) {
         Current -= Amount;
     }
 }
@@ -59,6 +59,10 @@ Void Heap::Decrement(UIntPtr Amount) {
 Void Heap::ReturnPhysical(Void) {
     /* This function actually returns all the allocated PHYSICAL memory to the system (the system may call us if it is
      * running out of memory, or regularly to not let the waste accumulate). */
+
+    if (!Initialized) {
+        return;
+    }
 
     for (; CurrentAligned - PAGE_SIZE >= Current;) {
         UIntPtr phys;

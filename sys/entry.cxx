@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on February 16 of 2021 at 19:55 BRT */
+ * Last edited on February 17 of 2021 at 11:47 BRT */
 
 #include <arch.hxx>
 #include <mm.hxx>
@@ -10,10 +10,14 @@
 using namespace CHicago;
 
 Void Crash(Void) {
-    /* CHicago is now built with SSP enabled, so doing this should crash this system: */
+    /* On x86/amd64 we can use ud2 and test the exception handler, if we can't do that, just crash everything using
+     * ubsan. */
 
-    UInt8 buf[8];
-    SetMemory(buf, 0, 16);
+#if defined(__i386__) || defined(__x86_64__)
+    asm volatile("ud2");
+#endif
+
+    *((volatile UIntPtr*)nullptr) = 0;
 }
 
 extern "C" Void KernelEntry(BootInfo *Info) {
@@ -47,23 +51,13 @@ extern "C" Void KernelEntry(BootInfo *Info) {
     PhysMem::Initialize(*Info);
     VirtMem::Initialize(*Info);
 
+    /* Initialize the arch-specific bits. */
+
+    Arch::Initialize(*Info);
+
     Debug.SetForeground(0xFF00FF00);
     Debug.Write("initialization finished, halting the machine\n");
     Debug.RestoreForeground();
-
-    /* Test out the memory allocator by doing some allocations, and then call the crash function (that will test the
-     * SSP). */
-
-    Void *a1, *a2, *a3, *a4;
-
-    Debug.Write("First allocation at " UINTPTR_MAX_HEX "\n", a1 = Heap::Allocate(8));
-    Debug.Write("Second allocation at " UINTPTR_MAX_HEX "\n", a2 = Heap::Allocate(64));
-    Debug.Write("Third allocation at " UINTPTR_MAX_HEX "\n", a3 = Heap::Allocate(8));
-    Debug.Write("Fourth allocation at " UINTPTR_MAX_HEX "\n", a4 = Heap::Allocate(16));
-    Heap::Deallocate(a2), Heap::Deallocate(a4);
-    Debug.Write("Fifth allocation at " UINTPTR_MAX_HEX "\n", a2 = Heap::Allocate(16));
-    Debug.Write("Sixth allocation at " UINTPTR_MAX_HEX "\n", a4 = Heap::Allocate(16));
-    Heap::Deallocate(a1), Heap::Deallocate(a2), Heap::Deallocate(a3), Heap::Deallocate(a4);
 
     Crash();
     ASSERT(False);
