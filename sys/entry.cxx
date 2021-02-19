@@ -1,24 +1,13 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on February 17 of 2021 at 11:47 BRT */
+ * Last edited on February 18 of 2021 at 18:04 BRT */
 
 #include <arch.hxx>
 #include <mm.hxx>
 #include <panic.hxx>
 
 using namespace CHicago;
-
-Void Crash(Void) {
-    /* On x86/amd64 we can use ud2 and test the exception handler, if we can't do that, just crash everything using
-     * ubsan. */
-
-#if defined(__i386__) || defined(__x86_64__)
-    asm volatile("ud2");
-#endif
-
-    *((volatile UIntPtr*)nullptr) = 0;
-}
 
 extern "C" Void KernelEntry(BootInfo *Info) {
     /* Hello, World! The loader just exited the EFI environment, and gave control to the kernel! Right now the MMU
@@ -27,7 +16,7 @@ extern "C" Void KernelEntry(BootInfo *Info) {
      * function runs all the global constructors and things like that. */
 
     if (Info == Null || Info->Magic != BOOT_INFO_MAGIC) {
-        Arch::Halt();
+        Arch::Halt(True);
     }
 
 #ifdef USE_INIT_ARRAY
@@ -45,20 +34,24 @@ extern "C" Void KernelEntry(BootInfo *Info) {
     Debug.Write("initializing the kernel, arch = %s, version = %s\n", ARCH, VERSION);
     Debug.RestoreForeground();
 
+    /* Initialize the arch-specific bits. */
+
+    Arch::Initialize(*Info);
+
     /* Initialize some important early system bits (backtrace symbol resolver, memory manager, etc). */
 
     StackTrace::Initialize(*Info);
     PhysMem::Initialize(*Info);
     VirtMem::Initialize(*Info);
 
-    /* Initialize the arch-specific bits. */
-
-    Arch::Initialize(*Info);
-
     Debug.SetForeground(0xFF00FF00);
     Debug.Write("initialization finished, halting the machine\n");
     Debug.RestoreForeground();
 
-    Crash();
+    for (Int32 i = 0; i < 100; i++) {
+        Debug.Write("+1 line\n");
+    }
+
+    *((volatile UIntPtr*)nullptr) = 0;
     ASSERT(False);
 }

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 23:22 BRT
- * Last edited on February 16 of 2021, at 10:30 BRT */
+ * Last edited on February 18 of 2021, at 18:35 BRT */
 
 #include <textout.hxx>
 
@@ -24,8 +24,8 @@ Void TextOutput::Write(const String &Format, ...) {
     VariadicStart(args, Format);
 
     VariadicFormat(Format, args, [](Char Data, Void *Context) -> Boolean {
-        return reinterpret_cast<TextOutput*>(Context)->WriteInt(Data);
-    }, reinterpret_cast<Void*>(this), Null, 0, 0);
+        return static_cast<TextOutput*>(Context)->WriteInt(Data);
+    }, static_cast<Void*>(this), Null, 0, 0);
 
     VariadicEnd(args);
     AfterWrite();

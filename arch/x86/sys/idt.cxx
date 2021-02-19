@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 29 of 2020, at 11:24 BRT
- * Last edited on February 17 of 2021, at 11:53 BRT */
+ * Last edited on February 18 of 2021, at 18:05 BRT */
 
 #include <arch/desctables.hxx>
 #include <arch/port.hxx>
@@ -92,7 +92,7 @@ extern "C" force_align_arg_pointer Void IdtDefaultHandler(Registers &Regs) {
         }
 
 	    StackTrace::Dump();
-	    Arch::Halt();
+	    Arch::Halt(True);
 	}
 }
 

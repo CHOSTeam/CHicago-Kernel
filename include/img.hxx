@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:37 BRT
- * Last edited on February 16 of 2021 at 15:10 BRT */
+ * Last edited on February 18 of 20s21 at 17:36 BRT */
 
 #pragma once
 
@@ -128,7 +128,7 @@ private:
         return Left > Right ? Left : Right;
     }
 
-    Void Cleanup(Void) ;
+    Void Cleanup(Void);
 
     UInt32 *Buffer;
     Boolean Allocated;

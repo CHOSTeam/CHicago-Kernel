@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 21:14 BRT
- * Last edited on February 16 of 2021 at 15:16 BRT */
+ * Last edited on February 18 of 2021 at 18:42 BRT */
 
 #include <img.hxx>
 
@@ -32,9 +32,12 @@ Void Image::Cleanup(Void) {
      * problem in the start). */
 
     if (Allocated && (References == Null || --*References == 0)) {
+        if (References != Null) {
+            delete References;
+            References = Null;
+        }
+
         delete[] Buffer;
-        delete References;
-        References = Null;
     } else if (References != Null && *References == 0) {
         delete References;
         References = Null;
@@ -214,7 +217,7 @@ Void Image::DrawString(UInt16 X, UInt16 Y, UInt32 Color, const String &Format, .
         /* We don't handle here reaching the end of the screen and going into the next line, nor scrolling when we
          * reach the end of the screen. And also we don't handle TAB anywhere (for now). */
 
-        auto ctx = reinterpret_cast<UIntPtr*>(Context);
+        auto ctx = static_cast<UIntPtr*>(Context);
 
         switch (Data) {
         case '\n': ctx[2] += DefaultFont.Height;
@@ -229,7 +232,7 @@ Void Image::DrawString(UInt16 X, UInt16 Y, UInt32 Color, const String &Format, .
             return True;
         }
         }
-    }, reinterpret_cast<Void*>(ctx), Null, 0, 0);
+    }, static_cast<Void*>(ctx), Null, 0, 0);
     
     VariadicEnd(args);
 }

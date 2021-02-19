@@ -1,29 +1,30 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on May 11 of 2018, at 13:15 BRT
- * Last edited on February 17 of 2021, at 10:21 BRT */
+ * Last edited on February 19 of 2021, at 12:41 BRT */
 
 #pragma once
 
+namespace CHicago {
+
 #define VERSION "next-4"
 
-#define Void void
-
-#define Char char
+typedef void Void;
+typedef char Char;
 
 /* Unsigned types */
 
-#define UInt8 unsigned char
-#define UInt16 unsigned short
-#define UInt32 unsigned int
-#define UInt64 unsigned long long
+typedef unsigned char UInt8;
+typedef unsigned short UInt16;
+typedef unsigned int UInt32;
+typedef unsigned long long UInt64;
 
 /* Signed types */
 
-#define Int8 signed char
-#define Int16 signed short
-#define Int32 signed int
-#define Int64 signed long long
+typedef signed char Int8;
+typedef signed short Int16;
+typedef signed int Int32;
+typedef signed long long Int64;
 
 /* Define our IntPtr type */
 
@@ -36,8 +37,8 @@
 #define INTPTR_MIN -9223372036854775807
 #define INTPTR_MAX 9223372036854775807
 
-#define UIntPtr unsigned long long
-#define IntPtr signed long long
+typedef unsigned long long UIntPtr;
+typedef signed long long IntPtr;
 #else
 #define UINTPTR_MAX_HEX "0x%08x"
 #define UINTPTR_HEX "0x%x"
@@ -47,13 +48,13 @@
 #define INTPTR_MIN -2147483648
 #define INTPTR_MAX 2147483647
 
-#define UIntPtr unsigned int
-#define IntPtr signed int
+typedef unsigned int UIntPtr;
+typedef signed int IntPtr;
 #endif
 
 /* I know it's a bit confusing, but our default float type is double... */
 
-#define Float double
+typedef double Float;
 
 /* Variadic arguments */
 
@@ -70,7 +71,9 @@
 #define no_return __attribute__((noreturn))
 #define no_inline __attribute__((noinline))
 #define section(x) __attribute__((section(x)))
+#define aligned(x) __attribute__((aligned(x)))
 #define always_inline __attribute__((always_inline))
+#define vector_size(x) __attribute__((vector_size(x), may_alias))
 #define force_align_arg_pointer __attribute__((force_align_arg_pointer))
 
 /* A few builtin functions. */
@@ -90,5 +93,7 @@ typedef bool Boolean;
  * this is hackish as hell, I know. */
 
 #define AlignAlloc align_val_t
-namespace std { enum class AlignAlloc : long UInt32 { }; }
+namespace std { enum class AlignAlloc : long unsigned int { }; }
 using namespace std;
+
+}

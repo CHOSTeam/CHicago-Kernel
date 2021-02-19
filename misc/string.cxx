@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 16 of 2021 at 20:01 BRT */
+ * Last edited on February 18 of 2021 at 18:41 BRT */
 
 #include <string.hxx>
 
@@ -207,7 +207,7 @@ Status String::Append(const String &Format, ...) {
     VariadicStart(args, Format);
 
     VariadicFormat(Format, args, [](Char Data, Void *Context) -> Boolean {
-        auto ctx = reinterpret_cast<UIntPtr*>(Context);
+        auto ctx = static_cast<UIntPtr*>(Context);
         return (*reinterpret_cast<Status*>(ctx[0]) =
                  reinterpret_cast<String*>(ctx[1])->Append(Data)) == Status::Success;
     }, ctx, Null, 0, 0);

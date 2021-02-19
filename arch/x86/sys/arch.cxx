@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:47 BRT
- * Last edited on February 17 of 2021 at 11:39 BRT */
+ * Last edited on February 18 of 2021 at 18:03 BRT */
 
 #include <arch/desctables.hxx>
 #include <arch.hxx>
@@ -20,8 +20,14 @@ Void Arch::Initialize(BootInfo&) {
     Debug.Write("initialized the interrupt descriptor table\n");
 }
 
-no_return Void Arch::Halt(Void) {
-    while (True) {
-        asm volatile("hlt");
+no_return Void Arch::Halt(Boolean Full) {
+    if (Full) {
+        while (True) {
+            asm volatile("cli; hlt");
+        }
+    } else {
+        while (True) {
+            asm volatile("hlt");
+        }
     }
 }

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 15 of 2021, at 11:36 BRT
- * Last edited on February 16 of 2021 at 11:10 BRT */
+ * Last edited on February 18 of 2021 at 18:04 BRT */
 
 #include <arch.hxx>
 #include <panic.hxx>
@@ -22,7 +22,7 @@ static inline always_inline Void Prologue(Void) {
 static inline always_inline no_return Void Epilogue(const SourceLocation &Location) {
     Debug.Write("at: %s:%u:%u\n", Location.Filename, Location.Line, Location.Column);
     StackTrace::Dump();
-    Arch::Halt();
+    Arch::Halt(True);
 }
 
 extern "C" no_return Void __ubsan_handle_invalid_builtin(InvalidBuiltinData &Data) {

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 16 of 2021, at 13:22 BRT
- * Last edited on February 16 of 2021 at 13:23 BRT */
+ * Last edited on February 18 of 2021 at 18:04 BRT */
 
 #include <arch.hxx>
 #include <panic.hxx>
@@ -15,7 +15,7 @@ extern "C" no_return Void __stack_chk_fail(Void) {
     Debug.SetForeground(0xFFFF0000);
     Debug.Write("panic: stack smashing detected\n");
     StackTrace::Dump();
-    Arch::Halt();
+    Arch::Halt(True);
 }
 
 extern "C" no_return Void __cxa_pure_virtual(Void) {
@@ -25,5 +25,5 @@ extern "C" no_return Void __cxa_pure_virtual(Void) {
     Debug.SetForeground(0xFFFF0000);
     Debug.Write("panic: stack smashing detected\n");
     StackTrace::Dump();
-    Arch::Halt();
+    Arch::Halt(True);
 }

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 05 of 2021, at 20:33 BRT
- * Last edited on February 16 of 2021, at 14:29 BRT */
+ * Last edited on February 18 of 2021, at 17:36 BRT */
 
 #pragma once
 
@@ -49,10 +49,10 @@ struct packed BootInfo {
     UInt8 KernelStack[0x2000];
 };
 
-}
-
 #ifdef USE_INIT_ARRAY
 extern "C" UIntPtr __init_array_start, __init_array_end;
 #else
 extern "C" Void _init(Void);
 #endif
+
+}
