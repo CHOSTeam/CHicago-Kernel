@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on February 18 of 2021 at 18:04 BRT */
+ * Last edited on February 20 of 2021 at 09:35 BRT */
 
 #include <arch.hxx>
 #include <mm.hxx>
@@ -48,8 +48,8 @@ extern "C" Void KernelEntry(BootInfo *Info) {
     Debug.Write("initialization finished, halting the machine\n");
     Debug.RestoreForeground();
 
-    for (Int32 i = 0; i < 100; i++) {
-        Debug.Write("+1 line\n");
+    for (Int32 i = 0; i <= 100; i++) {
+        Debug.Write("line %d\n", i);
     }
 
     *((volatile UIntPtr*)nullptr) = 0;

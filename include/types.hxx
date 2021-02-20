@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on May 11 of 2018, at 13:15 BRT
- * Last edited on February 19 of 2021, at 12:41 BRT */
+ * Last edited on February 19 of 2021, at 20:31 BRT */
 
 #pragma once
 
@@ -73,6 +73,7 @@ typedef double Float;
 #define section(x) __attribute__((section(x)))
 #define aligned(x) __attribute__((aligned(x)))
 #define always_inline __attribute__((always_inline))
+#define disable_ubsan __attribute__((no_sanitize("undefined")))
 #define vector_size(x) __attribute__((vector_size(x), may_alias))
 #define force_align_arg_pointer __attribute__((force_align_arg_pointer))
 
