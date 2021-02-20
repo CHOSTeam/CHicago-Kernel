@@ -1,11 +1,10 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 15:57 BRT
- * Last edited on February 17 of 2021 at 09:35 BRT */
+ * Last edited on February 20 of 2021 at 18:22 BRT */
 
 #pragma once
 
-#include <boot.hxx>
 #include <textout.hxx>
 
 /* On some archs (well, on all the three currently supported archs), we can just use __builtin_frame_address(0), and

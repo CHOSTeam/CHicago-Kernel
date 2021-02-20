@@ -1,19 +1,21 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 18 of 2021 at 18:41 BRT */
+ * Last edited on February 20 of 2021 at 19:46 BRT */
 
 #include <string.hxx>
 
 using namespace CHicago;
 
-String::String(Void) : Value(Null), Capacity(0), Length(0) { }
+String::String(Void) : Value(const_cast<Char*>("")), Capacity(0), Length(0) { }
 
 String::String(UIntPtr Size) : Value(Null), Capacity(0), Length(0) {
     Value = Size != 0 ? new Char[Size + 1] : Null;
 
     if (Value != Null) {
         Capacity = Size + 1;
+    } else {
+        Value = const_cast<Char*>("");
     }
 }
 
@@ -103,8 +105,8 @@ Void String::FromUInt(Char *Buffer, UInt64 Value, UInt8 Base, IntPtr &Current, I
     }
 }
 
-String String::FromInt(Char *Buffer, Int64 Value, UIntPtr Size, UInt8 Base) {
-    if (Buffer == Null || Size < 2 || Base < 2 || Base > 36) {
+String String::FromInt(Char *Buffer, Int64 Value, UIntPtr Size) {
+    if (Buffer == Null || Size < (Value < 0 ? 3 : 2)) {
         return {};
     } else if (!Value) {
         return "0";
@@ -113,17 +115,14 @@ String String::FromInt(Char *Buffer, Int64 Value, UIntPtr Size, UInt8 Base) {
     /* Now with the easy cases out of the way, let's first handle saving the sign, and converting the value into a
      * positive value. */
 
-    Int64 sign = Value < 0 ? -1 : 1;
     IntPtr cur = static_cast<IntPtr>(Size - 2), end = Value < 0 ? 1 : 0;
-
-    Value *= sign;
 
     /* Now we can just use our global FromUInt function (as the value is now a valid UInt), add the sign (if required),
      * and return! */
 
-    FromUInt(Buffer, Value, Base, cur, end);
+    FromUInt(Buffer, Value < 0 ? -Value : Value, 10, cur, end);
 
-    if (sign == -1) {
+    if (Value < 0) {
         Buffer[cur--] = '-';
     }
 
@@ -144,6 +143,39 @@ String String::FromUInt(Char *Buffer, UInt64 Value, UIntPtr Size, UInt8 Base) {
     FromUInt(Buffer, Value, Base, cur, 0);
 
     return &Buffer[cur + 1];
+}
+
+String String::FromFloat(Char *Buffer, Float Value, UIntPtr Size, UIntPtr Precision) {
+    if (Buffer == Null || (Precision && Size < Precision + 3) || (!Precision && Size < 2)) {
+        return {};
+    }
+
+    /* Start by printing the fractional part into the buffer. */
+
+    IntPtr cur = static_cast<IntPtr>(Size - (Precision ? Precision + 1 : 0) - 2), start = cur - 1,
+           end = Value < 0 ? 1 : 0;
+
+    if (Precision) {
+        Float fract = Value - static_cast<Int64>(Value);
+
+        Buffer[cur++] = '.';
+
+        while (Precision--) {
+            fract *= 10;
+            Buffer[cur++] = fract + '0';
+            fract = fract - static_cast<Int64>(fract);
+        }
+    }
+
+    /* And then the integer/whole part of the float into the buffer (this uses the same process as FromInt). */
+
+    FromUInt(Buffer, Value < 0 ? -Value : Value, 10, start, end);
+
+    if (Value < 0) {
+        Buffer[start--] = '-';
+    }
+
+    return &Buffer[start + 1];
 }
 
 Void String::Clear(Void) {
@@ -187,14 +219,19 @@ Status String::Append(Char Value) {
     return Status::Success;
 }
 
-Status String::Append(Int64 Value, UInt8 Base) {
+Status String::Append(Int64 Value) {
     Char buf[65];
-    return Append(FromInt(buf, Value, 65, Base));
+    return Append(FromInt(buf, Value, 65));
 }
 
 Status String::Append(UInt64 Value, UInt8 Base) {
     Char buf[65];
     return Append(FromUInt(buf, Value, 65, Base));
+}
+
+Status String::Append(Float Value, UIntPtr Precision) {
+    Char buf[65];
+    return Append(FromFloat(buf, Value, 65, Precision));
 }
 
 Status String::Append(const String &Format, ...) {

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on February 16 of 2021 at 14:38 BRT */
+ * Last edited on February 20 of 2021 at 19:45 BRT */
 
 #pragma once
 
@@ -21,8 +21,9 @@ public:
     String &operator =(const Char*);
     String &operator =(const String&);
 
-    static String FromInt(Char*, Int64, UIntPtr, UInt8);
+    static String FromInt(Char*, Int64, UIntPtr);
     static String FromUInt(Char*, UInt64, UIntPtr, UInt8);
+    static String FromFloat(Char*, Float, UIntPtr, UIntPtr = 6);
 
     /* You maybe wondering: Hey, why doesn't the constructors allow initializing the string with formatted input? Well,
      * for this we have the Format function! And yeah, we actually need to make their body here as well, because of all
@@ -48,8 +49,9 @@ public:
     Void Clear(Void);
 
     Status Append(Char);
-    Status Append(Int64, UInt8);
+    Status Append(Int64);
     Status Append(UInt64, UInt8);
+    Status Append(Float, UIntPtr = 6);
     Status Append(const String&, ...);
 
     Boolean Compare(const String&) const;

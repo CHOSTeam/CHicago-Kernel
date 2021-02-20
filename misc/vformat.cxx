@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 15:57 BRT
- * Last edited on February 20 of 2021 at 18:02 BRT */
+ * Last edited on February 20 of 2021 at 18:39 BRT */
 
 #include <string.hxx>
 
@@ -211,12 +211,6 @@ static Char *WriteString(const Char *Data, UIntPtr DataSize, Boolean (*Function)
     return Buffer;
 }
 
-static Float Pow10(IntPtr Value) {
-    UIntPtr ret = 10;
-    for (; --Value > 0; ret *= 10);
-    return ret;
-}
-
 UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*Function)(Char, Void*), Void *Context,
                        Char *Buffer, UIntPtr Size, UIntPtr Limit) {
     if (Function == Null && Buffer == Null) {
@@ -253,8 +247,8 @@ UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*
          * print the sign, etc). */
 
         UInt8 sign = 0;
+        Char buf[65] = { 0 };
         UIntPtr width = 0, pr = 0;
-        Char buf[65] = { 0 }, buf2[65] = { 0 };
         Boolean lj = False, zero = False, wset = False, pset = False;
 
         pos += ParseFlags(Format, Arguments, pos + 1, lj, sign, zero, wset, pset, width, pr) + 1;
@@ -331,22 +325,13 @@ UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*
 
             Char padc = zero ? '0' : ' ';
             Float val = VariadicArg(Arguments, Float);
-            Int64 ival = val, fract = (val - ival) * Pow10(pr);
-            String istr = String::FromUInt(buf, ival < 0 ? -ival : ival, 65, 10),
-                   fstr = String::FromUInt(buf2, fract < 0 ? -fract : fract, 65, 10);
-            UIntPtr inlen = istr.GetLength(), frlen = pr ? fstr.GetLength() : 0,
-                    flen = inlen + frlen + (pr ? 1 : 0) + (val < 0 || sign), pad = width > flen ? width - flen : 0;
+            String str = String::FromFloat(buf, val < 0 ? -val : val, 65, pr);
+            UIntPtr len = str.GetLength(), flen = len + (val < 0 || sign), pad = width > flen ? width - flen : 0;
 
             WRITE_SIGN(zero);
             PAD(!lj && width > flen, pad, padc);
             WRITE_SIGN(!zero);
-            WRITE_STRING(istr.GetValue(), inlen);
-
-            if (pr) {
-                WRITE_CHAR('.');
-                WRITE_STRING(fstr.GetValue(), frlen);
-            }
-
+            WRITE_STRING(str.GetValue(), len);
             PAD(lj && width > flen, pad, padc);
 
             break;
