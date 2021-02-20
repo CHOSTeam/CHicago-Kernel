@@ -1,13 +1,22 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:45 BRT
- * Last edited on February 19 of 2021 at 20:40 BRT */
+ * Last edited on February 20 of 2021 at 09:46 BRT */
 
 #include <simd.hxx>
 
 namespace CHicago {
 
 /* Disable UBSan for the memory functions (so that the compiler will not generate a check every single store). */
+
+#define ALIGN(v, x, e) \
+    if (Length >= v) { \
+        UIntPtr align = v - (reinterpret_cast<UIntPtr>(Buffer) & (v - 1)); \
+        SIMD::StoreUnaligned(dst, x); \
+        Length -= align; \
+        dst += align; \
+        e; \
+    }
 
 disable_ubsan Void CopyMemory(Void *Buffer, const Void *Source, UIntPtr Length) {
     if (Buffer == Null || Source == Null || Buffer == Source || !Length) {
@@ -22,13 +31,7 @@ disable_ubsan Void CopyMemory(Void *Buffer, const Void *Source, UIntPtr Length) 
      * it will be slower), instead, let's use 128-bit SIMD operations. But before actually starting the copy, if the
      * length is big enough, let's align the dest pointer to a 16-byte boundary (so that we can use aligned stores). */
 
-    if (Length >= 16) {
-        UIntPtr align = 0x10 - (reinterpret_cast<UIntPtr>(Buffer) & 0x0F);
-        SIMD::StoreUnaligned(dst, SIMD::LoadUnalignedI16(src));
-        Length -= align;
-        dst += align;
-        src += align;
-    }
+    ALIGN(16, SIMD::LoadUnalignedI16(src), src += align)
 
     while (Length >= 32) {
         Int64x2 a = SIMD::LoadUnalignedI16(src), b = SIMD::LoadUnalignedI16(src + 16);
@@ -41,19 +44,8 @@ disable_ubsan Void CopyMemory(Void *Buffer, const Void *Source, UIntPtr Length) 
     /* And yeah, here we just copy twice as much per loop (and also the alignment this time is 32-bytes instead of
      * 16). */
 
-    if (Length >= 32) {
-        UIntPtr align = 0x20 - (reinterpret_cast<UIntPtr>(Buffer) & 0x1F);
-        SIMD::StoreUnaligned(dst, SIMD::LoadUnalignedI32(src));
-        Length -= align;
-        dst += align;
-        src += align;
-    } else if (Length >= 16) {
-        UIntPtr align = 0x10 - (reinterpret_cast<UIntPtr>(Buffer) & 0x0F);
-        SIMD::StoreUnaligned(dst, SIMD::LoadUnalignedI16(src));
-        Length -= align;
-        dst += align;
-        src += align;
-    }
+    ALIGN(32, SIMD::LoadUnalignedI32(src), src += align)
+    else ALIGN(16, SIMD::LoadUnalignedI16(src), src += align)
 
     while (Length >= 64) {
         Int64x4 a = SIMD::LoadUnalignedI32(src), b = SIMD::LoadUnalignedI32(src + 32);
@@ -97,12 +89,7 @@ disable_ubsan Void SetMemory(Void *Buffer, UInt8 Value, UIntPtr Length) {
 #ifdef NO_256_SIMD
     /* Also, we can pre-init one variable containing Int64x2 (or x4 on 256-bits) of our value. */
 
-    if (Length >= 16) {
-        UIntPtr align = 0x10 - (reinterpret_cast<UIntPtr>(Buffer) & 0x0F);
-        SIMD::StoreUnaligned(dst, val);
-        Length -= align;
-        dst += align;
-    }
+    ALIGN(16, val,)
 
     while (Length >= 32) {
         SIMD::StoreAligned(dst, val), SIMD::StoreAligned(dst + 16, val);
@@ -115,17 +102,8 @@ disable_ubsan Void SetMemory(Void *Buffer, UInt8 Value, UIntPtr Length) {
                               Value, Value, Value, Value, Value, Value, Value, Value,
                               Value, Value, Value, Value, Value, Value, Value, Value };
 
-    if (Length >= 32) {
-        UIntPtr align = 0x20 - (reinterpret_cast<UIntPtr>(Buffer) & 0x1F);
-        SIMD::StoreUnaligned(dst, val2);
-        Length -= align;
-        dst += align;
-    } else if (Length >= 16) {
-        UIntPtr align = 0x10 - (reinterpret_cast<UIntPtr>(Buffer) & 0x0F);
-        SIMD::StoreUnaligned(dst, val);
-        Length -= align;
-        dst += align;
-    }
+    ALIGN(32, val2,)
+    else ALIGN(16, val,)
 
     while (Length >= 64) {
         SIMD::StoreAligned(dst, val2), SIMD::StoreAligned(dst + 32, val2);
