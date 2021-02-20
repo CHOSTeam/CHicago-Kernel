@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 15:57 BRT
- * Last edited on February 15 of 2021 at 10:31 BRT */
+ * Last edited on February 20 of 2021 at 18:02 BRT */
 
 #include <string.hxx>
 
@@ -27,15 +27,25 @@ using namespace CHicago;
     \
     written += sz
 
-#define PAD_NO_COND(cnt, c) \
-    for (UIntPtr i = 0; i < cnt; i++) { \
-        WRITE_CHAR(c); \
-    }
+#define PAD(cond, cnt, c) \
+    do { if (cond) { \
+             for (UIntPtr i = 0; i < cnt; i++) { \
+                 WRITE_CHAR(c); \
+             } \
+         } } while (False)
 
-#define PAD_COND(cond, cnt, c) \
-    if (cond) { \
-        PAD_NO_COND(cnt, c); \
-    }
+#define WRITE_SIGN(cond) \
+    do { if (cond) { \
+             if (val < 0) { \
+                 WRITE_CHAR('-'); \
+             } else if (sign == 1) { \
+                 WRITE_CHAR('+'); \
+             } else if (sign == 2) { \
+                 WRITE_CHAR(' '); \
+             } \
+         } } while (False)
+
+namespace CHicago {
 
 /* TODO: Move those functions before ParseFlags somewhere else (as we will probably need them not only here). */
 
@@ -72,16 +82,16 @@ static UIntPtr ParseFlags(const String &Format, VariadicList &Arguments, UIntPtr
     UInt8 state = 0;
     UIntPtr ret = Current;
 
-	/* The minus sign indicated that we should justify to the left (instead of right).
-	 * The plus sign indicates that we should always append the sign.
-	 * A zero indicates that the padding should use zeroes instead of spaces.
-	 * A space indicates that the padding should use spaces instead of zeroes, or that we should use a space instead
-	 * of the plus sign (if it is a positive number that we're printing).
-	 * An asterisk indicates that we should set the field width (using the VariadicList).
-	 * A dot indicates that we should set the precision/number of digits after the floating point (well, it's actually
-	 * not only for floats/doubles).
-	 * Finally, if there are numbers, it indicates that we should set the field width (without using the
-	 * VariadicList). */
+    /* The minus sign indicated that we should justify to the left (instead of right).
+     * The plus sign indicates that we should always append the sign.
+     * A zero indicates that the padding should use zeroes instead of spaces.
+     * A space indicates that the padding should use spaces instead of zeroes, or that we should use a space instead
+     * of the plus sign (if it is a positive number that we're printing).
+     * An asterisk indicates that we should set the field width (using the VariadicList).
+     * A dot indicates that we should set the precision/number of digits after the floating point (well, it's actually
+     * not only for floats/doubles).
+     * Finally, if there are numbers, it indicates that we should set the field width (without using the
+     * VariadicList). */
 
     while (True) {
         if (state == 1) {
@@ -91,68 +101,68 @@ static UIntPtr ParseFlags(const String &Format, VariadicList &Arguments, UIntPtr
         }
 
         switch (Format[ret]) {
-        case '-': LeftJust = True; ret++; break;
-        case '+': Sign = 1; ret++; break;
-        case '0': Zero = True; ret++; break;
-        case ' ': {
-            if (Sign) {
-                Sign++;
-            }
+            case '-': LeftJust = True; ret++; break;
+            case '+': Sign = 1; ret++; break;
+            case '0': Zero = True; ret++; break;
+            case ' ': {
+                if (Sign) {
+                    Sign++;
+                }
 
-            Zero = False;
-            ret++;
-
-            break;
-        }
-        case '*': {
-            if (WidthSet) {
-                /* We don't want to set the width twice, error out. */
-
-                state = 1;
-            } else {
-                Width = VariadicArg(Arguments, UIntPtr);
-                WidthSet = True;
+                Zero = False;
                 ret++;
-            }
 
-            break;
-        }
-        case '.': {
-            if (PrecisionSet) {
-                state = 1;
                 break;
             }
+            case '*': {
+                if (WidthSet) {
+                    /* We don't want to set the width twice, error out. */
 
-            ret++;
+                    state = 1;
+                } else {
+                    Width = VariadicArg(Arguments, UIntPtr);
+                    WidthSet = True;
+                    ret++;
+                }
 
-            /* Check if we should use the variadic args, if we should manually parse the number from the format
-             * string, or maybe if we should just error out. */
+                break;
+            }
+            case '.': {
+                if (PrecisionSet) {
+                    state = 1;
+                    break;
+                }
 
-            if (IsDigit(Format[ret])) {
-                Precision = ToUInt(Format, ret);
-                PrecisionSet = True;
-            } else if (Format[ret] == '*') {
-                Precision = VariadicArg(Arguments, UIntPtr);
-                PrecisionSet = True;
                 ret++;
-            } else {
-                state = 1;
-            }
 
-            break;
-        }
-        default: {
-            if (IsDigit(Format[ret]) && !WidthSet) {
-                Width = ToUInt(Format, ret);
-                WidthSet = True;
-            } else if (IsDigit(Format[ret])) {
-                state = 1;
-            } else {
-                state = 2;
-            }
+                /* Check if we should use the variadic args, if we should manually parse the number from the format
+                 * string, or maybe if we should just error out. */
 
-            break;
-        }
+                if (IsDigit(Format[ret])) {
+                    Precision = ToUInt(Format, ret);
+                    PrecisionSet = True;
+                } else if (Format[ret] == '*') {
+                    Precision = VariadicArg(Arguments, UIntPtr);
+                    PrecisionSet = True;
+                    ret++;
+                } else {
+                    state = 1;
+                }
+
+                break;
+            }
+            default: {
+                if (IsDigit(Format[ret]) && !WidthSet) {
+                    Width = ToUInt(Format, ret);
+                    WidthSet = True;
+                } else if (IsDigit(Format[ret])) {
+                    state = 1;
+                } else {
+                    state = 2;
+                }
+
+                break;
+            }
         }
     }
 }
@@ -201,7 +211,11 @@ static Char *WriteString(const Char *Data, UIntPtr DataSize, Boolean (*Function)
     return Buffer;
 }
 
-namespace CHicago {
+static Float Pow10(IntPtr Value) {
+    UIntPtr ret = 10;
+    for (; --Value > 0; ret *= 10);
+    return ret;
+}
 
 UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*Function)(Char, Void*), Void *Context,
                        Char *Buffer, UIntPtr Size, UIntPtr Limit) {
@@ -239,8 +253,8 @@ UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*
          * print the sign, etc). */
 
         UInt8 sign = 0;
-        Char buf[65] = { 0 };
         UIntPtr width = 0, pr = 0;
+        Char buf[65] = { 0 }, buf2[65] = { 0 };
         Boolean lj = False, zero = False, wset = False, pset = False;
 
         pos += ParseFlags(Format, Arguments, pos + 1, lj, sign, zero, wset, pset, width, pr) + 1;
@@ -270,19 +284,11 @@ UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*
 
             pad = pad > flen ? pad - flen : 0;
 
-            PAD_COND(!zero && !lj && width > pr, spaces, ' ');
-
-            if (val < 0) {
-                WRITE_CHAR('-');
-            } else if (sign == 1) {
-                WRITE_CHAR('+');
-            } else if (sign == 2) {
-                WRITE_CHAR(' ');
-            }
-
-            PAD_COND(zero || pr, pad, '0');
+            PAD(!zero && !lj && width > pr, spaces, ' ');
+            WRITE_SIGN(True);
+            PAD(zero || pr, pad, '0');
             WRITE_STRING(str.GetValue(), len);
-            PAD_COND(!zero && lj && width > pr, spaces, ' ');
+            PAD(!zero && lj && width > pr, spaces, ' ');
 
             break;
         }
@@ -311,19 +317,46 @@ UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*
 
             pad = pad > len ? pad - len : 0;
 
-            PAD_COND(!zero && !lj && width > pr, spaces, ' ');
-            PAD_COND(zero || pr, pad, '0');
+            PAD(!zero && !lj && width > pr, spaces, ' ');
+            PAD(zero || pr, pad, '0');
             WRITE_STRING(str.GetValue(), len);
-            PAD_COND(!zero && lj && width > pr, spaces, ' ');
+            PAD(!zero && lj && width > pr, spaces, ' ');
+
+            break;
+        }
+        case 'f': {
+            if (!pset) {
+                pr = 6;
+            }
+
+            Char padc = zero ? '0' : ' ';
+            Float val = VariadicArg(Arguments, Float);
+            Int64 ival = val, fract = (val - ival) * Pow10(pr);
+            String istr = String::FromUInt(buf, ival < 0 ? -ival : ival, 65, 10),
+                   fstr = String::FromUInt(buf2, fract < 0 ? -fract : fract, 65, 10);
+            UIntPtr inlen = istr.GetLength(), frlen = pr ? fstr.GetLength() : 0,
+                    flen = inlen + frlen + (pr ? 1 : 0) + (val < 0 || sign), pad = width > flen ? width - flen : 0;
+
+            WRITE_SIGN(zero);
+            PAD(!lj && width > flen, pad, padc);
+            WRITE_SIGN(!zero);
+            WRITE_STRING(istr.GetValue(), inlen);
+
+            if (pr) {
+                WRITE_CHAR('.');
+                WRITE_STRING(fstr.GetValue(), frlen);
+            }
+
+            PAD(lj && width > flen, pad, padc);
 
             break;
         }
         case 'c': {
             /* Single character + padding. */
 
-            PAD_COND(!lj && width > 2, width - 1, ' ');
+            PAD(!lj && width > 2, width - 1, ' ');
             WRITE_CHAR(VariadicArg(Arguments, IntPtr));
-            PAD_COND(lj && width > 2, width - 1, ' ');
+            PAD(lj && width > 2, width - 1, ' ');
 
             break;
         }
@@ -338,9 +371,9 @@ UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*
                 len = pr;
             }
 
-            PAD_COND(!lj && width > len, width - len, ' ');
+            PAD(!lj && width > len, width - len, ' ');
             WRITE_STRING(str.GetValue(), len);
-            PAD_COND(lj && width > len, width - len, ' ');
+            PAD(lj && width > len, width - len, ' ');
 
             break;
         }
