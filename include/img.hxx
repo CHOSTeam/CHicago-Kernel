@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:37 BRT
- * Last edited on February 18 of 20s21 at 17:36 BRT */
+ * Last edited on February 22 of 20s21 at 14:15 BRT */
 
 #pragma once
 
@@ -101,7 +101,7 @@ public:
     Void DrawLine(UInt16, UInt16, UInt16, UInt16, UInt32);
     Void DrawRectangle(UInt16, UInt16, UInt16, UInt16, UInt32, Boolean = False);
     Boolean DrawCharacter(UInt16, UInt16, Char, UInt32);
-    Void DrawString(UInt16, UInt16, UInt32, const String&, ...);
+    UIntPtr DrawString(UInt16, UInt16, UInt32, const String&, ...);
 
     /* Some extra functions that allow us to access all the internal info about the image that we may need to
      * access. */

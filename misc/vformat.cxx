@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 15:57 BRT
- * Last edited on February 22 of 2021 at 13:51 BRT */
+ * Last edited on February 22 of 2021 at 14:12 BRT */
 
 #include <string.hxx>
 
@@ -10,18 +10,14 @@ using namespace CHicago;
 /* Some macros to make our life a bit easier. */
 
 #define WRITE_CHAR(c) \
-    Buffer = WriteCharacter(c, Function, Context, Buffer, Size, Limit, written, err); \
-    \
-    if (err) { \
+    if (!Function(c, Context)) { \
         return written; \
     } \
     \
     written++
 
 #define WRITE_STRING(str, sz) \
-    Buffer = WriteString(str, sz, Function, Context, Buffer, Size, Limit, written, err); \
-    \
-    if (err) { \
+    if (!WriteString(str, sz, Function, Context)) { \
         return written; \
     } \
     \
@@ -167,58 +163,24 @@ static UIntPtr ParseFlags(const String &Format, VariadicList &Arguments, UIntPtr
     }
 }
 
-static Char *WriteCharacter(Char Data, Boolean (*Function)(Char, Void*), Void *Context, Char *Buffer, UIntPtr Size,
-                            UIntPtr Limit, UIntPtr Position, Boolean &Error) {
-    /* We have to handle both when the output is a function, and when we just have to write to the screen. We
-     * determine which one is the correct using the Function pointer. */
-
-    Error = False;
-
-    if (Function == Null && !(Limit && (Position + 1) >= Size)) {
-        *Buffer++ = Data;
-    } else if (Function == Null) {
-        Error = True;
-    } else {
-        Error = !Function(Data, Context);
-    }
-
-    return Buffer;
-}
-
-static Char *WriteString(const Char *Data, UIntPtr DataSize, Boolean (*Function)(Char, Void*), Void *Context,
-                         Char *Buffer, UIntPtr Size, UIntPtr Limit, UIntPtr Position, Boolean &Error) {
-    /* Same as above, but now we have to do it for each character in the string (while taking caution with the
-     * DataSize field). */
-
-    Error = False;
-
+static Boolean WriteString(const Char *Data, UIntPtr DataSize, Boolean (*Function)(Char, Void*), Void *Context) {
     while (*Data) {
         if (!(DataSize--)) {
             break;
-        } else if (Function == Null && !(Limit && (Position + 1) >= Size)) {
-            *Buffer++ = *Data++;
-        } else if (Function == Null) {
-            Error = True;
-        } else {
-            Error = !Function(*Data++, Context);
-        }
-
-        if (Error) {
-            return Buffer;
+        } else if (!Function(*Data++, Context)) {
+            return False;
         }
     }
 
-    return Buffer;
+    return True;
 }
 
-UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*Function)(Char, Void*), Void *Context,
-                       Char *Buffer, UIntPtr Size, UIntPtr Limit) {
-    if (Function == Null && Buffer == Null) {
+UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*Function)(Char, Void*), Void *Context) {
+    if (Function == Null) {
         return 0;
     }
 
     UIntPtr pos = 0, written = 0;
-    Boolean err = False;
 
     /* Let's parse the format string. */
 
@@ -231,9 +193,7 @@ UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*
             const Char *end = FindFirst(Format.GetValue() + pos, '%', Format.GetLength() - pos);
             UIntPtr size = end != Null ? end - Format.GetValue() - pos : Format.GetLength() - pos;
 
-            Buffer = WriteString(Format.GetValue() + pos, size, Function, Context, Buffer, Size, Limit, pos, err);
-
-            if (err) {
+            if (!WriteString(Format.GetValue() + pos, size, Function, Context)) {
                 return written;
             }
 

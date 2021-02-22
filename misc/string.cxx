@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 22 of 2021 at 13:52 BRT */
+ * Last edited on February 22 of 2021 at 14:13 BRT */
 
 #include <string.hxx>
 
@@ -262,22 +262,22 @@ Status String::Append(Char Value) {
     return Status::Success;
 }
 
-Status String::Append(Int64 Value) {
+UIntPtr String::Append(Int64 Value) {
     Char buf[65];
     return Append(FromInt(buf, Value, 65));
 }
 
-Status String::Append(UInt64 Value, UInt8 Base) {
+UIntPtr String::Append(UInt64 Value, UInt8 Base) {
     Char buf[65];
     return Append(FromUInt(buf, Value, 65, Base));
 }
 
-Status String::Append(Float Value, UIntPtr Precision) {
+UIntPtr String::Append(Float Value, UIntPtr Precision) {
     Char buf[65];
     return Append(FromFloat(buf, Value, 65, Precision));
 }
 
-Status String::Append(const String &Format, ...) {
+UIntPtr String::Append(const String &Format, ...) {
     /* Use VariadicFormat (like all the other functions), while passing ourselves as the context. */
 
     Status status = Status::Success;
@@ -286,14 +286,14 @@ Status String::Append(const String &Format, ...) {
     VariadicList args;
     VariadicStart(args, Format);
 
-    VariadicFormat(Format, args, [](Char Data, Void *Context) -> Boolean {
+    UIntPtr ret = VariadicFormat(Format, args, [](Char Data, Void *Context) -> Boolean {
         auto ctx = static_cast<UIntPtr*>(Context);
         return (*reinterpret_cast<Status*>(ctx[0]) =
                  reinterpret_cast<String*>(ctx[1])->Append(Data)) == Status::Success;
-    }, ctx, Null, 0, 0);
+    }, ctx);
 
     VariadicEnd(args);
-    return status;
+    return ret;
 }
 
 Boolean String::Compare(const String &Value) const {

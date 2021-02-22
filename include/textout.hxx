@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 26 of 2020, at 13:16 BRT
- * Last edited on February 16 of 2021, at 10:26 BRT */
+ * Last edited on February 22 of 2021, at 14:15 BRT */
 
 #pragma once
 
@@ -16,7 +16,7 @@ namespace CHicago {
 class TextOutput {
 public:
     Void Write(Char);
-    Void Write(const String&, ...);
+    UIntPtr Write(const String&, ...);
 private:
     virtual Void AfterWrite(Void) { }
     virtual Boolean WriteInt(Char) = 0;

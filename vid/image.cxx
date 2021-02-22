@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 21:14 BRT
- * Last edited on February 18 of 2021 at 18:42 BRT */
+ * Last edited on February 22 of 2021 at 14:14 BRT */
 
 #include <img.hxx>
 
@@ -200,9 +200,9 @@ Boolean Image::DrawCharacter(UInt16 X, UInt16 Y, Char Data, UInt32 Color) {
     return True;
 }
 
-Void Image::DrawString(UInt16 X, UInt16 Y, UInt32 Color, const String &Format, ...) {
+UIntPtr Image::DrawString(UInt16 X, UInt16 Y, UInt32 Color, const String &Format, ...) {
     if (Buffer == Null || X >= Width || Y >= Height) {
-        return;
+        return 0;
     }
 
     VariadicList args;
@@ -211,9 +211,8 @@ Void Image::DrawString(UInt16 X, UInt16 Y, UInt32 Color, const String &Format, .
     /* As we can't use a lambda that captures local variables as a function pointer, we need to save and pass the X/Y
      * values in another way... */
 
-    UIntPtr ctx[4] { reinterpret_cast<UIntPtr>(this), X, Y, Color };
-
-    VariadicFormat(Format, args, [](Char Data, Void *Context) -> Boolean {
+    UIntPtr ctx[4] { reinterpret_cast<UIntPtr>(this), X, Y, Color },
+            ret = VariadicFormat(Format, args, [](Char Data, Void *Context) -> Boolean {
         /* We don't handle here reaching the end of the screen and going into the next line, nor scrolling when we
          * reach the end of the screen. And also we don't handle TAB anywhere (for now). */
 
@@ -232,7 +231,8 @@ Void Image::DrawString(UInt16 X, UInt16 Y, UInt32 Color, const String &Format, .
             return True;
         }
         }
-    }, static_cast<Void*>(ctx), Null, 0, 0);
+    }, static_cast<Void*>(ctx));
     
     VariadicEnd(args);
+    return ret;
 }

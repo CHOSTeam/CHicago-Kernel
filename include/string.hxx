@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on February 22 of 2021 at 12:05 BRT */
+ * Last edited on February 22 of 2021 at 14:14 BRT */
 
 #pragma once
 
@@ -49,10 +49,10 @@ public:
     Void Clear(Void);
 
     Status Append(Char);
-    Status Append(Int64);
-    Status Append(UInt64, UInt8);
-    Status Append(Float, UIntPtr = 6);
-    Status Append(const String&, ...);
+    UIntPtr Append(Int64);
+    UIntPtr Append(UInt64, UInt8);
+    UIntPtr Append(Float, UIntPtr = 6);
+    UIntPtr Append(const String&, ...);
 
     Boolean Compare(const String&) const;
 
@@ -75,7 +75,7 @@ private:
     UIntPtr Capacity, Length;
 };
 
-UIntPtr VariadicFormat(const String&, VariadicList&, Boolean (*)(Char, Void*), Void*, Char*, UIntPtr, UIntPtr);
+UIntPtr VariadicFormat(const String&, VariadicList&, Boolean (*)(Char, Void*), Void*);
 
 Void CopyMemory(Void*, const Void*, UIntPtr);
 Void SetMemory(Void*, UInt8, UIntPtr);
