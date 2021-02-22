@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 15:57 BRT
- * Last edited on February 20 of 2021 at 18:39 BRT */
+ * Last edited on February 22 of 2021 at 13:51 BRT */
 
 #include <string.hxx>
 
@@ -319,13 +319,12 @@ UIntPtr VariadicFormat(const String &Format, VariadicList &Arguments, Boolean (*
             break;
         }
         case 'f': {
-            if (!pset) {
-                pr = 6;
-            }
+            /* Floats (actually doubles): Like signed integers, but we handle the precision (and the field width) in a
+             * different way (and of course we use FromFloat instead of FromInt). */
 
             Char padc = zero ? '0' : ' ';
             Float val = VariadicArg(Arguments, Float);
-            String str = String::FromFloat(buf, val < 0 ? -val : val, 65, pr);
+            String str = String::FromFloat(buf, val < 0 ? -val : val, 65, pset ? pr : 6);
             UIntPtr len = str.GetLength(), flen = len + (val < 0 || sign), pad = width > flen ? width - flen : 0;
 
             WRITE_SIGN(zero);

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 22 of 2021 at 12:16 BRT */
+ * Last edited on February 22 of 2021 at 13:52 BRT */
 
 #include <string.hxx>
 
@@ -167,11 +167,11 @@ String String::FromUInt(Char *Buffer, UInt64 Value, UIntPtr Size, UInt8 Base) {
 }
 
 String String::FromFloat(Char *Buffer, Float Value, UIntPtr Size, UIntPtr Precision) {
-    /* First, limit the max precision to 17 (trying to print more than this is a bit useless/starts to lose too much
+    /* First, limit the max precision to 16 (trying to print more than this is a bit useless/starts to lose too much
      * accuracy, and also we use a precalculated table for pow10). */
 
-    if (Precision > 17) {
-        Precision = 17;
+    if (Precision > 16) {
+        Precision = 16;
     }
 
     /* Extract the sign, and do the basic buffer size checks. */
