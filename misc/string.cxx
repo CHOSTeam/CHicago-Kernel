@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 22 of 2021 at 11:59 BRT */
+ * Last edited on February 22 of 2021 at 12:16 BRT */
 
 #include <string.hxx>
 
@@ -99,14 +99,35 @@ String &String::operator =(const String &Value) {
     return *this;
 }
 
-Void String::FromUInt(Char *Buffer, UInt64 Value, UInt8 Base, IntPtr &Current, IntPtr End) {
+static Float Pow10Neg[] = {
+        0.5, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001, 0.00000001, 0.000000001, 0.0000000001, 0.00000000001,
+        0.000000000001, 0.0000000000001, 0.00000000000001, 0.000000000000001, 0.0000000000000001, 0.00000000000000001
+};
+
+static UIntPtr CountDigits(UInt64 Value, UInt8 Base) {
+    if (!Value) {
+        return 1;
+    }
+
+    UIntPtr ret = 0;
+    for (; Value; Value /= Base, ret++) ;
+
+    return ret;
+}
+
+static Void FromUInt(Char *Buffer, UInt64 Value, UInt8 Base, IntPtr &Current, IntPtr End) {
     for (; Current >= End && Value; Current--, Value /= Base) {
         Buffer[Current] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Value % Base];
     }
 }
 
 String String::FromInt(Char *Buffer, Int64 Value, UIntPtr Size) {
-    if (Buffer == Null || Size < (Value < 0 ? 3 : 2)) {
+    /* Extract the sign (we gonna plot it at the end), and do a basic buffer size checks. */
+
+    Int64 sign = Value < 0 ? -1 : 1;
+    Value *= sign;
+
+    if (Buffer == Null || (Value && Size < CountDigits(Value, 10) + (sign < 0 ? 1 : 0) + 1)) {
         return {};
     } else if (!Value) {
         return "0";
@@ -115,14 +136,14 @@ String String::FromInt(Char *Buffer, Int64 Value, UIntPtr Size) {
     /* Now with the easy cases out of the way, let's first handle saving the sign, and converting the value into a
      * positive value. */
 
-    IntPtr cur = static_cast<IntPtr>(Size - 2), end = Value < 0 ? 1 : 0;
+    IntPtr cur = static_cast<IntPtr>(Size - 2), end = sign < 0 ? 1 : 0;
 
     /* Now we can just use our global FromUInt function (as the value is now a valid UInt), add the sign (if required),
      * and return! */
 
-    FromUInt(Buffer, Value < 0 ? -Value : Value, 10, cur, end);
+    ::FromUInt(Buffer, Value, 10, cur, end);
 
-    if (Value < 0) {
+    if (sign) {
         Buffer[cur--] = '-';
     }
 
@@ -130,7 +151,7 @@ String String::FromInt(Char *Buffer, Int64 Value, UIntPtr Size) {
 }
 
 String String::FromUInt(Char *Buffer, UInt64 Value, UIntPtr Size, UInt8 Base) {
-    if (Buffer == Null || Size < 2 || Base < 2 || Base > 36) {
+    if (Buffer == Null || Base < 2 || Base > 36 || (Value && Size < CountDigits(Value, Base) + 1)) {
         return {};
     } else if (!Value) {
         return "0";
@@ -140,15 +161,10 @@ String String::FromUInt(Char *Buffer, UInt64 Value, UIntPtr Size, UInt8 Base) {
      * sign). */
 
     auto cur = static_cast<IntPtr>(Size - 2);
-    FromUInt(Buffer, Value, Base, cur, 0);
+    ::FromUInt(Buffer, Value, Base, cur, 0);
 
     return &Buffer[cur + 1];
 }
-
-static Float Pow10Neg[] = {
-        0.5, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001, 0.00000001, 0.000000001, 0.0000000001, 0.00000000001,
-        0.000000000001, 0.0000000000001, 0.00000000000001, 0.000000000000001, 0.0000000000000001, 0.00000000000000001
-};
 
 String String::FromFloat(Char *Buffer, Float Value, UIntPtr Size, UIntPtr Precision) {
     /* First, limit the max precision to 17 (trying to print more than this is a bit useless/starts to lose too much
@@ -158,7 +174,12 @@ String String::FromFloat(Char *Buffer, Float Value, UIntPtr Size, UIntPtr Precis
         Precision = 17;
     }
 
-    if (Buffer == Null || (Precision && Size < Precision + 3) || (!Precision && Size < 2)) {
+    /* Extract the sign, and do the basic buffer size checks. */
+
+    Int64 sign = Value < 0 ? -1 : 1;
+    Value *= sign;
+
+    if (Buffer == Null || Size < CountDigits(Value, 10) + (sign < 1 ? 1 : 0) + (Precision ? Precision + 1 : 0) + 1) {
         return {};
     }
 
@@ -169,7 +190,7 @@ String String::FromFloat(Char *Buffer, Float Value, UIntPtr Size, UIntPtr Precis
     /* Start by printing the fractional part into the buffer. */
 
     IntPtr cur = static_cast<IntPtr>(Size - (Precision ? Precision + 1 : 0) - 2), start = cur - 1,
-           end = Value < 0 ? 1 : 0;
+           end = sign < 0 ? 1 : 0;
 
     if (Precision) {
         /* Add pow10(-prec), to make sure we will print 1 instead of 0.999999... (for example). */
@@ -187,9 +208,13 @@ String String::FromFloat(Char *Buffer, Float Value, UIntPtr Size, UIntPtr Precis
 
     /* And then the integer/whole part of the float into the buffer (this uses the same process as FromInt). */
 
-    FromUInt(Buffer, Value < 0 ? -Value : Value, 10, start, end);
+    if (!static_cast<UInt64>(Value)) {
+        Buffer[start] = '0';
+    } else {
+        ::FromUInt(Buffer, Value, 10, start, end);
+    }
 
-    if (Value < 0) {
+    if (sign < 0) {
         Buffer[start--] = '-';
     }
 

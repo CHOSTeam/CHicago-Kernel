@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on February 20 of 2021 at 19:45 BRT */
+ * Last edited on February 22 of 2021 at 12:05 BRT */
 
 #pragma once
 
@@ -69,7 +69,6 @@ public:
 
     Char operator [](UIntPtr Index) const { return Index >= Length ? '\0' : Value[Index]; }
 private:
-    static Void FromUInt(Char*, UInt64, UInt8, IntPtr&, IntPtr);
     Void CalculateLength(Void);
 
     Char *Value;
