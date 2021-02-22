@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 22 of 2021, at 15:27 BRT
- * Last edited on February 22 of 2021, at 17:20 BRT */
+ * Last edited on February 22 of 2021, at 19:09 BRT */
 
 #pragma once
 
@@ -18,13 +18,14 @@ class String;
 /* The Long and ULong types are required for 64-bits support (else, we gonna get some errors to do with ambiguity). */
 
 enum class ArgumentType {
-    Float,
-    Long, Int32, Int64,
+    Char,
+    Float, Long, Int32, Int64,
     ULong, UInt32, UInt64,
     Pointer, CString, CHString
 };
 
 union ArgumentValue {
+    Char CharValue;
     Float FloatValue;
     Long LongValue;
     ULong ULongValue;
@@ -42,6 +43,7 @@ public:
     /* And yes, we need one constructor for each argument type (and let's already inline everything). Any new valid arg
      * type should also be added here. */
 
+    Argument(Char Value) : Type(ArgumentType::Char), Value() { this->Value.CharValue = Value; }
     Argument(Float Value) : Type(ArgumentType::Float), Value() { this->Value.FloatValue = Value; }
     Argument(Long Value) : Type(ArgumentType::Long), Value() { this->Value.LongValue = Value; }
     Argument(ULong Value) : Type(ArgumentType::ULong), Value() { this->Value.ULongValue = Value; }

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 15:57 BRT
- * Last edited on February 22 of 2021 at 18:08 BRT */
+ * Last edited on February 22 of 2021 at 19:11 BRT */
 
 #include <string.hxx>
 
@@ -108,17 +108,14 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
 
         pos++;
 
+        Int8 pset = 0;
         UInt8 base = 10;
         Char buf[65] = { 0 };
         UIntPtr idx = 0, width = 0, prec = 0;
-        Boolean zero = False, iset = False, pset = False;
+        Boolean zero = False, iset = False, wset = False;
 
-        if (Format[pos] == '%') {
-            /* One extra valid format: '{%}', it means that we should just print '{'. */
-
-            if (Format[++pos] != '}') {
-                return written;
-            }
+        if (Format[pos] == '{') {
+            /* One extra valid format: '{{', it means that we should just print '{'. */
 
             WRITE_CHAR('{');
             pos++;
@@ -154,12 +151,11 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
                 pos++;
             }
 
-            /* Well, and also there is the case where we have an '*' instead of the width/precision, that means that we
-             * should set the width/prec to be 'sizeof(UIntPtr) * 2' (8 on 32-bits, 16 on 64-bits). */
+            /* Well, and also there is the case where we have an '*' instead of the width/precision. */
 
             if (Format[pos] != '.' && Format[pos] != ':' && Format[pos] != '}') {
                 if (Format[pos] == '*') {
-                    width = sizeof(UIntPtr) * 2;
+                    wset = True;
                     pos++;
                 } else {
                     if (!IsDigit(Format[pos])) {
@@ -174,7 +170,7 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
                 return written;
             } else if (Format[pos] == '.' && Format[pos + 1] == '*') {
                 prec = sizeof(UIntPtr) * 2;
-                pset = True;
+                pset = 2;
                 pos += 2;
             } else if (Format[pos] == '.') {
                 if (!IsDigit(Format[++pos])) {
@@ -182,7 +178,7 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
                 }
 
                 prec = ToUInt(Format, pos);
-                pset = True;
+                pset = 1;
             }
         }
 
@@ -213,7 +209,6 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
 
         ArgumentType type = Arguments[idx].GetType();
         ArgumentValue val = Arguments[idx].GetValue();
-        UIntPtr pad = zero ? (width > prec ? width : prec) : prec;
 
         switch (type) {
         case ArgumentType::Long: case ArgumentType::Int32: case ArgumentType::Int64: {
@@ -221,11 +216,20 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
              * sign and making it positive) into a string, do the padding, write the sign (if necessary), and finally
              * write the number. */
 
+            if (wset) {
+                width = sizeof(UIntPtr) * 2;
+            }
+
+            if (pset == 2) {
+                prec = sizeof(UIntPtr) * 2;
+            }
+
             Int64 ival = type == ArgumentType::Long ? val.LongValue : (type == ArgumentType::Int32 ? val.Int32Value
                                                                                                    : val.Int64Value);
             String str = String::FromUInt(buf, ival < 0 ? -ival : ival, 65, base);
             UIntPtr len = str.GetLength(), flen = len + (ival < 0),
-                    spaces = !zero && width > flen && width > prec ? width - prec - (prec ? 0 : flen) : 0;
+                    spaces = !zero && width > flen && width > prec ? width - prec - (prec ? 0 : flen) : 0,
+                    pad = zero ? (width > prec ? width : prec) : prec;
 
             pad = pad > flen ? pad - flen : 0;
 
@@ -244,13 +248,22 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
             /* For unsigned integers, what we gonna do is very similar to what we did above, but there is no need to
              * handle the sign. */
 
+            if (wset) {
+                width = sizeof(UIntPtr) * 2;
+            }
+
+            if (pset == 2) {
+                prec = sizeof(UIntPtr) * 2;
+            }
+
             UInt64 ival = type == ArgumentType::ULong ? val.ULongValue :
                           (type == ArgumentType::UInt32 ? val.UInt32Value :
                           (type == ArgumentType::UInt64 ? val.UInt64Value :
                                                           reinterpret_cast<UIntPtr>(val.PointerValue)));
             String str = String::FromUInt(buf, ival, 65, base);
             UIntPtr len = str.GetLength(),
-                    spaces = !zero && width > len && width > prec ? width - prec - (prec ? 0 : len) : 0;
+                    spaces = !zero && width > len && width > prec ? width - prec - (prec ? 0 : len) : 0,
+                    pad = zero ? (width > prec ? width : prec) : prec;
 
             pad = pad > len ? pad - len : 0;
 
@@ -263,6 +276,10 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
         case ArgumentType::Float: {
             /* For floats/doubles, again, it's pretty much the same, but the precision is handled differently, and we
              * use FromFloat. */
+
+            if (pset == 2) {
+                prec = 16;
+            }
 
             Float fval = val.FloatValue;
             String str = String::FromFloat(buf, fval, 65, pset ? prec : 6);
@@ -290,6 +307,14 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
 
             PAD(width > len ? width - len : 0, ' ');
             WRITE_STRING(str.GetValue(), len);
+
+            break;
+        }
+        case ArgumentType::Char: {
+            /* Finally, for characters, well, we just need to handle the padding. */
+
+            PAD(width > 1 ? width - 1 : 0, ' ');
+            WRITE_CHAR(val.CharValue);
 
             break;
         }
