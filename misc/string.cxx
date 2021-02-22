@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 20 of 2021 at 19:46 BRT */
+ * Last edited on February 22 of 2021 at 11:57 BRT */
 
 #include <string.hxx>
 
@@ -145,10 +145,26 @@ String String::FromUInt(Char *Buffer, UInt64 Value, UIntPtr Size, UInt8 Base) {
     return &Buffer[cur + 1];
 }
 
+static Float Pow10Neg[] = {
+        0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001, 0.00000001, 0.000000001, 0.0000000001, 0.00000000001,
+        0.000000000001, 0.0000000000001, 0.00000000000001, 0.000000000000001, 0.0000000000000001, 0.00000000000000001
+};
+
 String String::FromFloat(Char *Buffer, Float Value, UIntPtr Size, UIntPtr Precision) {
+    /* First, limit the max precision to 17 (trying to print more than this is a bit useless/starts to lose too much
+     * accuracy, and also we use a precalculated table for pow10). */
+
+    if (Precision > 17) {
+        Precision = 17;
+    }
+
     if (Buffer == Null || (Precision && Size < Precision + 3) || (!Precision && Size < 2)) {
         return {};
     }
+
+    /* Add pow10(-prec), to make sure we will, for example, print 1 instead of 0.999999... */
+
+    Value += Pow10Neg[Precision];
 
     /* Start by printing the fractional part into the buffer. */
 
@@ -156,14 +172,16 @@ String String::FromFloat(Char *Buffer, Float Value, UIntPtr Size, UIntPtr Precis
            end = Value < 0 ? 1 : 0;
 
     if (Precision) {
-        Float fract = Value - static_cast<Int64>(Value);
+        /* Add pow10(-prec), to make sure we will print 1 instead of 0.999999... (for example). */
+
+        Float tmp = Value - static_cast<Int64>(Value);
 
         Buffer[cur++] = '.';
 
         while (Precision--) {
-            fract *= 10;
-            Buffer[cur++] = fract + '0';
-            fract = fract - static_cast<Int64>(fract);
+            auto dig = static_cast<Int64>(tmp *= 10);
+            Buffer[cur++] = dig + '0';
+            tmp -= dig;
         }
     }
 

@@ -6,6 +6,7 @@
 #include <arch.hxx>
 #include <mm.hxx>
 #include <panic.hxx>
+#include <simd.hxx>
 
 using namespace CHicago;
 
@@ -47,6 +48,10 @@ extern "C" Void KernelEntry(BootInfo *Info) {
     Debug.SetForeground(0xFF00FF00);
     Debug.Write("initialization finished, halting the machine\n");
     Debug.RestoreForeground();
+
+    Floatx4 a { 5.3, 3.5779, 2.73112, 197.002377 };
+
+    Debug.Write("a[0] = %.13f, a[1] = %.13f, a[2] = %.13f, a[3] = %.13f\n", a[0], a[1], a[2], a[3]);
 
     *((volatile UIntPtr*)nullptr) = 0;
     ASSERT(False);
