@@ -1,12 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on February 20 of 2021 at 18:04 BRT */
+ * Last edited on February 22 of 2021 at 12:00 BRT */
 
 #include <arch.hxx>
 #include <mm.hxx>
 #include <panic.hxx>
-#include <simd.hxx>
 
 using namespace CHicago;
 
@@ -48,10 +47,6 @@ extern "C" Void KernelEntry(BootInfo *Info) {
     Debug.SetForeground(0xFF00FF00);
     Debug.Write("initialization finished, halting the machine\n");
     Debug.RestoreForeground();
-
-    Floatx4 a { 5.3, 3.5779, 2.73112, 197.002377 };
-
-    Debug.Write("a[0] = %.13f, a[1] = %.13f, a[2] = %.13f, a[3] = %.13f\n", a[0], a[1], a[2], a[3]);
 
     *((volatile UIntPtr*)nullptr) = 0;
     ASSERT(False);
