@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 15:57 BRT
- * Last edited on February 20 of 2021 at 18:22 BRT */
+ * Last edited on February 22 of 2021 at 18:05 BRT */
 
 #pragma once
 
@@ -72,9 +72,9 @@ public:
             String name;
 
             if (GetSymbol(addr[i], name, off)) {
-                Debug.Write("    " UINTPTR_MAX_HEX ": %s +" UINTPTR_HEX "\n", addr[i], name.GetValue(), off);
+                Debug.Write("    0x{:0*:16}: {} +0x{:0:16}\n", addr[i], name.GetValue(), off);
             } else {
-                Debug.Write("    " UINTPTR_MAX_HEX ": <no symbol information available>\n", addr[i]);
+                Debug.Write("    0x{:0*:16}: <no symbol information available>\n", addr[i]);
             }
         }
     }

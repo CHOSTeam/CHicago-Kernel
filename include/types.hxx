@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on May 11 of 2018, at 13:15 BRT
- * Last edited on February 19 of 2021, at 20:31 BRT */
+ * Last edited on February 22 of 2021, at 17:32 BRT */
 
 #pragma once
 
@@ -14,6 +14,7 @@ typedef char Char;
 
 /* Unsigned types */
 
+typedef unsigned long ULong;
 typedef unsigned char UInt8;
 typedef unsigned short UInt16;
 typedef unsigned int UInt32;
@@ -21,6 +22,7 @@ typedef unsigned long long UInt64;
 
 /* Signed types */
 
+typedef signed long Long;
 typedef signed char Int8;
 typedef signed short Int16;
 typedef signed int Int32;
@@ -29,10 +31,6 @@ typedef signed long long Int64;
 /* Define our IntPtr type */
 
 #ifdef _LP64
-#define UINTPTR_MAX_HEX "0x%016X"
-#define UINTPTR_HEX "0x%X"
-#define UINTPTR_DEC "%U"
-
 #define UINTPTR_MAX 0xFFFFFFFFFFFFFFFF
 #define INTPTR_MIN -9223372036854775807
 #define INTPTR_MAX 9223372036854775807
@@ -40,10 +38,6 @@ typedef signed long long Int64;
 typedef unsigned long long UIntPtr;
 typedef signed long long IntPtr;
 #else
-#define UINTPTR_MAX_HEX "0x%08x"
-#define UINTPTR_HEX "0x%x"
-#define UINTPTR_DEC "%u"
-
 #define UINTPTR_MAX 0xFFFFFFFF
 #define INTPTR_MIN -2147483648
 #define INTPTR_MAX 2147483647
@@ -52,17 +46,7 @@ typedef unsigned int UIntPtr;
 typedef signed int IntPtr;
 #endif
 
-/* I know it's a bit confusing, but our default float type is double... */
-
 typedef double Float;
-
-/* Variadic arguments */
-
-#define VariadicList __builtin_va_list
-#define VariadicStart(v, l) __builtin_va_start(v, l)
-#define VariadicEnd(v) __builtin_va_end(v)
-#define VariadicArg(v, l) __builtin_va_arg(v, l)
-#define VariadicCopy(d, s) __builtin_va_copy(d, s)
 
 /* Attributes */
 
@@ -76,10 +60,6 @@ typedef double Float;
 #define disable_ubsan __attribute__((no_sanitize("undefined")))
 #define vector_size(x) __attribute__((vector_size(x), may_alias))
 #define force_align_arg_pointer __attribute__((force_align_arg_pointer))
-
-/* A few builtin functions. */
-
-#define AssumeAligned(x, s) __builtin_assume_aligned(x, s)
 
 /* Boolean and other defines */
 

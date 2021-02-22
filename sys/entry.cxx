@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on February 22 of 2021 at 12:00 BRT */
+ * Last edited on February 22 of 2021 at 17:50 BRT */
 
 #include <arch.hxx>
 #include <mm.hxx>
@@ -31,7 +31,7 @@ extern "C" Void KernelEntry(BootInfo *Info) {
 
     Debug = TextConsole(*Info, 0, 0xFFFFFF00);
     Debug.SetForeground(0xFF00FF00);
-    Debug.Write("initializing the kernel, arch = %s, version = %s\n", ARCH, VERSION);
+    Debug.Write("initializing the kernel, arch = {}, version = {}\n", ARCH, VERSION);
     Debug.RestoreForeground();
 
     /* Initialize the arch-specific bits. */

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 26 of 2020, at 13:16 BRT
- * Last edited on February 22 of 2021, at 14:15 BRT */
+ * Last edited on February 22 of 2021, at 17:35 BRT */
 
 #pragma once
 
@@ -15,8 +15,24 @@ namespace CHicago {
 
 class TextOutput {
 public:
-    Void Write(Char);
-    UIntPtr Write(const String&, ...);
+    Void Write(Char Data) { WriteInt(Data); AfterWrite(); }
+
+    template<typename... T> UIntPtr Write(const String &Format, T... Args) {
+        /* Here we can call WriteInt one time (passing 0 as an arg) to make sure the write is even possible. Other than
+         * that, it's the same processes as the String and Image formatted text output functions. */
+
+        if (!WriteInt(0)) {
+            return 0;
+        }
+
+        UIntPtr ret = VariadicFormat([](Char Data, Void *Context) -> Boolean {
+            return static_cast<TextOutput*>(Context)->WriteInt(Data);
+        }, static_cast<Void*>(this), Format, Args...);
+
+        AfterWrite();
+
+        return ret;
+    }
 private:
     virtual Void AfterWrite(Void) { }
     virtual Boolean WriteInt(Char) = 0;

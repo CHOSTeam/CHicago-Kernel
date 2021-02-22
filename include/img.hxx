@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:37 BRT
- * Last edited on February 22 of 20s21 at 14:15 BRT */
+ * Last edited on February 22 of 2021 at 17:28 BRT */
 
 #pragma once
 
@@ -41,6 +41,8 @@ struct FontData {
     const FontGlyph *GlyphInfo;
     const UInt8 *GlyphData;
 };
+
+extern FontData DefaultFont;
 
 class Image {
 public:
@@ -101,7 +103,38 @@ public:
     Void DrawLine(UInt16, UInt16, UInt16, UInt16, UInt32);
     Void DrawRectangle(UInt16, UInt16, UInt16, UInt16, UInt32, Boolean = False);
     Boolean DrawCharacter(UInt16, UInt16, Char, UInt32);
-    UIntPtr DrawString(UInt16, UInt16, UInt32, const String&, ...);
+
+    template<typename... T> UIntPtr DrawString(UInt16 X, UInt16 Y, UInt32 Color, const String &Format, T... Args) {
+        if (Buffer == Null || X >= Width || Y >= Height) {
+            return 0;
+        }
+
+        /* As we can't use a lambda that captures local variables as a function pointer, we need to save and pass the
+         * X/Y values in another way... */
+
+        UIntPtr ctx[4] { reinterpret_cast<UIntPtr>(this), X, Y, Color };
+
+        return VariadicFormat([](Char Data, Void *Context) -> Boolean {
+            /* We don't handle here reaching the end of the screen and going into the next line, nor scrolling when we
+             * reach the end of the screen. And also we don't handle TAB anywhere (for now). */
+
+            auto ctx = static_cast<UIntPtr*>(Context);
+
+            switch (Data) {
+                case '\n': ctx[2] += DefaultFont.Height;
+                case '\r': ctx[1] = 0; return True;
+                default: {
+                    if (!reinterpret_cast<Image*>(ctx[0])->DrawCharacter(ctx[1], ctx[2], Data, ctx[3])) {
+                        return False;
+                    }
+
+                    ctx[1] += DefaultFont.GlyphInfo[(UInt8)Data].Advance;
+
+                    return True;
+                }
+            }
+        }, static_cast<Void*>(ctx), Format, Args...);
+    }
 
     /* Some extra functions that allow us to access all the internal info about the image that we may need to
      * access. */
@@ -135,7 +168,5 @@ private:
     UIntPtr *References;
     UInt16 Width, Height;
 };
-
-extern FontData DefaultFont;
 
 }

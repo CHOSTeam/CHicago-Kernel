@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 00:14 BRT
- * Last edited on February 16 of 2021 at 10:36 BRT */
+ * Last edited on February 22 of 2021 at 17:51 BRT */
 
 #include <textout.hxx>
 
@@ -10,18 +10,14 @@ namespace CHicago {
 TextConsole Debug;
 
 TextConsole::TextConsole(Void) : Back(), Front(), X(0), BackY(0), FrontY(0), Background(0), Foreground(0),
-                                 BackgroundSP(0), ForegroundSP(0) {
-    SetMemory(BackgroundStack, 0, sizeof(BackgroundStack));
-    SetMemory(ForegroundStack, 0, sizeof(ForegroundStack));
-}
+                                 BackgroundSP(0), ForegroundSP(0), BackgroundStack(), ForegroundStack() { }
 
 TextConsole::TextConsole(BootInfo &Info, UInt32 Background, UInt32 Foreground)
     : Back(reinterpret_cast<UInt32*>(Info.FrameBuffer.BackBuffer), Info.FrameBuffer.Width, Info.FrameBuffer.Height),
       Front(reinterpret_cast<UInt32*>(Info.FrameBuffer.FrontBuffer), Info.FrameBuffer.Width, Info.FrameBuffer.Height),
-      X(0), BackY(0), FrontY(0), Background(Background), Foreground(Foreground), BackgroundSP(0), ForegroundSP(0) {
+      X(0), BackY(0), FrontY(0), Background(Background), Foreground(Foreground), BackgroundSP(0), ForegroundSP(0),
+      BackgroundStack(), ForegroundStack(){
     Clear();
-    SetMemory(BackgroundStack, 0, sizeof(BackgroundStack));
-    SetMemory(ForegroundStack, 0, sizeof(ForegroundStack));
 }
 
 Void TextConsole::Clear(Void) {

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 12 of 2021, at 14:54 BRT
- * Last edited on February 16 of 2021 at 14:54 BRT */
+ * Last edited on February 22 of 2021 at 18:04 BRT */
 
 #include <arch/mm.hxx>
 #include <mm.hxx>
@@ -310,5 +310,5 @@ Void VirtMem::Initialize(BootInfo &Info) {
     }
 
     Heap::Initialize(start, HEAP_END);
-    Debug.Write("the kernel heap starts at " UINTPTR_MAX_HEX " and ends at " UINTPTR_MAX_HEX "\n", start, HEAP_END);
+    Debug.Write("the kernel heap starts at 0x{:0*:16} and ends at 0x{:0*:16}\n", start, HEAP_END);
 }

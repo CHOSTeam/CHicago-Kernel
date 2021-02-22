@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 22 of 2021 at 14:13 BRT */
+ * Last edited on February 22 of 2021 at 17:24 BRT */
 
 #include <string.hxx>
 
@@ -275,25 +275,6 @@ UIntPtr String::Append(UInt64 Value, UInt8 Base) {
 UIntPtr String::Append(Float Value, UIntPtr Precision) {
     Char buf[65];
     return Append(FromFloat(buf, Value, 65, Precision));
-}
-
-UIntPtr String::Append(const String &Format, ...) {
-    /* Use VariadicFormat (like all the other functions), while passing ourselves as the context. */
-
-    Status status = Status::Success;
-    UIntPtr ctx[2] = { reinterpret_cast<UIntPtr>(&status), reinterpret_cast<UIntPtr>(this) };
-
-    VariadicList args;
-    VariadicStart(args, Format);
-
-    UIntPtr ret = VariadicFormat(Format, args, [](Char Data, Void *Context) -> Boolean {
-        auto ctx = static_cast<UIntPtr*>(Context);
-        return (*reinterpret_cast<Status*>(ctx[0]) =
-                 reinterpret_cast<String*>(ctx[1])->Append(Data)) == Status::Success;
-    }, ctx);
-
-    VariadicEnd(args);
-    return ret;
 }
 
 Boolean String::Compare(const String &Value) const {

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 29 of 2020, at 11:24 BRT
- * Last edited on February 18 of 2021, at 18:05 BRT */
+ * Last edited on February 22 of 2021 at 18:04 BRT */
 
 #include <arch/desctables.hxx>
 #include <arch/port.hxx>
@@ -58,37 +58,36 @@ extern "C" force_align_arg_pointer Void IdtDefaultHandler(Registers &Regs) {
 
 	    /* Though most of the registers are the same on both archs, x86_64 has 8 extra register to print (r8-r15). */
 
-	    Debug.Write("panic: %s\n", ExceptionStrings[Regs.IntNum]);
+	    Debug.Write("panic: {}\n", ExceptionStrings[Regs.IntNum]);
 
-	    Debug.Write("regs: ax  = " UINTPTR_MAX_HEX " | bx  = " UINTPTR_MAX_HEX " | cx  = " UINTPTR_MAX_HEX "\n"
+	    Debug.Write("regs: ax  = 0x{:0*:16} | bx  = 0x{:0*:16} | cx  = 0x{:0*:16}\n"
 #ifdef __i386__
-                    "      dx  = " UINTPTR_MAX_HEX " | di  = " UINTPTR_MAX_HEX " | si  = " UINTPTR_MAX_HEX "\n"
-                    "      bp  = " UINTPTR_MAX_HEX " | sp  = " UINTPTR_MAX_HEX " | ip  = " UINTPTR_MAX_HEX "\n"
-                    "      cr0 = " UINTPTR_MAX_HEX " | cr2 = " UINTPTR_MAX_HEX " | cr3 = " UINTPTR_MAX_HEX "\n"
-                    "      cr4 = " UINTPTR_MAX_HEX " | cs  =       0x%02x | ds  =       0x%02x\n"
-                    "      es  =       0x%02x | fs  =       0x%02x | gs  =       0x%02x\n"
-                    "      ss  =       0x%02x |                  |\n",
+                    "      dx  = 0x{:0*:16} | di  = 0x{:0*:16} | si  = 0x{:0*:16}\n"
+                    "      bp  = 0x{:0*:16} | sp  = 0x{:0*:16} | ip  = 0x{:0*:16}\n"
+                    "      cr0 = 0x{:0*:16} | cr2 = 0x{:0*:16} | cr3 = 0x{:0*:16}\n"
+                    "      cr4 = 0x{:0*:16} | cs  =       0x{:02:16} | ds  =       0x{:02:16}\n"
+                    "      es  =       0x{:02:16} | fs  =       0x{:02:16} | gs  =       0x{:02:16}\n"
+                    "      ss  =       0x{:02:16} |                  |\n",
 #else
-                    "      dx  = " UINTPTR_MAX_HEX " | r8  = " UINTPTR_MAX_HEX " | r9  = " UINTPTR_MAX_HEX "\n"
-                    "      r10 = " UINTPTR_MAX_HEX " | r11 = " UINTPTR_MAX_HEX " | r12 = " UINTPTR_MAX_HEX "\n"
-                    "      r13 = " UINTPTR_MAX_HEX " | r14 = " UINTPTR_MAX_HEX " | r15 = " UINTPTR_MAX_HEX "\n"
-                    "      di  = " UINTPTR_MAX_HEX " | si  = " UINTPTR_MAX_HEX " | bp  = " UINTPTR_MAX_HEX "\n"
-                    "      sp  = " UINTPTR_MAX_HEX " | ip  = " UINTPTR_MAX_HEX " | cr0 = " UINTPTR_MAX_HEX "\n"
-                    "      cr2 = " UINTPTR_MAX_HEX " | cr3 = " UINTPTR_MAX_HEX " | cr4 = " UINTPTR_MAX_HEX "\n"
-                    "      cs  =               0x%02X | ds  =               0x%02X | es  =               0x%02X\n"
-                    "      fs  =               0x%02X | gs  =               0x%02X | ss  =               0x%02X\n",
+                    "      dx  = 0x{:0*:16} | r8  = 0x{:0*:16} | r9  = 0x{:0*:16}\n"
+                    "      r10 = 0x{:0*:16} | r11 = 0x{:0*:16} | r12 = 0x{:0*:16}\n"
+                    "      r13 = 0x{:0*:16} | r14 = 0x{:0*:16} | r15 = 0x{:0*:16}\n"
+                    "      di  = 0x{:0*:16} | si  = 0x{:0*:16} | bp  = 0x{:0*:16}\n"
+                    "      sp  = 0x{:0*:16} | ip  = 0x{:0*:16} | cr0 = 0x{:0*:16}\n"
+                    "      cr2 = 0x{:0*:16} | cr3 = 0x{:0*:16} | cr4 = 0x{:0*:16}\n"
+                    "      cs  =               0x{:02:16} | ds  =               0x{:02:16}"
+                    " | es  =               0x{:02:16}\n      fs  =               0x{:02:16}"
+                    " | gs  =               0x{:02:16} | ss  =               0x{:02:16}\n",
 #endif
                     Regs.Ax, Regs.Bx, Regs.Cx, Regs.Dx,
 #ifndef __i386__
                     Regs.R8, Regs.R9, Regs.R10, Regs.R11, Regs.R12, Regs.R13, Regs.R14, Regs.R15,
 #endif
                     Regs.Di, Regs.Si, Regs.Bp, Regs.Cs == 0x08 ? Regs.Sp : Regs.Sp2, Regs.Ip, cr0, cr2, cr3, cr4,
-                    static_cast<UInt16>(Regs.Cs), static_cast<UInt16>(Regs.Ds), static_cast<UInt16>(Regs.Es),
-                    static_cast<UInt16>(Regs.Fs), static_cast<UInt16>(Regs.Gs),
-                    static_cast<UInt16>(Regs.Cs == 0x08 ? Regs.Ss : Regs.Ss2));
+                    Regs.Cs, Regs.Ds, Regs.Es, Regs.Fs, Regs.Gs, Regs.Cs == 0x08 ? Regs.Ss : Regs.Ss2);
 
         if (StackTrace::GetSymbol(Regs.Ip, name, off)) {
-            Debug.Write("at: %s +0x%x\n", name.GetValue(), off);
+            Debug.Write("at: {} +0x{::16}\n", name.GetValue(), off);
         }
 
 	    StackTrace::Dump();

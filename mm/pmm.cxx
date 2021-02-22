@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on February 16 of 2021, at 20:22 BRT */
+ * Last edited on February 22 of 2021 at 18:05 BRT */
 
 #include <mm.hxx>
 #include <panic.hxx>
@@ -53,11 +53,9 @@ Void PhysMem::Initialize(BootInfo &Info) {
     MaxBytes = Info.PhysicalMemorySize;
     UsedBytes = MaxBytes;
 
-    Debug.Write("the kernel starts at " UINTPTR_MAX_HEX ", and ends at " UINTPTR_MAX_HEX "\n",
-                KernelStart, KernelEnd);
-    Debug.Write("minimum physical address is " UINTPTR_MAX_HEX ", and max is " UINTPTR_MAX_HEX "\n",
-                MinAddress, MaxAddress);
-    Debug.Write("physical memory size is " UINTPTR_HEX "\n", MaxBytes);
+    Debug.Write("the kernel starts at 0x{:0*:16}, and ends at 0x{:0*:16}\n"
+                "minimum physical address is 0x{:0*:16}, and max is 0x{:0*:16}\n"
+                "physical memory size is 0x{:0:16}\n", KernelStart, KernelEnd, MinAddress, MaxAddress, MaxBytes);
 
     /* Now, we need to initialize the region list, and the reference list, we need to do this before setting the
      * kernel end, as we're going to put those lists after the current kernel end. There is one very important thing,
@@ -85,12 +83,12 @@ Void PhysMem::Initialize(BootInfo &Info) {
         BootInfoMemMap &ent = Info.MemoryMap.Entries[i];
 
         if (i && !ent.Base) {
-            Debug.Write("memory map entry no. " UINTPTR_DEC ", possible extended entry, not printing info\n", i);
+            Debug.Write("memory map entry no. {}, possible extended entry, not printing info\n", i);
             continue;
         }
 
-        Debug.Write("memory map entry no. " UINTPTR_DEC ", base = " UINTPTR_MAX_HEX ", size = " UINTPTR_HEX
-                    ", type = %d\n", i, ent.Base, ent.Count << 12, ent.Type);
+        Debug.Write("memory map entry no. {}, base = 0x{:0*:16}, size = 0x{:0:16}, type = {}\n", i, ent.Base,
+                    ent.Count << 12, ent.Type);
 
         if (ent.Type == 0x06 && ent.Base) {
             FreeInt(ent.Base, ent.Count);
@@ -99,8 +97,8 @@ Void PhysMem::Initialize(BootInfo &Info) {
         }
     }
 
-    Debug.Write(UINTPTR_HEX " of physical memory is being used, and " UINTPTR_HEX " is free\n",
-                UsedBytes, MaxBytes - UsedBytes);
+    Debug.Write("0x{:0:16} bytes of physical memory are being used, and 0x{:0:16} is free\n", UsedBytes,
+                MaxBytes - UsedBytes);
 }
 
 /* Most of the alloc/free functions only redirect to the AllocInt function, the exception for this is the NonContig
@@ -122,8 +120,7 @@ Status PhysMem::AllocNonContig(UIntPtr Count, UIntPtr *Out, UIntPtr Align) {
 
     if (!Count || Out == Null) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid non-contig PhysMem::Alloc arguments (count = " UINTPTR_DEC
-                    ", out = " UINTPTR_MAX_HEX ")\n", Count, Out);
+        Debug.Write("invalid non-contig PhysMem::Alloc arguments (count = {}, out = 0x{:0*:16})\n", Count, Out);
         Debug.RestoreForeground();
         return Status::InvalidArg;
     }
@@ -157,8 +154,7 @@ Status PhysMem::FreeNonContig(UIntPtr *Pages, UIntPtr Count) {
 
     if (!Count || Pages == Null) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid non-contig PhysMem::Free arguments (pages = " UINTPTR_MAX_HEX
-                    ", count = " UINTPTR_DEC ")\n", Pages, Count);
+        Debug.Write("invalid non-contig PhysMem::Free arguments (pages = 0x{:0*:16}, count = {})\n", Pages, Count);
         Debug.RestoreForeground();
         return Status::InvalidArg;
     }
@@ -189,7 +185,7 @@ Status PhysMem::ReferenceSingle(UIntPtr Page, UIntPtr &Out, UIntPtr Align) {
     } else if (References == Null || UsedBytes < PAGE_SIZE || (Page & PAGE_MASK) || Page < MinAddress ||
                Page >= MaxAddress) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid PhysMem::Reference arguments (page = " UINTPTR_MAX_HEX ")\n", Page);
+        Debug.Write("invalid PhysMem::Reference arguments (page = 0x{:0*:16})\n", Page);
         Debug.RestoreForeground();
         return Status::InvalidArg;
     } else if (References[(Page - MinAddress) >> PAGE_SHIFT] < 0xFF) {
@@ -216,8 +212,7 @@ Status PhysMem::ReferenceContig(UIntPtr Start, UIntPtr Count, UIntPtr &Out, UInt
     } else if (References == Null || !Count || UsedBytes < (Count << PAGE_SHIFT) || (Start & PAGE_MASK) ||
                Start < MinAddress || Start + (Count << PAGE_SHIFT) > MaxAddress) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid contig PhysMem::Reference arguments (start = " UINTPTR_MAX_HEX ", count = " UINTPTR_DEC
-                    ")\n", Start, Count);
+        Debug.Write("invalid contig PhysMem::Reference arguments (start = 0x{:0*:16}, count = {})\n", Start, Count);
         Debug.RestoreForeground();
         return Status::InvalidArg;
     }
@@ -239,8 +234,7 @@ Status PhysMem::ReferenceNonContig(UIntPtr *Pages, UIntPtr Count, UIntPtr *Out, 
 
     if (References == Null || !Count || UsedBytes < (Count << PAGE_SHIFT) || Pages == Null || Out == Null) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid non-contig PhysMem::Reference arguments (pages = " UINTPTR_MAX_HEX
-                    ", count = " UINTPTR_DEC ")\n", Pages, Count);
+        Debug.Write("invalid non-contig PhysMem::Reference arguments (pages = 0x{:0*:16}, count = {})\n", Pages, Count);
         Debug.RestoreForeground();
         return Status::InvalidArg;
     }
@@ -264,7 +258,7 @@ Status PhysMem::DereferenceSingle(UIntPtr Page) {
     if (References == Null || UsedBytes < PAGE_SIZE || !Page || (Page & PAGE_MASK) || Page < MinAddress ||
         Page >= MaxAddress || !References[(Page - MinAddress) >> PAGE_SHIFT]) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid PhysMem::Dereference arguments (page = " UINTPTR_MAX_HEX ")\n", Page);
+        Debug.Write("invalid PhysMem::Dereference arguments (page = 0x{:0*:16})\n", Page);
         Debug.RestoreForeground();
         return Status::InvalidArg;
     }
@@ -284,8 +278,7 @@ Status PhysMem::DereferenceContig(UIntPtr Start, UIntPtr Count) {
     if (References == Null || !Count || UsedBytes < (Count << PAGE_SHIFT) || !Start || (Start & PAGE_MASK) ||
         Start < MinAddress || Start + (Count << PAGE_SHIFT) > MaxAddress) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("Invalid contig PhysMem::Dereference arguments (start = " UINTPTR_MAX_HEX
-                    ", count = " UINTPTR_DEC ")\n", Start, Count);
+        Debug.Write("Invalid contig PhysMem::Dereference arguments (start = 0x{:0*:16}, count = {})\n", Start, Count);
         Debug.RestoreForeground();
         return Status::InvalidArg;
     }
@@ -304,8 +297,7 @@ Status PhysMem::DereferenceContig(UIntPtr Start, UIntPtr Count) {
 Status PhysMem::DereferenceNonContig(UIntPtr *Pages, UIntPtr Count) {
     if (References == Null || !Count || UsedBytes < (Count << PAGE_SHIFT) || Pages == Null) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid non-contig PhysMem::Dereference arguments (pages = " UINTPTR_MAX_HEX
-                    ", count = " UINTPTR_DEC ")\n", Pages, Count);
+        Debug.Write("invalid non-contig PhysMem::Dereference arguments (pages = 0x{:0*:16}, count = {})\n", Pages, Count);
          Debug.SetForeground(0xFFFFFFF);
         return Status::InvalidArg;
     }
@@ -325,7 +317,7 @@ UInt8 PhysMem::GetReferences(UIntPtr Page) {
     if (References == Null || !Page || Page < PAGE_SIZE || (Page & PAGE_MASK) || Page < MinAddress ||
         Page >= MaxAddress) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("Invalid PhysMem::GetReference arguments (page = " UINTPTR_MAX_HEX ")\n", Page);
+        Debug.Write("Invalid PhysMem::GetReference arguments (page = 0x{:0*:16})\n", Page);
         Debug.RestoreForeground();
         return 0;
     }
@@ -389,13 +381,13 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out, UIntPtr Align) {
 
     if (!Count || !Align) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid PhysMem::AllocInt arguments (count = " UINTPTR_DEC ", align = " UINTPTR_DEC ")\n",
+        Debug.Write("invalid PhysMem::AllocInt arguments (count = {}, align = {})\n",
                     Count, Align);
         Debug.RestoreForeground();
         return Status::InvalidArg;
     } else if (Regions == Null || UsedBytes + (Count << PAGE_SHIFT) > MaxBytes) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("not enough free memory for PhysMem::AllocInt (count = " UINTPTR_DEC ")\n", Count);
+        Debug.Write("not enough free memory for PhysMem::AllocInt (count = {})\n", Count);
 
         if (Regions != Null && (Heap::ReturnPhysical(), UsedBytes + (Count << PAGE_SHIFT) <= MaxBytes)) {
             Debug.Write("enough memory seems to have been freed through Heap::ReturnPhysical\n");
@@ -529,7 +521,7 @@ Status PhysMem::FreeInt(UIntPtr Start, UIntPtr Count) {
     if (!Start || !Count || UsedBytes < (Count << PAGE_SHIFT) || (Start & PAGE_MASK) || Start < MinAddress ||
         Start + (Count << PAGE_SHIFT) > MaxAddress) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid PhysMem::FreeInt arguments (start = " UINTPTR_MAX_HEX ", count = " UINTPTR_DEC ")\n",
+        Debug.Write("invalid PhysMem::FreeInt arguments (start = 0x{:0*:16}, count = {})\n",
                     Start, Count);
         Debug.RestoreForeground();
         return Status::InvalidArg;

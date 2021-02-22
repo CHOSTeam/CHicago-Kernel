@@ -1,11 +1,12 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on February 22 of 2021 at 14:14 BRT */
+ * Last edited on February 22 of 2021 at 17:24 BRT */
 
 #pragma once
 
 #include <status.hxx>
+#include <vararg.hxx>
 
 namespace CHicago {
 
@@ -29,7 +30,7 @@ public:
      * for this we have the Format function! And yeah, we actually need to make their body here as well, because of all
      * the template<> stuff. */
 
-    template<typename... Args> static String Format(const Char *Format, Args... VaArgs) {
+    template<typename... T> static String Format(const Char *Format, T... Args) {
         /* First, let's create the string itself, we're going to use the 0-args initializer, as the Append function is
          * going to dynamically allocate the memory we need. */
 
@@ -39,7 +40,7 @@ public:
 
         if (Format == Null) {
             return str;
-        } else if (str.Append(Format, VaArgs...) != Status::Success) {
+        } else if (str.Append(Format, Args...) != Status::Success) {
             return {};
         }
 
@@ -52,7 +53,14 @@ public:
     UIntPtr Append(Int64);
     UIntPtr Append(UInt64, UInt8);
     UIntPtr Append(Float, UIntPtr = 6);
-    UIntPtr Append(const String&, ...);
+
+    /* The Append(String, ...) also needs to be inline, for the same reason as Format (because it is template<>). */
+
+    template<typename... T> UIntPtr Append(const String &Format, T... Args) {
+        return VariadicFormat([](Char Data, Void *Context) -> Boolean {
+            return static_cast<String*>(Context)->Append(Data) == Status::Success;
+        }, static_cast<Void*>(this), Format, Args...);
+    }
 
     Boolean Compare(const String&) const;
 
@@ -74,8 +82,6 @@ private:
     Char *Value;
     UIntPtr Capacity, Length;
 };
-
-UIntPtr VariadicFormat(const String&, VariadicList&, Boolean (*)(Char, Void*), Void*);
 
 Void CopyMemory(Void*, const Void*, UIntPtr);
 Void SetMemory(Void*, UInt8, UIntPtr);
