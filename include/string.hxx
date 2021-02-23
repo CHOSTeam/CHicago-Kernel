@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on February 22 of 2021 at 17:24 BRT */
+ * Last edited on February 22 of 2021 at 20:57 BRT */
 
 #pragma once
 
@@ -40,11 +40,9 @@ public:
 
         if (Format == Null) {
             return str;
-        } else if (str.Append(Format, Args...) != Status::Success) {
-            return {};
         }
 
-        return str;
+        return str.Append(Format, Args...), str;
     }
 
     Void Clear(Void);

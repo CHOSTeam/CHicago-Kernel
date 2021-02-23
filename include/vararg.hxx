@@ -1,15 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 22 of 2021, at 15:27 BRT
- * Last edited on February 22 of 2021, at 19:09 BRT */
+ * Last edited on February 22 of 2021, at 19:40 BRT */
 
 #pragma once
 
 #include <types.hxx>
-
-#define CREATE_ARG_LIST(name, args) \
-    Argument l##name[] { args... }; \
-    ArgumentList name(sizeof...(args), l##name)
 
 namespace CHicago {
 
@@ -83,8 +79,8 @@ UIntPtr VariadicFormatInt(Boolean (*)(Char, Void*), Void*, const String&, const 
 
 template<typename... T> UIntPtr VariadicFormat(Boolean (*Function)(Char, Void*), Void *Context, const String &Format,
                                                 T... Args) {
-    CREATE_ARG_LIST(args, Args);
-    return VariadicFormatInt(Function, Context, Format, args);
+    Argument list[] { Args... };
+    return VariadicFormatInt(Function, Context, Format, ArgumentList(sizeof...(Args), list));
 }
 
 }
