@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:45 BRT
- * Last edited on February 20 of 2021 at 09:46 BRT */
+ * Last edited on February 23 of 2021 at 11:02 BRT */
 
 #include <simd.hxx>
 
@@ -25,6 +25,12 @@ disable_ubsan Void CopyMemory(Void *Buffer, const Void *Source, UIntPtr Length) 
 
     auto dst = static_cast<UInt8*>(Buffer);
     auto src = static_cast<const UInt8*>(Source);
+
+    /* Check for buffer overflows (this was something I was forgetting to do lol). */
+
+    if (dst + Length < dst || src + Length < src) {
+        return;
+    }
 
 #ifdef NO_256_SIMD
     /* On some cases (like x86 without AVX2), we can't use 256-bit SIMD operations (or we can/GCC may let us do it, but
@@ -83,6 +89,11 @@ disable_ubsan Void SetMemory(Void *Buffer, UInt8 Value, UIntPtr Length) {
     /* This is like the CopyMemory function, but we don't need any reads here, just writes. */
 
     auto dst = static_cast<UInt8*>(Buffer);
+
+    if (dst + Length < dst) {
+        return;
+    }
+
     Int64x2 val = UInt8x16 { Value, Value, Value, Value, Value, Value, Value, Value,
                              Value, Value, Value, Value, Value, Value, Value, Value };
 
@@ -130,9 +141,17 @@ disable_ubsan Void SetMemory(Void *Buffer, UInt8 Value, UIntPtr Length) {
 }
 
 disable_ubsan Void SetMemory32(Void *Buffer, UInt32 Value, UIntPtr Length) {
+    if (Buffer == Null || !Length) {
+        return;
+    }
+
     /* This is like the CopyMemory function, but we don't need any reads here, just writes. */
 
     auto dst = static_cast<UInt32*>(Buffer);
+
+    if (dst + Length < dst) {
+        return;
+    }
 
     /* And this is like SetMemory(), but now we know that the size is 4-bytes aligned, and the value is also a 32-bits
      * one (instead of 8-bits). We're also not going to try aligning the dest pointer here. */
@@ -181,7 +200,7 @@ disable_ubsan Void MoveMemory(Void *Buffer, const Void *Source, UIntPtr Length) 
 
     auto buf = reinterpret_cast<UIntPtr>(Buffer), src = reinterpret_cast<UIntPtr>(Source);
 
-    if (Buffer == Null || Source == Null || Buffer == Source || !Length) {
+    if (Buffer == Null || Source == Null || Buffer == Source || buf + Length < buf || src + Length < src || !Length) {
         return;
     } else if (buf > src && src + Length >= buf) {
         auto dst = &static_cast<UInt8*>(Buffer)[Length - 1];
@@ -200,7 +219,13 @@ disable_ubsan Boolean CompareMemory(const Void *const Left, const Void *const Ri
         return False;
     }
 
-    for (auto m1 = static_cast<const UInt8*>(Left), m2 = static_cast<const UInt8*>(Right); Length--;) {
+    auto m1 = static_cast<const UInt8*>(Left), m2 = static_cast<const UInt8*>(Right);
+
+    if (m1 + Length < m1 || m2 + Length < m2) {
+        return False;
+    }
+
+    for (; Length--;) {
         if (*m1++ != *m2++) {
             return False;
         }
