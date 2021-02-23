@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 15:57 BRT
- * Last edited on February 22 of 2021 at 19:11 BRT */
+ * Last edited on February 23 of 2021 at 09:43 BRT */
 
 #include <string.hxx>
 
@@ -294,14 +294,12 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
 
             break;
         }
-        case ArgumentType::Boolean: case ArgumentType::Status: case ArgumentType::CString:
-        case ArgumentType::CHString: {
+        case ArgumentType::Boolean: case ArgumentType::Status: case ArgumentType::CString: {
             /* And for strings, we just need to remember the padding (which will be spaces), and limiting the length
              * (using the precision). */
 
-            String str = type == ArgumentType::CString || type == ArgumentType::CHString ?
-                          (type == ArgumentType::CString ? val.CStringValue : val.CHStringValue->GetValue()) :
-                          (type == ArgumentType::Boolean ? String::FromBool(val.BooleanValue) :
+            String str = type == ArgumentType::CString ? val.CStringValue :
+                         (type == ArgumentType::Boolean ? (val.BooleanValue ? "True" : "False") :
                                                            String::FromStatus(val.StatusValue));
             UIntPtr len = str.GetLength();
 
@@ -311,6 +309,21 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
 
             PAD(width > len ? width - len : 0, ' ');
             WRITE_STRING(str.GetValue(), len);
+
+            break;
+        }
+        case ArgumentType::CHString: {
+            /* While CHString is also a string, we need to handle it in a different way, as the start and end depends
+             * on the set view start/end. */
+
+            UIntPtr len = val.CHStringValue->GetViewEnd() - val.CHStringValue->GetViewStart();
+
+            if (pset && len > prec) {
+                len = prec;
+            }
+
+            PAD(width > len ? width - len : 0, ' ');
+            WRITE_STRING(val.CHStringValue->GetValue() + val.CHStringValue->GetViewStart(), len);
 
             break;
         }

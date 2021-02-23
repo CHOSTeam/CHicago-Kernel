@@ -1,15 +1,15 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 22 of 2021 at 21:14 BRT */
+ * Last edited on February 23 of 2021 at 09:39 BRT */
 
 #include <string.hxx>
 
 using namespace CHicago;
 
-String::String(Void) : Value(const_cast<Char*>("")), Capacity(0), Length(0) { }
+String::String(Void) : Value(const_cast<Char*>("")), Capacity(0), Length(0), ViewStart(0), ViewEnd(0) { }
 
-String::String(UIntPtr Size) : Value(Null), Capacity(0), Length(0) {
+String::String(UIntPtr Size) : Value(Null), Capacity(0), Length(0), ViewStart(0), ViewEnd(0) {
     Value = Size != 0 ? new Char[Size + 1] : Null;
 
     if (Value != Null) {
@@ -19,7 +19,9 @@ String::String(UIntPtr Size) : Value(Null), Capacity(0), Length(0) {
     }
 }
 
-String::String(const String &Value) : Value(Value.Value), Capacity(0), Length(Value.Length) {
+String::String(const String &Value)
+    : Value(Value.Value + Value.ViewStart), Capacity(0), Length(Value.ViewEnd - Value.ViewStart), ViewStart(0),
+      ViewEnd(Value.ViewEnd - Value.ViewStart) {
     /* If the capacity is higher than 0, it means that this is not some static string on a fixed kernel location, but
      * something that we allocated (and as such, we need to append/clone it). */
 
@@ -27,7 +29,7 @@ String::String(const String &Value) : Value(Value.Value), Capacity(0), Length(Va
         Char *str = new Char[Length + 1];
 
         if (str != Null) {
-            CopyMemory(str, Value.Value, Length);
+            CopyMemory(str, this->Value, Length);
             Capacity = Length + 1;
         } else {
             Length = 0;
@@ -39,9 +41,11 @@ String::String(const String &Value) : Value(Value.Value), Capacity(0), Length(Va
 
 Void String::CalculateLength(Void) {
     for (; Value != Null && Value[Length]; Length++) ;
+    ViewEnd = Length;
 }
 
-String::String(const Char *Value, Boolean Alloc) : Value(const_cast<Char*>(Value)), Capacity(0), Length(0) {
+String::String(const Char *Value, Boolean Alloc)
+    : Value(const_cast<Char*>(Value)), Capacity(0), Length(0), ViewStart(0), ViewEnd(0) {
     /* Precalculate the length, so that the we can just use a .GetLength(), instead of calculating it every time. Also,
      * if the user said that want to alloc/copy the string, alloc enough space for that, and then copy it. */
 
@@ -75,7 +79,7 @@ String &String::operator =(const Char *Value) {
     if (this->Value != Value) {
         Clear();
         this->Value = const_cast<Char*>(Value);
-        this->Capacity = this->Length = 0;
+        this->Capacity = this->Length = this->ViewStart = 0;
         CalculateLength();
     }
 
@@ -91,8 +95,9 @@ String &String::operator =(const String &Value) {
         if (Value.Capacity) {
             Append(Value);
         } else {
-            this->Value = Value.Value;
-            this->Length = Value.Length;
+            this->Value = Value.Value + Value.ViewStart;
+            ViewStart = 0;
+            Length = ViewEnd = Value.ViewEnd - Value.ViewStart;
         }
     }
 
@@ -119,12 +124,6 @@ static Void FromUInt(Char *Buffer, UInt64 Value, UInt8 Base, IntPtr &Current, In
     for (; Current >= End && Value; Current--, Value /= Base) {
         Buffer[Current] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Value % Base];
     }
-}
-
-String String::FromBool(Boolean Value) {
-    /* Do we even need this lol? */
-
-    return Value ? "True" : "False";
 }
 
 String String::FromStatus(Status Code) {
@@ -248,7 +247,18 @@ Void String::Clear(Void) {
     }
 
     Value = Null;
-    Capacity = Length = 0;
+    Capacity = Length = ViewStart = ViewEnd = 0;
+}
+
+Void String::SetView(UIntPtr Start, UIntPtr End) {
+    /* We just need to make sure that the start and end are valid, and that the end is higher than the start. */
+
+    if (Start > Length || End > Length || Start > End) {
+        return;
+    }
+
+    ViewStart = Start;
+    ViewEnd = End;
 }
 
 Status String::Append(Char Value) {
@@ -273,10 +283,13 @@ Status String::Append(Char Value) {
         Capacity = nlen;
     }
 
-    /* Now, just add the character to the end of the array, and put the string end character. */
+    /* Now, just add the character to the end of the array, and put the string end character. Also, appending resets the
+     * view start/end. */
 
     this->Value[Length++] = Value;
     this->Value[Length] = 0;
+    ViewStart = 0;
+    ViewEnd = Length;
 
     return Status::Success;
 }
@@ -301,18 +314,19 @@ Boolean String::Compare(const String &Value) const {
 
     if (this->Value == Value.Value) {
         return True;
-    } else if (this->Value == Null || Value.Value == Null || Length != Value.Length) {
+    } else if (this->Value == Null || Value.Value == Null || ViewEnd - ViewStart != Value.ViewEnd - Value.ViewStart) {
         return False;
     }
 
-    return CompareMemory(this->Value, Value.Value, Length);
+    return CompareMemory(this->Value + ViewStart, Value.Value + Value.ViewStart, ViewEnd - ViewStart);
 }
 
 Char *String::GetMutValue(Void) const {
-    Char *str = Length > 0 ? new Char[Length + 1] : Null;
+    UIntPtr len = ViewEnd - ViewStart;
+    Char *str = len ? new Char[len + 1] : Null;
 
     if (str != Null) {
-        CopyMemory(str, Value, Length);
+        CopyMemory(str, Value + ViewStart, len);
     }
 
     return str;

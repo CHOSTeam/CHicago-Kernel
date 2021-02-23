@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on February 22 of 2021 at 21:07 BRT */
+ * Last edited on February 23 of 2021 at 09:35 BRT */
 
 #pragma once
 
@@ -22,7 +22,6 @@ public:
     String &operator =(const Char*);
     String &operator =(const String&);
 
-    static String FromBool(Boolean);
     static String FromStatus(Status);
     static String FromInt(Char*, Int64, UIntPtr);
     static String FromUInt(Char*, UInt64, UIntPtr, UInt8);
@@ -49,6 +48,8 @@ public:
 
     Void Clear(Void);
 
+    Void SetView(UIntPtr, UIntPtr);
+
     Status Append(Char);
     UIntPtr Append(Int64);
     UIntPtr Append(UInt64, UInt8);
@@ -67,20 +68,22 @@ public:
     Char *GetMutValue(Void) const;
     const Char *GetValue(Void) const { return Value; }
     UIntPtr GetLength(Void) const { return Length; }
+    UIntPtr GetViewStart(Void) const { return ViewStart; }
+    UIntPtr GetViewEnd(Void) const { return ViewEnd; }
 
     /* Operators for ranges-for and for accessing the string as a normal character array. */
 
-    const Char *begin(Void) { return &Value[0]; }
-    const Char *begin(Void) const { return &Value[0]; }
-    const Char *end(Void) { return &Value[Length]; }
-    const Char *end(Void) const { return &Value[Length]; }
+    const Char *begin(Void) { return &Value[ViewStart]; }
+    const Char *begin(Void) const { return &Value[ViewStart]; }
+    const Char *end(Void) { return &Value[ViewEnd]; }
+    const Char *end(Void) const { return &Value[ViewEnd]; }
 
-    Char operator [](UIntPtr Index) const { return Index >= Length ? '\0' : Value[Index]; }
+    Char operator [](UIntPtr Index) const { return Value[ViewStart + Index]; }
 private:
     Void CalculateLength(Void);
 
     Char *Value;
-    UIntPtr Capacity, Length;
+    UIntPtr Capacity, Length, ViewStart, ViewEnd;
 };
 
 Void CopyMemory(Void*, const Void*, UIntPtr);
