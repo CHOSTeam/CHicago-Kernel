@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 22 of 2021 at 17:24 BRT */
+ * Last edited on February 22 of 2021 at 21:14 BRT */
 
 #include <string.hxx>
 
@@ -118,6 +118,25 @@ static UIntPtr CountDigits(UInt64 Value, UInt8 Base) {
 static Void FromUInt(Char *Buffer, UInt64 Value, UInt8 Base, IntPtr &Current, IntPtr End) {
     for (; Current >= End && Value; Current--, Value /= Base) {
         Buffer[Current] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Value % Base];
+    }
+}
+
+String String::FromBool(Boolean Value) {
+    /* Do we even need this lol? */
+
+    return Value ? "True" : "False";
+}
+
+String String::FromStatus(Status Code) {
+    /* We should probably try to make something better than this... */
+
+    switch (Code) {
+    case Status::Success: return "Success";
+    case Status::AlreadyMapped: return "Already Mapped";
+    case Status::InvalidArg: return "Invalid Argument";
+    case Status::NotMapped: return "Not Mapped";
+    case Status::OutOfMemory: return "Out Of Memory";
+    default: return "Invalid Status Code";
     }
 }
 

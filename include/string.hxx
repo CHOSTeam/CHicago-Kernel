@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on February 22 of 2021 at 20:57 BRT */
+ * Last edited on February 22 of 2021 at 21:07 BRT */
 
 #pragma once
 
@@ -22,6 +22,8 @@ public:
     String &operator =(const Char*);
     String &operator =(const String&);
 
+    static String FromBool(Boolean);
+    static String FromStatus(Status);
     static String FromInt(Char*, Int64, UIntPtr);
     static String FromUInt(Char*, UInt64, UIntPtr, UInt8);
     static String FromFloat(Char*, Float, UIntPtr, UIntPtr = 6);

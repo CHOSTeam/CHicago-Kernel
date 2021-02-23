@@ -294,11 +294,15 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
 
             break;
         }
-        case ArgumentType::CString: case ArgumentType::CHString: {
+        case ArgumentType::Boolean: case ArgumentType::Status: case ArgumentType::CString:
+        case ArgumentType::CHString: {
             /* And for strings, we just need to remember the padding (which will be spaces), and limiting the length
              * (using the precision). */
 
-            String str(type == ArgumentType::CString ? val.CStringValue : val.CHStringValue->GetValue());
+            String str = type == ArgumentType::CString || type == ArgumentType::CHString ?
+                          (type == ArgumentType::CString ? val.CStringValue : val.CHStringValue->GetValue()) :
+                          (type == ArgumentType::Boolean ? String::FromBool(val.BooleanValue) :
+                                                           String::FromStatus(val.StatusValue));
             UIntPtr len = str.GetLength();
 
             if (pset && len > prec) {
