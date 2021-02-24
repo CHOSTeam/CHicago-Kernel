@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:37 BRT
- * Last edited on February 22 of 2021 at 17:28 BRT */
+ * Last edited on February 24 of 2021 at 10:38 BRT */
 
 #pragma once
 
@@ -104,7 +104,7 @@ public:
     Void DrawRectangle(UInt16, UInt16, UInt16, UInt16, UInt32, Boolean = False);
     Boolean DrawCharacter(UInt16, UInt16, Char, UInt32);
 
-    template<typename... T> UIntPtr DrawString(UInt16 X, UInt16 Y, UInt32 Color, const String &Format, T... Args) {
+    template<typename... T> inline UIntPtr DrawString(UInt16 X, UInt16 Y, UInt32 Color, const String &Format, T... Args) {
         if (Buffer == Null || X >= Width || Y >= Height) {
             return 0;
         }

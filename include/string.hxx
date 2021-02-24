@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on February 23 of 2021 at 09:35 BRT */
+ * Last edited on February 24 of 2021 at 10:37 BRT */
 
 #pragma once
 
@@ -31,7 +31,7 @@ public:
      * for this we have the Format function! And yeah, we actually need to make their body here as well, because of all
      * the template<> stuff. */
 
-    template<typename... T> static String Format(const Char *Format, T... Args) {
+    template<typename... T> static inline String Format(const Char *Format, T... Args) {
         /* First, let's create the string itself, we're going to use the 0-args initializer, as the Append function is
          * going to dynamically allocate the memory we need. */
 
@@ -57,7 +57,7 @@ public:
 
     /* The Append(String, ...) also needs to be inline, for the same reason as Format (because it is template<>). */
 
-    template<typename... T> UIntPtr Append(const String &Format, T... Args) {
+    template<typename... T> inline UIntPtr Append(const String &Format, T... Args) {
         return VariadicFormat([](Char Data, Void *Context) -> Boolean {
             return static_cast<String*>(Context)->Append(Data) == Status::Success;
         }, static_cast<Void*>(this), Format, Args...);

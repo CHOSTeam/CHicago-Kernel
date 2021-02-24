@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 15:57 BRT
- * Last edited on February 23 of 2021 at 09:43 BRT */
+ * Last edited on February 24 of 2021 at 11:03 BRT */
 
 #include <string.hxx>
 
@@ -70,6 +70,11 @@ static Boolean WriteString(const Char *Data, UIntPtr DataSize, Boolean (*Functio
     }
 
     return True;
+}
+
+static Boolean IsNormal(Float Value) {
+    union { Float FloatValue; UInt64 IntValue; } val { .FloatValue = Value };
+    return !(val.IntValue & 0xFFFFFFFFFFFFF);
 }
 
 UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const String &Format,
@@ -282,14 +287,15 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
             }
 
             Float fval = val.FloatValue;
-            String str = String::FromFloat(buf, fval, 65, pset ? prec : 6);
-            UIntPtr len = str.GetLength(), flen = len + (fval < 0), pad = width > flen ? width - flen : 0;
+            Boolean neg = IsNormal(fval) && fval < 0;
+            String str = String::FromFloat(buf, neg ? -fval : fval, 65, pset ? prec : 6);
+            UIntPtr len = str.GetLength(), flen = len + neg, pad = width > flen ? width - flen : 0;
 
-            if (fval < 0) {
+            if (neg) {
                 WRITE_CHAR('-');
             }
 
-            PAD(pad, '0');
+            PAD(pad, IsNormal(fval) ? '0' : ' ');
             WRITE_STRING(str.GetValue(), len);
 
             break;

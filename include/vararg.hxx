@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 22 of 2021, at 15:27 BRT
- * Last edited on February 22 of 2021, at 21:09 BRT */
+ * Last edited on February 24 of 2021, at 10:52 BRT */
 
 #pragma once
 
@@ -41,19 +41,19 @@ public:
     /* And yes, we need one constructor for each argument type (and let's already inline everything). Any new valid arg
      * type should also be added here. */
 
-    Argument(Char Value) : Type(ArgumentType::Char), Value() { this->Value.CharValue = Value; }
-    Argument(Long Value) : Type(ArgumentType::Long), Value() { this->Value.LongValue = Value; }
-    Argument(Float Value) : Type(ArgumentType::Float), Value() { this->Value.FloatValue = Value; }
-    Argument(ULong Value) : Type(ArgumentType::ULong), Value() { this->Value.ULongValue = Value; }
-    Argument(Int32 Value) : Type(ArgumentType::Int32), Value() { this->Value.Int32Value = Value; }
-    Argument(Int64 Value) : Type(ArgumentType::Int64), Value() { this->Value.Int64Value = Value; }
-    Argument(UInt32 Value) : Type(ArgumentType::UInt32), Value() { this->Value.UInt32Value = Value; }
-    Argument(UInt64 Value) : Type(ArgumentType::UInt64), Value() { this->Value.UInt64Value = Value; }
-    Argument(Status Value) : Type(ArgumentType::Status), Value() { this->Value.StatusValue = Value; }
-    Argument(Boolean Value) : Type(ArgumentType::Boolean), Value() { this->Value.BooleanValue = Value; }
-    Argument(const Void *Value) : Type(ArgumentType::Pointer), Value() { this->Value.PointerValue = Value; }
-    Argument(const Char *Value) : Type(ArgumentType::CString), Value() { this->Value.CStringValue = Value; }
-    Argument(const String &Value) : Type(ArgumentType::CHString), Value() { this->Value.CHStringValue = &Value; }
+    Argument(Char Value) : Type(ArgumentType::Char), Value({ .CharValue = Value }) { }
+    Argument(Long Value) : Type(ArgumentType::Long), Value({ .LongValue = Value }) { }
+    Argument(Float Value) : Type(ArgumentType::Float), Value({ .FloatValue = Value }) { }
+    Argument(ULong Value) : Type(ArgumentType::ULong), Value({ .ULongValue = Value }) { }
+    Argument(Int32 Value) : Type(ArgumentType::Int32), Value({ .Int32Value = Value }) { }
+    Argument(Int64 Value) : Type(ArgumentType::Int64), Value({ .Int64Value = Value }) { }
+    Argument(UInt32 Value) : Type(ArgumentType::UInt32), Value({ .UInt32Value = Value }) { }
+    Argument(UInt64 Value) : Type(ArgumentType::UInt64), Value({ .UInt64Value = Value }) { }
+    Argument(Status Value) : Type(ArgumentType::Status), Value({ .StatusValue = Value }) { }
+    Argument(Boolean Value) : Type(ArgumentType::Boolean), Value({ .BooleanValue = Value }) { }
+    Argument(const Void *Value) : Type(ArgumentType::Pointer), Value({ .PointerValue = Value }) { }
+    Argument(const Char *Value) : Type(ArgumentType::CString), Value({ .CStringValue = Value }) { }
+    Argument(const String &Value) : Type(ArgumentType::CHString), Value({ .CHStringValue = &Value }) { }
 
     ArgumentType GetType() const { return Type; }
     ArgumentValue GetValue() const { return Value; }
@@ -81,8 +81,8 @@ private:
 
 UIntPtr VariadicFormatInt(Boolean (*)(Char, Void*), Void*, const String&, const ArgumentList&);
 
-template<typename... T> UIntPtr VariadicFormat(Boolean (*Function)(Char, Void*), Void *Context, const String &Format,
-                                                T... Args) {
+template<typename... T> static inline UIntPtr VariadicFormat(Boolean (*Function)(Char, Void*), Void *Context,
+                                                             const String &Format, T... Args) {
     Argument list[] { Args... };
     return VariadicFormatInt(Function, Context, Format, ArgumentList(sizeof...(Args), list));
 }

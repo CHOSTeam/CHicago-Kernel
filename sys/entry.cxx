@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on February 22 of 2021 at 17:50 BRT */
+ * Last edited on February 24 of 2021 at 10:56 BRT */
 
 #include <arch.hxx>
 #include <mm.hxx>
@@ -47,6 +47,8 @@ extern "C" Void KernelEntry(BootInfo *Info) {
     Debug.SetForeground(0xFF00FF00);
     Debug.Write("initialization finished, halting the machine\n");
     Debug.RestoreForeground();
+
+    Debug.Write("{} {} {} {}\n", 1.533791, __builtin_inf(), -__builtin_inf(), __builtin_nan(""));
 
     *((volatile UIntPtr*)nullptr) = 0;
     ASSERT(False);

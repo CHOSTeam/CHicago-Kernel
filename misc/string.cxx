@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 23 of 2021 at 09:39 BRT */
+ * Last edited on February 24 of 2021 at 10:53 BRT */
 
 #include <string.hxx>
 
@@ -104,10 +104,18 @@ String &String::operator =(const String &Value) {
     return *this;
 }
 
-static Float Pow10Neg[] = {
-        0.5, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001, 0.00000001, 0.000000001, 0.0000000001, 0.00000000001,
-        0.000000000001, 0.0000000000001, 0.00000000000001, 0.000000000000001, 0.0000000000000001, 0.00000000000000001
-};
+String String::FromStatus(Status Code) {
+    /* We should probably try to make something better than this... */
+
+    switch (Code) {
+    case Status::Success: return "Success";
+    case Status::AlreadyMapped: return "Already Mapped";
+    case Status::InvalidArg: return "Invalid Argument";
+    case Status::NotMapped: return "Not Mapped";
+    case Status::OutOfMemory: return "Out Of Memory";
+    default: return "Invalid Status Code";
+    }
+}
 
 static UIntPtr CountDigits(UInt64 Value, UInt8 Base) {
     if (!Value) {
@@ -123,19 +131,6 @@ static UIntPtr CountDigits(UInt64 Value, UInt8 Base) {
 static Void FromUInt(Char *Buffer, UInt64 Value, UInt8 Base, IntPtr &Current, IntPtr End) {
     for (; Current >= End && Value; Current--, Value /= Base) {
         Buffer[Current] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Value % Base];
-    }
-}
-
-String String::FromStatus(Status Code) {
-    /* We should probably try to make something better than this... */
-
-    switch (Code) {
-    case Status::Success: return "Success";
-    case Status::AlreadyMapped: return "Already Mapped";
-    case Status::InvalidArg: return "Invalid Argument";
-    case Status::NotMapped: return "Not Mapped";
-    case Status::OutOfMemory: return "Out Of Memory";
-    default: return "Invalid Status Code";
     }
 }
 
@@ -184,11 +179,38 @@ String String::FromUInt(Char *Buffer, UInt64 Value, UIntPtr Size, UInt8 Base) {
     return &Buffer[cur + 1];
 }
 
-String String::FromFloat(Char *Buffer, Float Value, UIntPtr Size, UIntPtr Precision) {
-    /* First, limit the max precision to 16 (trying to print more than this is a bit useless/starts to lose too much
-     * accuracy, and also we use a precalculated table for pow10). */
+static Float Pow10Neg[] = {
+        0.5, 0.05, 0.005, 0.0005, 0.00005, 0.000005, 0.0000005, 0.00000005, 0.000000005, 0.0000000005, 0.00000000005,
+        0.000000000005, 0.0000000000005, 0.00000000000005, 0.000000000000005, 0.0000000000000005, 0.00000000000000005
+};
 
-    if (Precision > 16) {
+static Boolean IsInfinite(Float Value) {
+    /* According to IEEE-754, we know that a number is infinite if all the exponent bits are 1, and all the fraction
+     * bits are 0, and then we can just check the sign bit to know if it is -inf or +inf. */
+
+    union { Float FloatValue; UInt64 IntValue; } val { .FloatValue = Value };
+
+    return !(val.IntValue & 0xFFFFFFFFFFFFF) && (val.IntValue & 0x7FF0000000000000) == 0x7FF0000000000000;
+}
+
+static Boolean IsNaN(Float Value) {
+    /* And for checking NaNs, it's similar, but the fraction has to be anything except all zeroes. */
+
+    union { Float FloatValue; UInt64 IntValue; } val { .FloatValue = Value };
+
+    return (val.IntValue & 0xFFFFFFFFFFFFF) && (val.IntValue & 0x7FF0000000000000) == 0x7FF0000000000000;
+}
+
+String String::FromFloat(Char *Buffer, Float Value, UIntPtr Size, UIntPtr Precision) {
+    /* First, check for infinite and nan (as we have to handle those in a different way), and after that, limit the max
+     * precision to 16 (trying to print more than this is a bit useless/starts to lose too much accuracy, and also we
+     * use a precalculated table for pow10). */
+
+    if (IsInfinite(Value)) {
+        return Value < 0 ? "-Infinite" : "Infinite";
+    } else if (IsNaN(Value)) {
+        return "NaN";
+    } else if (Precision > 16) {
         Precision = 16;
     }
 
