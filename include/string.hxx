@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on February 24 of 2021 at 10:37 BRT */
+ * Last edited on February 24 of 2021 at 17:27 BRT */
 
 #pragma once
 
@@ -49,6 +49,10 @@ public:
     Void Clear(Void);
 
     Void SetView(UIntPtr, UIntPtr);
+
+    Int64 ToInt(Void) const;
+    UInt64 ToUInt(Void) const;
+    Float ToFloat(Void) const;
 
     Status Append(Char);
     UIntPtr Append(Int64);

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 15:57 BRT
- * Last edited on February 24 of 2021 at 11:03 BRT */
+ * Last edited on February 24 of 2021 at 18:24 BRT */
 
 #include <string.hxx>
 
@@ -30,8 +30,6 @@ using namespace CHicago;
        } while (False)
 
 namespace CHicago {
-
-/* TODO: Move those functions before ParseFlags somewhere else (as we will probably need them not only here). */
 
 static Boolean IsDigit(Char Value) {
     return Value >= '0' && Value <= '9';

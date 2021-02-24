@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 24 of 2021 at 10:53 BRT */
+ * Last edited on February 24 of 2021 at 18:23 BRT */
 
 #include <string.hxx>
 
@@ -181,7 +181,8 @@ String String::FromUInt(Char *Buffer, UInt64 Value, UIntPtr Size, UInt8 Base) {
 
 static Float Pow10Neg[] = {
         0.5, 0.05, 0.005, 0.0005, 0.00005, 0.000005, 0.0000005, 0.00000005, 0.000000005, 0.0000000005, 0.00000000005,
-        0.000000000005, 0.0000000000005, 0.00000000000005, 0.000000000000005, 0.0000000000000005, 0.00000000000000005
+        0.000000000005, 0.0000000000005, 0.00000000000005, 0.000000000000005, 0.0000000000000005, 0.00000000000000005,
+        0.000000000000000005
 };
 
 static Boolean IsInfinite(Float Value) {
@@ -203,15 +204,15 @@ static Boolean IsNaN(Float Value) {
 
 String String::FromFloat(Char *Buffer, Float Value, UIntPtr Size, UIntPtr Precision) {
     /* First, check for infinite and nan (as we have to handle those in a different way), and after that, limit the max
-     * precision to 16 (trying to print more than this is a bit useless/starts to lose too much accuracy, and also we
+     * precision to 17 (trying to print more than this is a bit useless/starts to lose too much accuracy, and also we
      * use a precalculated table for pow10). */
 
     if (IsInfinite(Value)) {
         return Value < 0 ? "-Infinite" : "Infinite";
     } else if (IsNaN(Value)) {
         return "NaN";
-    } else if (Precision > 16) {
-        Precision = 16;
+    } else if (Precision > 17) {
+        Precision = 17;
     }
 
     /* Extract the sign, and do the basic buffer size checks. */
@@ -249,7 +250,7 @@ String String::FromFloat(Char *Buffer, Float Value, UIntPtr Size, UIntPtr Precis
     /* And then the integer/whole part of the float into the buffer (this uses the same process as FromInt). */
 
     if (!static_cast<UInt64>(Value)) {
-        Buffer[start] = '0';
+        Buffer[start--] = '0';
     } else {
         ::FromUInt(Buffer, Value, 10, start, end);
     }
@@ -281,6 +282,101 @@ Void String::SetView(UIntPtr Start, UIntPtr End) {
 
     ViewStart = Start;
     ViewEnd = End;
+}
+
+static inline Boolean IsDigit(Char Value) { return Value >= '0' && Value <= '9'; }
+static inline Boolean IsHex(Char Value) { return IsDigit(Value) || (Value >= 'a' && Value <= 'f')
+                                                                || (Value >= 'A' && Value <= 'F'); }
+
+Int64 String::ToInt(Void) const {
+    /* ToInt doesn't need to handle different bases (only base 10), so we can just parse everything while we encounter
+     * characters from '0' to '9'. */
+
+    UInt64 ret = 0;
+    Boolean neg = False;
+    UIntPtr i = ViewStart;
+
+    if (ViewEnd - ViewStart > 1 && Value[i] == '-') {
+        i++;
+        neg = True;
+    }
+
+    for (; i < ViewEnd && IsDigit(Value[i]); i++) {
+        ret = (ret * 10) + (Value[i] - '0');
+    }
+
+    return neg ? -ret : ret;
+}
+
+UInt64 String::ToUInt(Void) const {
+    /* ToUInt does need to handle other bases, and for that we take the first two characters, for different bases, they
+     * should always be 0<n> where <n> is 'b' for binary, 'o' for octal and 'x' for hexadecimal. */
+
+    UInt64 ret = 0;
+    Boolean canb = ViewEnd - ViewStart > 2 && Value[ViewStart] == '0';
+
+    if (canb && Value[ViewStart + 1] == 'b') {
+        for (UIntPtr i = ViewStart + 2; i < ViewEnd && (Value[i] == '0' || Value[i] == '1'); i++) {
+            ret = (ret * 2) + (Value[i] - '0');
+        }
+    } else if (canb && Value[ViewStart + 1] == 'o') {
+        for (UIntPtr i = ViewStart + 2; i < ViewEnd && Value[i] >= '0' && Value[i] <= '7'; i++) {
+            ret = (ret * 8) + (Value[i] - '0');
+        }
+    } else if (canb && Value[ViewStart + 1] == 'x') {
+        /* Hexadecimal is more complex, as we have 0 to 9, and a to f (and also A to F). */
+
+        for (UIntPtr i = ViewStart + 2; i < ViewEnd && IsHex(Value[i]); i++) {
+            ret = (ret * 16) + (IsDigit(Value[i]) ? Value[i] - '0' :
+                                ((Value[i] >= 'a' && Value[i] <= 'f' ? Value[i] - 'a' : Value[i] - 'A') + 10));
+        }
+    } else {
+        for (UIntPtr i = ViewStart; i < ViewEnd && IsDigit(Value[i]); i++) {
+            ret = (ret * 10) + (Value[i] - '0');
+        }
+    }
+
+    return ret;
+}
+
+static UInt64 Pow10(UIntPtr Value) {
+    UInt64 i = 1;
+
+    while (Value--) {
+        i *= 10;
+    }
+
+    return i;
+}
+
+Float String::ToFloat(Void) const {
+    /* And at last we have ToFloat(), the first part is the same as ToInt, and if we don't find a dot somewhere, we ARE
+     * the same as ToInt, but once we enter the actual float/double world, we gonna store the precision (as we add more
+     * digits), and at the end divide by 10^prec. Later, it might be interesting to add support for hex floats. */
+
+    Float ret;
+    Boolean neg = False;
+    UInt64 main = 0, dec = 0;
+    UIntPtr prec = 0, i = ViewStart;
+
+    if (ViewEnd - ViewStart > 1 && Value[ViewStart] == '-') {
+        i++;
+        neg = True;
+    }
+
+    for (; i < ViewEnd && IsDigit(Value[i]); i++) {
+        main = (main * 10) + (Value[i] - '0');
+    }
+
+    if (i < ViewEnd && Value[i++] == '.') {
+        /* Just like we limit FromFloat to only 17 digits after the dot, let's also do the same here. */
+
+        for (; prec < 17 && i < ViewEnd && IsDigit(Value[i]); i++, prec++) {
+            dec = (dec * 10) + (Value[i] - '0');
+        }
+    }
+
+    return ret = main + (dec ? static_cast<Float>(dec) / Pow10(prec) : 0), neg ? -ret : ret;
 }
 
 Status String::Append(Char Value) {
