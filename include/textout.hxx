@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 26 of 2020, at 13:16 BRT
- * Last edited on February 24 of 2021, at 10:39 BRT */
+ * Last edited on February 25 of 2021, at 11:30 BRT */
 
 #pragma once
 
@@ -50,8 +50,8 @@ public:
     Void RestoreBackground(Void);
     Void RestoreForeground(Void);
 
-    UInt32 GetBackground(Void) const { return Background; }
-    UInt32 GetForeground(Void) const { return Foreground; }
+    inline UInt32 GetBackground(Void) const { return Background; }
+    inline UInt32 GetForeground(Void) const { return Foreground; }
 private:
     Boolean WriteInt(Char) override;
 

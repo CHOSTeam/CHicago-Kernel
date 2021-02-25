@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:37 BRT
- * Last edited on February 24 of 2021 at 10:38 BRT */
+ * Last edited on February 25 of 2021 at 11:28 BRT */
 
 #pragma once
 
@@ -139,9 +139,9 @@ public:
     /* Some extra functions that allow us to access all the internal info about the image that we may need to
      * access. */
 
-    UInt32 *GetBuffer(Void) const { return Buffer; }
-    UInt16 GetWidth(Void) const { return Width; }
-    UInt16 GetHeight(Void) const { return Height; }
+    inline UInt32 *GetBuffer(Void) const { return Buffer; }
+    inline UInt16 GetWidth(Void) const { return Width; }
+    inline UInt16 GetHeight(Void) const { return Height; }
 private:
     /* Some math functions that we're going to put here for now (later we should re-add the math.hxx header). */
 

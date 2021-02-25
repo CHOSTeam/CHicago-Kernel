@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 16:07 BRT
- * Last edited on February 18 of 2021, at 17:37 BRT */
+ * Last edited on February 25 of 2021, at 11:29 BRT */
 
 #pragma once
 
@@ -99,13 +99,13 @@ public:
 	 * start/end, to get the amount of memory the system has, how much has been used, and how much is free. */
 
     static UInt8 GetReferences(UIntPtr);
-    static UIntPtr GetKernelStart(Void) { return KernelStart; }
-    static UIntPtr GetKernelEnd(Void) { return KernelEnd; }
-    static UIntPtr GetMinAddress(Void) { return MinAddress; }
-    static UIntPtr GetMaxAddress(Void) { return MaxAddress; }
-    static UIntPtr GetSize(Void) { return MaxBytes; }
-    static UIntPtr GetUsage(Void) { return UsedBytes; }
-    static UIntPtr GetFree(Void) { return MaxBytes - UsedBytes; }
+    static inline UIntPtr GetKernelStart(Void) { return KernelStart; }
+    static inline UIntPtr GetKernelEnd(Void) { return KernelEnd; }
+    static inline UIntPtr GetMinAddress(Void) { return MinAddress; }
+    static inline UIntPtr GetMaxAddress(Void) { return MaxAddress; }
+    static inline UIntPtr GetSize(Void) { return MaxBytes; }
+    static inline UIntPtr GetUsage(Void) { return UsedBytes; }
+    static inline UIntPtr GetFree(Void) { return MaxBytes - UsedBytes; }
 private:
     static UIntPtr CountFreePages(UIntPtr, UIntPtr, UIntPtr);
     static Status FindFreePages(UIntPtr, UIntPtr, UIntPtr&, UIntPtr&);
@@ -143,12 +143,12 @@ public:
     static Void *Allocate(UIntPtr, UIntPtr);
     static Void Deallocate(Void*);
 
-    static Void *GetStart(Void) { return reinterpret_cast<Void*>(Start); }
-    static Void *GetEnd(Void) { return reinterpret_cast<Void*>(End); }
-    static Void *GetCurrent(Void) { return reinterpret_cast<Void*>(Current); }
-    static UIntPtr GetSize(Void) { return End - Start; }
-    static UIntPtr GetUsage(Void) { return CurrentAligned - Start; }
-    static UIntPtr GetFree(Void) { return End - CurrentAligned; }
+    static inline Void *GetStart(Void) { return reinterpret_cast<Void*>(Start); }
+    static inline Void *GetEnd(Void) { return reinterpret_cast<Void*>(End); }
+    static inline Void *GetCurrent(Void) { return reinterpret_cast<Void*>(Current); }
+    static inline UIntPtr GetSize(Void) { return End - Start; }
+    static inline UIntPtr GetUsage(Void) { return CurrentAligned - Start; }
+    static inline UIntPtr GetFree(Void) { return End - CurrentAligned; }
 private:
     static Void AddFree(AllocBlock*);
     static Void RemoveFree(AllocBlock*);

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 22 of 2021, at 15:27 BRT
- * Last edited on February 24 of 2021, at 10:52 BRT */
+ * Last edited on February 25 of 2021, at 11:30 BRT */
 
 #pragma once
 
@@ -55,8 +55,8 @@ public:
     Argument(const Char *Value) : Type(ArgumentType::CString), Value({ .CStringValue = Value }) { }
     Argument(const String &Value) : Type(ArgumentType::CHString), Value({ .CHStringValue = &Value }) { }
 
-    ArgumentType GetType() const { return Type; }
-    ArgumentValue GetValue() const { return Value; }
+    inline ArgumentType GetType() const { return Type; }
+    inline ArgumentValue GetValue() const { return Value; }
 private:
     ArgumentType Type;
     ArgumentValue Value;
@@ -66,10 +66,10 @@ class ArgumentList {
 public:
     ArgumentList(UIntPtr Count, const Argument *List) : Count(Count), List(List) { }
 
-    const Argument &operator [](UIntPtr Index) const { return List[Index]; }
+    inline const Argument &operator [](UIntPtr Index) const { return List[Index]; }
 
-    UIntPtr GetCount(Void) const { return Count; }
-    const Argument *GetList(Void) const { return List; }
+    inline UIntPtr GetCount(Void) const { return Count; }
+    inline const Argument *GetList(Void) const { return List; }
 private:
     UIntPtr Count;
     const Argument *List;

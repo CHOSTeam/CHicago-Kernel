@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on February 24 of 2021 at 17:27 BRT */
+ * Last edited on February 25 of 2021 at 11:38 BRT */
 
 #pragma once
 
@@ -50,9 +50,12 @@ public:
 
     Void SetView(UIntPtr, UIntPtr);
 
-    Int64 ToInt(Void) const;
-    UInt64 ToUInt(Void) const;
-    Float ToFloat(Void) const;
+    Int64 ToInt(UIntPtr&) const;
+    UInt64 ToUInt(UIntPtr&, Boolean = False) const;
+    Float ToFloat(UIntPtr&) const;
+    inline Int64 ToInt(Void) const { UIntPtr i = ViewStart; return ToInt(i); }
+    inline UInt64 ToUInt(Boolean OnlyDec = False) const { UIntPtr i = ViewStart; return ToUInt(i, OnlyDec); }
+    inline Float ToFloat(Void) const { UIntPtr i = ViewStart; return ToFloat(i); }
 
     Status Append(Char);
     UIntPtr Append(Int64);
@@ -70,19 +73,19 @@ public:
     Boolean Compare(const String&) const;
 
     Char *GetMutValue(Void) const;
-    const Char *GetValue(Void) const { return Value; }
-    UIntPtr GetLength(Void) const { return Length; }
-    UIntPtr GetViewStart(Void) const { return ViewStart; }
-    UIntPtr GetViewEnd(Void) const { return ViewEnd; }
+    inline const Char *GetValue(Void) const { return Value; }
+    inline UIntPtr GetLength(Void) const { return Length; }
+    inline UIntPtr GetViewStart(Void) const { return ViewStart; }
+    inline UIntPtr GetViewEnd(Void) const { return ViewEnd; }
 
     /* Operators for ranges-for and for accessing the string as a normal character array. */
 
-    const Char *begin(Void) { return &Value[ViewStart]; }
-    const Char *begin(Void) const { return &Value[ViewStart]; }
-    const Char *end(Void) { return &Value[ViewEnd]; }
-    const Char *end(Void) const { return &Value[ViewEnd]; }
+    inline const Char *begin(Void) { return &Value[ViewStart]; }
+    inline const Char *begin(Void) const { return &Value[ViewStart]; }
+    inline const Char *end(Void) { return &Value[ViewEnd]; }
+    inline const Char *end(Void) const { return &Value[ViewEnd]; }
 
-    Char operator [](UIntPtr Index) const { return Value[ViewStart + Index]; }
+    inline Char operator [](UIntPtr Index) const { return Value[ViewStart + Index]; }
 private:
     Void CalculateLength(Void);
 

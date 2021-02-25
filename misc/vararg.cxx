@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 15:57 BRT
- * Last edited on February 24 of 2021 at 18:24 BRT */
+ * Last edited on February 25 of 2021 at 11:37 BRT */
 
 #include <string.hxx>
 
@@ -31,19 +31,7 @@ using namespace CHicago;
 
 namespace CHicago {
 
-static Boolean IsDigit(Char Value) {
-    return Value >= '0' && Value <= '9';
-}
-
-static UIntPtr ToUInt(const String &Value, UIntPtr &Current) {
-    UIntPtr ret = 0;
-
-    while (IsDigit(Value[Current])) {
-        ret = (ret * 10) + (Value[Current++] - '0');
-    }
-
-    return ret;
-}
+static Boolean IsDigit(Char Value) { return Value >= '0' && Value <= '9'; }
 
 static const Char *FindFirst(const Char *Data, Char Value, UIntPtr Length) {
     /* Just find the first occurrence of the character Value in the buffer Data. This can be extended to not only
@@ -134,7 +122,7 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
                 return written;
             }
 
-            idx = ToUInt(Format, pos);
+            idx = Format.ToUInt(pos, True);
             iset = True;
 
             /* Remember to make sure the index is not crazy (as we DO have the var arg list size). */
@@ -165,7 +153,7 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
                         return written;
                     }
 
-                    width = ToUInt(Format, pos);
+                    width = Format.ToUInt(pos, True);
                 }
             }
 
@@ -180,7 +168,7 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
                     return written;
                 }
 
-                prec = ToUInt(Format, pos);
+                prec = Format.ToUInt(pos, True);
                 pset = 1;
             }
         }
@@ -192,7 +180,7 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
                 return written;
             }
 
-            base = ToUInt(Format, pos);
+            base = Format.ToUInt(pos, True);
         }
 
         if (Format[pos++] != '}') {
