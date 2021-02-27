@@ -48,8 +48,8 @@ extern "C" Void KernelEntry(BootInfo *Info) {
     Debug.Write("initialization finished, halting the machine\n");
     Debug.RestoreForeground();
 
-    Debug.Write("Test: {} 0b{::2} {}\n",
-                String("-19903").ToInt(), String("0x80000009").ToUInt(), String("3.141592").ToFloat());
+    Debug.Write("Test: {} 0b{::2} {:.17}\n",
+                String("-19903").ToInt(), String("0x80000009").ToUInt(), String("3.141592e-11").ToFloat());
 
     *((volatile UIntPtr*)nullptr) = 0;
     ASSERT(False);

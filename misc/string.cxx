@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 25 of 2021 at 11:38 BRT */
+ * Last edited on February 27 of 2021 at 10:05 BRT */
 
 #include <string.hxx>
 
@@ -295,7 +295,7 @@ Int64 String::ToInt(UIntPtr &Position) const {
     UInt64 ret = 0;
     Boolean neg = False;
 
-    if (ViewEnd - Position > 1 && Value[Position] == '-') {
+    if (Position < ViewEnd && Value[Position] == '-') {
         Position++;
         neg = True;
     }
@@ -312,7 +312,7 @@ UInt64 String::ToUInt(UIntPtr &Position, Boolean OnlyDec) const {
      * should always be 0<n> where <n> is 'b' for binary, 'o' for octal and 'x' for hexadecimal. */
 
     UInt64 ret = 0;
-    Boolean canb = !OnlyDec && ViewEnd - Position > 2 && Value[Position] == '0';
+    Boolean canb = !OnlyDec && Position + 1 < ViewEnd && Value[Position] == '0';
 
     if (canb && Value[Position + 1] == 'b') {
         for (Position += 2; Position < ViewEnd && (Value[Position] == '0' || Value[Position] == '1'); Position++) {
@@ -359,11 +359,10 @@ Float String::ToFloat(UIntPtr &Position) const {
     }
 
     Float ret;
-    UIntPtr prec = 0;
-    Boolean neg = False;
-    UInt64 main = 0, dec = 0;
+    Boolean neg = False, nege = False;
+    UInt64 prec = 1, main = 0, dec = 0, exp = 0;
 
-    if (ViewEnd - Position > 1 && Value[Position] == '-') {
+    if (Position < ViewEnd && Value[Position] == '-') {
         Position++;
         neg = True;
     }
@@ -372,15 +371,28 @@ Float String::ToFloat(UIntPtr &Position) const {
         main = (main * 10) + (Value[Position] - '0');
     }
 
-    if (Position < ViewEnd && Value[Position++] == '.') {
-        /* Just like we limit FromFloat to only 17 digits after the dot, let's also do the same here. */
-
-        for (; prec < 17 && Position < ViewEnd && IsDigit(Value[Position]); Position++, prec++) {
+    if (Position < ViewEnd && Value[Position] == '.') {
+        for (Position++; Position < ViewEnd && IsDigit(Value[Position]); Position++, prec *= 10) {
             dec = (dec * 10) + (Value[Position] - '0');
         }
     }
 
-    return ret = main + (dec ? static_cast<Float>(dec) / Pow10(prec) : 0), neg ? -ret : ret;
+    /* We might have some floats on the format 'X.YeZ', where Z is by how much we have to multiply/divide X.Y (if Z is
+     * negative, we have to divide by 10^|Z|, else, we have to multiply by 10^Z). */
+
+    if (Position < ViewEnd && (Value[Position] == 'e' || Value[Position] == 'E')) {
+        if (Position + 1 < ViewEnd && Value[Position + 1] == '-') {
+            Position++;
+            nege = True;
+        }
+
+        for (Position++; Position < ViewEnd && IsDigit(Value[Position]); Position++) {
+            exp = (exp * 10) + (Value[Position] - '0');
+        }
+    }
+
+    return ret = main + (dec ? static_cast<Float>(dec) / prec : 0),
+           ret = exp ? (nege ? ret / Pow10(exp) : ret * Pow10(exp)) : ret, neg ? -ret : ret;
 }
 
 Status String::Append(Char Value) {
