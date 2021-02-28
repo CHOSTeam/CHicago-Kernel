@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:37 BRT
- * Last edited on February 25 of 2021 at 11:28 BRT */
+ * Last edited on February 28 of 2021 at 13:01 BRT */
 
 #pragma once
 
@@ -47,6 +47,8 @@ extern FontData DefaultFont;
 class Image {
 public:
     Image(Void);
+    Image(Image&&);
+    Image(const Image&);
     Image(UInt16, UInt16);
     Image(UInt32*, UInt16, UInt16);
 

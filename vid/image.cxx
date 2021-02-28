@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 21:14 BRT
- * Last edited on February 22 of 2021 at 17:28 BRT */
+ * Last edited on February 28 of 2021 at 13:02 BRT */
 
 #include <img.hxx>
 
@@ -9,7 +9,24 @@ using namespace CHicago;
 
 Image::Image(Void) : Buffer(Null), Allocated(False), References(Null), Width(0), Height(0) { }
 Image::Image(UInt32 *Buffer, UInt16 Width, UInt16 Height)
-        : Buffer(Buffer), Allocated(False), References(Null), Width(Width), Height(Height) { }
+    : Buffer(Buffer), Allocated(False), References(Null), Width(Width), Height(Height) { }
+
+Image::Image(Image &&Source)
+    : Buffer(Source.Buffer), Allocated(Source.Allocated), References(Source.References), Width(Source.Width),
+      Height(Source.Height) {
+    Source.Buffer = Null;
+    Source.References = Null;
+    Source.Allocated = False;
+    Source.Width = Source.Height = 0;
+}
+
+Image::Image(const Image &Source)
+    : Buffer(Source.Buffer), Allocated(Source.Allocated), References(Source.References), Width(Source.Width),
+    Height(Source.Height) {
+    if (References != Null) {
+        (*References)++;
+    }
+}
 
 Image::Image(UInt16 Width, UInt16 Height)
         : Buffer(new UInt32[Width * Height]), Allocated(True), References(new UIntPtr), Width(Width), Height(Height) {

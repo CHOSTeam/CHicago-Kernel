@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on February 25 of 2021 at 11:38 BRT */
+ * Last edited on February 28 of 2021 at 13:02 BRT */
 
 #pragma once
 
@@ -14,6 +14,7 @@ class String {
 public:
     String(Void);
     String(UIntPtr);
+    String(String&&);
     String(const String&);
     String(const Char*, Boolean = False);
 
@@ -71,6 +72,7 @@ public:
     }
 
     Boolean Compare(const String&) const;
+    Boolean StartsWith(const String&) const;
 
     Char *GetMutValue(Void) const;
     inline const Char *GetValue(Void) const { return Value; }

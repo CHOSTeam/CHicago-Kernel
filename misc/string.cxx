@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 28 of 2021 at 11:08 BRT */
+ * Last edited on February 28 of 2021 at 13:03 BRT */
 
 #include <string.hxx>
 
@@ -17,6 +17,13 @@ String::String(UIntPtr Size) : Value(Null), Capacity(0), Length(0), ViewStart(0)
     } else {
         Value = const_cast<Char*>("");
     }
+}
+
+String::String(String &&Value)
+        : Value(Value.Value), Capacity(Value.Capacity), Length(Value.Length), ViewStart(Value.ViewStart),
+          ViewEnd(Value.ViewEnd) {
+    Value.Value = Null;
+    Value.Capacity = Value.Length = Value.ViewStart = Value.ViewEnd = 0;
 }
 
 String::String(const String &Value)
@@ -482,6 +489,19 @@ Boolean String::Compare(const String &Value) const {
     }
 
     return CompareMemory(this->Value + ViewStart, Value.Value + Value.ViewStart, ViewEnd - ViewStart);
+}
+
+Boolean String::StartsWith(const String &Value) const {
+    /* This is like the Compare function, but we want to limit the length to the Value's length/active view (so our
+     * length/active view only needs to be at least the same as the Value's one, not exactly the same). */
+
+    if (this->Value == Value.Value) {
+        return True;
+    } else if (this->Value == Null || Value.Value == Null || ViewEnd - ViewStart < Value.ViewEnd - Value.ViewStart) {
+        return False;
+    }
+
+    return CompareMemory(this->Value + ViewStart, Value.Value + Value.ViewStart, Value.ViewEnd - Value.ViewStart);
 }
 
 Char *String::GetMutValue(Void) const {

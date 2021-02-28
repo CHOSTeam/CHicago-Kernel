@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on May 11 of 2018, at 13:15 BRT
- * Last edited on February 22 of 2021, at 17:32 BRT */
+ * Last edited on February 28 of 2021, at 13:07 BRT */
 
 #pragma once
 
@@ -69,6 +69,14 @@ typedef bool Boolean;
 #define False false
 
 #define Null nullptr
+
+template<class T> struct RemoveReference { typedef T Value; };
+template<class T> struct RemoveReference<T&> { typedef T Value; };
+template<class T> struct RemoveReference<T&&> { typedef T Value; };
+
+template<class T> static inline constexpr typename RemoveReference<T>::Value&& Move(T &&Value) {
+    return static_cast<typename RemoveReference<T>::Value&&>(Value);
+}
 
 /* We use this for aligning an allocation (from ::new or ::delete), the type name NEEDS to be align_val_t btw. nd yes,
  * this is hackish as hell, I know. */
