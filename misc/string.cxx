@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 27 of 2021 at 10:05 BRT */
+ * Last edited on February 28 of 2021 at 11:08 BRT */
 
 #include <string.hxx>
 
@@ -292,7 +292,7 @@ Int64 String::ToInt(UIntPtr &Position) const {
     /* ToInt doesn't need to handle different bases (only base 10), so we can just parse everything while we encounter
      * characters from '0' to '9'. */
 
-    UInt64 ret = 0;
+    UInt64 ret;
     Boolean neg = False;
 
     if (Position < ViewEnd && Value[Position] == '-') {
@@ -300,11 +300,7 @@ Int64 String::ToInt(UIntPtr &Position) const {
         neg = True;
     }
 
-    for (; Position < ViewEnd && IsDigit(Value[Position]); Position++) {
-        ret = (ret * 10) + (Value[Position] - '0');
-    }
-
-    return neg ? -ret : ret;
+    return ret = ToUInt(Position, True), neg ? -ret : ret;
 }
 
 UInt64 String::ToUInt(UIntPtr &Position, Boolean OnlyDec) const {
@@ -339,11 +335,11 @@ UInt64 String::ToUInt(UIntPtr &Position, Boolean OnlyDec) const {
     return ret;
 }
 
-static UInt64 Pow10(UIntPtr Value) {
+static UInt64 Pow(UIntPtr X, UIntPtr Y) {
     UInt64 i = 1;
 
-    while (Value--) {
-        i *= 10;
+    while (Y--) {
+        i *= X;
     }
 
     return i;
@@ -352,7 +348,7 @@ static UInt64 Pow10(UIntPtr Value) {
 Float String::ToFloat(UIntPtr &Position) const {
     /* And at last we have ToFloat(), the first part is the same as ToInt, and if we don't find a dot somewhere, we ARE
      * the same as ToInt, but once we enter the actual float/double world, we gonna store the precision (as we add more
-     * digits), and at the end divide by 10^prec. Later, it might be interesting to add support for hex floats. */
+     * digits), and at the end divide by 10^prec. */
 
     if (Position < ViewStart || Position >= ViewEnd) {
         return 0;
@@ -360,39 +356,72 @@ Float String::ToFloat(UIntPtr &Position) const {
 
     Float ret;
     Boolean neg = False, nege = False;
-    UInt64 prec = 1, main = 0, dec = 0, exp = 0;
+    UInt64 main, dec = 0, exp = 0, prec = 1;
 
     if (Position < ViewEnd && Value[Position] == '-') {
         Position++;
         neg = True;
     }
 
-    for (; Position < ViewEnd && IsDigit(Value[Position]); Position++) {
-        main = (main * 10) + (Value[Position] - '0');
-    }
+    if (Position + 1 < ViewEnd && Value[Position] == '0' && Value[Position + 1] == 'x') {
+        /* Base 16/hex float, for the main and dec values we use hexadecimal (handle them in the same way that we do
+         * any hex int in ToUInt). */
 
-    if (Position < ViewEnd && Value[Position] == '.') {
-        for (Position++; Position < ViewEnd && IsDigit(Value[Position]); Position++, prec *= 10) {
-            dec = (dec * 10) + (Value[Position] - '0');
+        main = ToUInt(Position);
+
+        if (Position < ViewEnd && Value[Position] == '.') {
+            /* Just as we're going to do in the base 10 case, manually handle the dec part. */
+
+            for (Position++; Position < ViewEnd && IsHex(Value[Position]); Position++, prec *= 16) {
+                dec = (dec * 16) + (IsDigit(Value[Position]) ? Value[Position] - '0' :
+                                    ((Value[Position] >= 'a' && Value[Position] <= 'f' ? Value[Position] - 'a' :
+                                      Value[Position] - 'A') + 10));
+            }
         }
-    }
 
-    /* We might have some floats on the format 'X.YeZ', where Z is by how much we have to multiply/divide X.Y (if Z is
-     * negative, we have to divide by 10^|Z|, else, we have to multiply by 10^Z). */
+        /* And for exponents, we expect pZ/p-Z instead of eZ/e-Z, where Z is a power of 2, instead of a power of 10. */
 
-    if (Position < ViewEnd && (Value[Position] == 'e' || Value[Position] == 'E')) {
-        if (Position + 1 < ViewEnd && Value[Position + 1] == '-') {
+        if (Position < ViewEnd && (Value[Position] == 'p' || Value[Position] == 'P')) {
+            if (Position + 1 < ViewEnd && Value[Position + 1] == '-') {
+                Position++;
+                nege = True;
+            }
+
             Position++;
-            nege = True;
+            exp = ToUInt(Position, True);
         }
 
-        for (Position++; Position < ViewEnd && IsDigit(Value[Position]); Position++) {
-            exp = (exp * 10) + (Value[Position] - '0');
+        ret = main + (dec ? static_cast<Float>(dec) / prec : 0);
+        ret = exp ? (nege ? ret / Pow(2, exp) : ret * Pow(2, exp)) : ret;
+    } else {
+        main = ToUInt(Position);
+
+        if (Position < ViewEnd && Value[Position] == '.') {
+            /* Manually handle the dec part, as we also have to increase the precision at each step. */
+
+            for (Position++; Position < ViewEnd && IsDigit(Value[Position]); Position++, prec *= 10) {
+                dec = (dec * 10) + (Value[Position] - '0');
+            }
         }
+
+        /* The exponent is also base 10, and it indicates by how much we should scale the value (eX means multiply by
+         * 10^X, while e-X means divide by 10^X). */
+
+        if (Position < ViewEnd && (Value[Position] == 'e' || Value[Position] == 'E')) {
+            if (Position + 1 < ViewEnd && Value[Position + 1] == '-') {
+                Position++;
+                nege = True;
+            }
+
+            Position++;
+            exp = ToUInt(Position, True);
+        }
+
+        ret = main + (dec ? static_cast<Float>(dec) / prec : 0);
+        ret = exp ? (nege ? ret / Pow(10, exp) : ret * Pow(10, exp)) : ret;
     }
 
-    return ret = main + (dec ? static_cast<Float>(dec) / prec : 0),
-           ret = exp ? (nege ? ret / Pow10(exp) : ret * Pow10(exp)) : ret, neg ? -ret : ret;
+    return neg ? -ret : ret;
 }
 
 Status String::Append(Char Value) {

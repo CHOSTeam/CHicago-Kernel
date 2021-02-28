@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on February 24 of 2021 at 18:23 BRT */
+ * Last edited on February 28 of 2021 at 11:06 BRT */
 
 #include <arch.hxx>
 #include <mm.hxx>
@@ -48,8 +48,8 @@ extern "C" Void KernelEntry(BootInfo *Info) {
     Debug.Write("initialization finished, halting the machine\n");
     Debug.RestoreForeground();
 
-    Debug.Write("Test: {} 0b{::2} {:.17}\n",
-                String("-19903").ToInt(), String("0x80000009").ToUInt(), String("3.141592e-11").ToFloat());
+    Debug.Write("Test: {} {} {}\n", String("3.141592").ToFloat(), String("2.5e-5").ToFloat(),
+                                            String("0x1.Fp-2").ToFloat());
 
     *((volatile UIntPtr*)nullptr) = 0;
     ASSERT(False);
