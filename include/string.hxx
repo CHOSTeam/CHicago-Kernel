@@ -1,11 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on February 28 of 2021 at 13:42 BRT */
+ * Last edited on February 28 of 2021 at 14:05 BRT */
 
 #pragma once
 
-#include <status.hxx>
+#include <list.hxx>
 #include <vararg.hxx>
 
 namespace CHicago {
@@ -73,6 +73,7 @@ public:
 
     Boolean Compare(const String&) const;
     Boolean StartsWith(const String&) const;
+    List<String> Tokenize(const String&) const;
 
     Char *GetMutValue() const;
     inline const Char *GetValue() const { return Value; }

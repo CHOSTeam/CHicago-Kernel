@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 28 of 2021 at 13:42 BRT */
+ * Last edited on February 28 of 2021 at 14:08 BRT */
 
 #include <string.hxx>
 
@@ -494,6 +494,51 @@ Boolean String::StartsWith(const String &Value) const {
     }
 
     return CompareMemory(this->Value + ViewStart, Value.Value + Value.ViewStart, Value.ViewEnd - Value.ViewStart);
+}
+
+static Boolean IsDelimiter(const String &Delimiters, Char Value) {
+    for (Char ch : Delimiters) {
+        if (ch == Value) {
+            return True;
+        }
+    }
+
+    return False;
+}
+
+List<String> String::Tokenize(const String &Delimiters) const {
+    /* Start by checking if the delimiters string have at least one delimiter, creating the output list, and creating
+     * one "global" string pointer, we're going to initialize it to Null, and only alloc it if we need. */
+
+    if (Value == Null || !Delimiters.Length) {
+        return {};
+    }
+
+    String str;
+    List<String> ret;
+
+    for (UIntPtr i = 0; i < Length; i++) {
+        if (IsDelimiter(Delimiters, Value[i])) {
+            /* If this is one of the delimiters, we can add the string we have been creating to the list.
+             * If the string is still empty, we can just skip and go to the next character. */
+
+            if (str.GetLength() == 0) {
+                continue;
+            } else if (ret.Add(str) != Status::Success) {
+                return {};
+            }
+
+            str.Clear();
+
+            continue;
+        }
+
+        if (str.Append(Value[i]) != Status::Success) {
+            return {};
+        }
+    }
+
+    return (!str.GetLength() || ret.Add(str) == Status::Success) ? Move(ret) : List<String>();
 }
 
 Char *String::GetMutValue() const {

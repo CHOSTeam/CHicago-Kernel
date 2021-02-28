@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 11:51 BRT
- * Last edited on February 28 of 2021 at 13:44 BRT */
+ * Last edited on February 28 of 2021 at 14:17 BRT */
 
 #pragma once
 
@@ -11,7 +11,7 @@
     Status status; \
     \
     if (Index + (Index > Length) >= Capacity && \
-        (status = Reserve(Capacity == 0 ? 2 : Capacity * 2)) != Status::Success) { \
+        (status = Reserve(!Capacity ? 2 : Capacity * 2)) != Status::Success) { \
         return status; \
     } else if (Index < Length) { \
         MoveMemory(&Elements[Index + 1], &Elements[Index], sizeof(T) * (Length - Index)); \
@@ -100,7 +100,7 @@ public:
 
         if (Elements == Null || Capacity == Length) {
             return Status::Success;
-        } else if (Length == 0) {
+        } else if (!Length) {
             Heap::Deallocate(Elements);
             return Elements = Null, Capacity = 0, Status::Success;
         } else if ((buf = (T*)Heap::Allocate(sizeof(T) * Length)) == Null) {
@@ -115,26 +115,37 @@ public:
 
     inline Void Clear() { while (Length) { Elements[--Length].~T(); } }
 
-    inline Status Add(const List &Source, Boolean Move = False) { return Add(Source, Length, Move); }
+    inline Status Add(const List &Source) { return Add(Source, Length); }
+    inline Status Add(List &&Source) { return Add(Source, Length); }
     inline Status Add(const T &Data) { return Add(Data, Length); }
     inline Status Add(const T &&Data) { return Add(Data, Length); }
 
-    Status Add(const List &Source, UIntPtr Index, Boolean Move = False) {
+    Status Add(const List &Source, UIntPtr Index) {
         Status status;
 
-        if (Move) {
-            for (const T &data : Source) {
-                if ((status = Add(data, Index++)) != Status::Success) {
-                    return status;
-                }
-            }
-        } else {
-            for (const T &data : Source) {
-                if ((status = Add(static_cast<T&&>(data), Index++)) != Status::Success) {
-                    return status;
-                }
+        for (const T &data : Source) {
+            if ((status = Add(data, Index++)) != Status::Success) {
+                return status;
             }
         }
+
+        return Status::Success;
+    }
+
+    Status Add(List &&Source, UIntPtr Index) {
+        /* When moving the list, we should add everything using the T&& List::Add, and later clear the other list
+         * manually. */
+
+        Status status;
+
+        for (const T &data : Source) {
+            if ((status = Add(Move(data), Index++)) != Status::Success) {
+                return status;
+            }
+        }
+
+        Source.Length = 0;
+        Source.Fit();
 
         return Status::Success;
     }
