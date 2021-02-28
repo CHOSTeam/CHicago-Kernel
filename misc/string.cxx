@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 28 of 2021 at 13:03 BRT */
+ * Last edited on February 28 of 2021 at 13:17 BRT */
 
 #include <string.hxx>
 
@@ -295,6 +295,18 @@ static inline Boolean IsDigit(Char Value) { return Value >= '0' && Value <= '9';
 static inline Boolean IsHex(Char Value) { return IsDigit(Value) || (Value >= 'a' && Value <= 'f')
                                                                 || (Value >= 'A' && Value <= 'F'); }
 
+static inline UInt64 ToHexUInt(const Char *Value, UIntPtr ViewEnd, UIntPtr &Position) {
+    UInt64 ret = 0;
+
+    for (; Position < ViewEnd && IsHex(Value[Position]); Position++) {
+        ret = (ret * 16) + (IsDigit(Value[Position]) ? Value[Position] - '0' :
+                            ((Value[Position] >= 'a' && Value[Position] <= 'f' ? Value[Position] - 'a' :
+                              Value[Position] - 'A') + 10));
+    }
+
+    return ret;
+}
+
 Int64 String::ToInt(UIntPtr &Position) const {
     /* ToInt doesn't need to handle different bases (only base 10), so we can just parse everything while we encounter
      * characters from '0' to '9'. */
@@ -326,13 +338,8 @@ UInt64 String::ToUInt(UIntPtr &Position, Boolean OnlyDec) const {
             ret = (ret * 8) + (Value[Position] - '0');
         }
     } else if (canb && Value[Position + 1] == 'x') {
-        /* Hexadecimal is more complex, as we have 0 to 9, and a to f (and also A to F). */
-
-        for (Position += 2; Position < ViewEnd && IsHex(Value[Position]); Position++) {
-            ret = (ret * 16) + (IsDigit(Value[Position]) ? Value[Position] - '0' :
-                                ((Value[Position] >= 'a' && Value[Position] <= 'f' ? Value[Position] - 'a' :
-                                                                                     Value[Position] - 'A') + 10));
-        }
+        Position += 2;
+        ret = ToHexUInt(Value, ViewEnd, Position);
     } else {
         for (; Position < ViewEnd && IsDigit(Value[Position]); Position++) {
             ret = (ret * 10) + (Value[Position] - '0');
@@ -363,7 +370,7 @@ Float String::ToFloat(UIntPtr &Position) const {
 
     Float ret;
     Boolean neg = False, nege = False;
-    UInt64 main, dec = 0, exp = 0, prec = 1;
+    UInt64 main, dec = 0, exp = 0, prec = 1, base = 10;
 
     if (Position < ViewEnd && Value[Position] == '-') {
         Position++;
@@ -374,6 +381,7 @@ Float String::ToFloat(UIntPtr &Position) const {
         /* Base 16/hex float, for the main and dec values we use hexadecimal (handle them in the same way that we do
          * any hex int in ToUInt). */
 
+        base = 2;
         main = ToUInt(Position);
 
         if (Position < ViewEnd && Value[Position] == '.') {
@@ -385,21 +393,6 @@ Float String::ToFloat(UIntPtr &Position) const {
                                       Value[Position] - 'A') + 10));
             }
         }
-
-        /* And for exponents, we expect pZ/p-Z instead of eZ/e-Z, where Z is a power of 2, instead of a power of 10. */
-
-        if (Position < ViewEnd && (Value[Position] == 'p' || Value[Position] == 'P')) {
-            if (Position + 1 < ViewEnd && Value[Position + 1] == '-') {
-                Position++;
-                nege = True;
-            }
-
-            Position++;
-            exp = ToUInt(Position, True);
-        }
-
-        ret = main + (dec ? static_cast<Float>(dec) / prec : 0);
-        ret = exp ? (nege ? ret / Pow(2, exp) : ret * Pow(2, exp)) : ret;
     } else {
         main = ToUInt(Position);
 
@@ -410,25 +403,24 @@ Float String::ToFloat(UIntPtr &Position) const {
                 dec = (dec * 10) + (Value[Position] - '0');
             }
         }
-
-        /* The exponent is also base 10, and it indicates by how much we should scale the value (eX means multiply by
-         * 10^X, while e-X means divide by 10^X). */
-
-        if (Position < ViewEnd && (Value[Position] == 'e' || Value[Position] == 'E')) {
-            if (Position + 1 < ViewEnd && Value[Position + 1] == '-') {
-                Position++;
-                nege = True;
-            }
-
-            Position++;
-            exp = ToUInt(Position, True);
-        }
-
-        ret = main + (dec ? static_cast<Float>(dec) / prec : 0);
-        ret = exp ? (nege ? ret / Pow(10, exp) : ret * Pow(10, exp)) : ret;
     }
 
-    return neg ? -ret : ret;
+    /* And for exponents, we expect pZ/p-Z or eZ/e-Z. eZ/e-Z is for normal base 10 floats (Z is a power of 10), pZ/p-Z
+     * is for hex floats (Z is a power of 2). */
+
+    if (Position < ViewEnd && ((base == 2 && (Value[Position] == 'p' || Value[Position] == 'P')) ||
+                               (base == 10 && (Value[Position] == 'e' || Value[Position] == 'E')))) {
+        if (Position + 1 < ViewEnd && Value[Position + 1] == '-') {
+            Position++;
+            nege = True;
+        }
+
+        Position++;
+        exp = ToUInt(Position, True);
+    }
+
+    return ret = main + (dec ? static_cast<Float>(dec) / prec : 0),
+           ret = exp ? (nege ? ret / Pow(base, exp) : ret * Pow(base, exp)) : ret, neg ? -ret : ret;
 }
 
 Status String::Append(Char Value) {
