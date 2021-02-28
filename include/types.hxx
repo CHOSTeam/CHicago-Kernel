@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on May 11 of 2018, at 13:15 BRT
- * Last edited on February 28 of 2021, at 13:07 BRT */
+ * Last edited on February 28 of 2021, at 13:38 BRT */
 
 #pragma once
 
@@ -78,11 +78,35 @@ template<class T> static inline constexpr typename RemoveReference<T>::Value&& M
     return static_cast<typename RemoveReference<T>::Value&&>(Value);
 }
 
+}
+
 /* We use this for aligning an allocation (from ::new or ::delete), the type name NEEDS to be align_val_t btw. nd yes,
- * this is hackish as hell, I know. */
+ * this is hackish as hell, I know. Also, we need to put the initializer list on the std namespace. */
 
 #define AlignAlloc align_val_t
-namespace std { enum class AlignAlloc : long unsigned int { }; }
-using namespace std;
+#define InitializerList initializer_list
+
+namespace std {
+
+enum class AlignAlloc : long unsigned int { };
+
+template<typename T> class initializer_list {
+public:
+    constexpr initializer_list() : Elements(Null), Size(0) { }
+
+    constexpr const T *begin() const { return Elements; }
+    constexpr const T *end() const { return &Elements[Size]; }
+
+    constexpr long unsigned int GetSize() const { return Size; }
+private:
+    /* GCC expects the main constructor to be private and constexpr. */
+
+    constexpr initializer_list(const T *Elements, long unsigned int Size) : Elements(Elements), Size(Size) { }
+
+    const T *Elements;
+    long unsigned int Size;
+};
 
 }
+
+using namespace std;

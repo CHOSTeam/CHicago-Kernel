@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 00:14 BRT
- * Last edited on February 22 of 2021 at 17:51 BRT */
+ * Last edited on February 28 of 2021 at 13:42 BRT */
 
 #include <textout.hxx>
 
@@ -9,8 +9,8 @@ namespace CHicago {
 
 TextConsole Debug;
 
-TextConsole::TextConsole(Void) : Back(), Front(), X(0), BackY(0), FrontY(0), Background(0), Foreground(0),
-                                 BackgroundSP(0), ForegroundSP(0), BackgroundStack(), ForegroundStack() { }
+TextConsole::TextConsole() : Back(), Front(), X(0), BackY(0), FrontY(0), Background(0), Foreground(0),
+                             BackgroundSP(0), ForegroundSP(0), BackgroundStack(), ForegroundStack() { }
 
 TextConsole::TextConsole(BootInfo &Info, UInt32 Background, UInt32 Foreground)
     : Back(reinterpret_cast<UInt32*>(Info.FrameBuffer.BackBuffer), Info.FrameBuffer.Width, Info.FrameBuffer.Height),
@@ -20,7 +20,7 @@ TextConsole::TextConsole(BootInfo &Info, UInt32 Background, UInt32 Foreground)
     Clear();
 }
 
-Void TextConsole::Clear(Void) {
+Void TextConsole::Clear() {
     Back.Clear(Background);
     Front.Clear(Background);
     X = BackY = FrontY = 0;
@@ -47,7 +47,7 @@ Void TextConsole::SetForeground(UInt32 Color) {
     Foreground = Color;
 }
 
-Void TextConsole::RestoreBackground(Void) {
+Void TextConsole::RestoreBackground() {
     /* Let's just not do anything (instead of setting to some default value) if the stack is empty. */
 
     if (BackgroundSP > 0) {
@@ -57,7 +57,7 @@ Void TextConsole::RestoreBackground(Void) {
     Clear();
 }
 
-Void TextConsole::RestoreForeground(Void) {
+Void TextConsole::RestoreForeground() {
     if (ForegroundSP > 0) {
         Foreground = ForegroundStack[--ForegroundSP];
     }

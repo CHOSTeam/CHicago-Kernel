@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 15 of 2021, at 11:36 BRT
- * Last edited on February 22 of 2021 at 18:04 BRT */
+ * Last edited on February 28 of 2021 at 13:42 BRT */
 
 #include <arch.hxx>
 #include <panic.hxx>
@@ -14,7 +14,7 @@ static const Char *TypeMismatchKind[] = {
     "downcast of", "downcast of", "upcast of", "cast to virtual base of", "_Nonnull binding to"
 };
 
-static inline always_inline Void Prologue(Void) {
+static inline always_inline Void Prologue() {
     Debug.SetForeground(0xFFFF0000);
     Debug.Write("panic: ubsan: ");
 }

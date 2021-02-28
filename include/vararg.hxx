@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 22 of 2021, at 15:27 BRT
- * Last edited on February 25 of 2021, at 11:30 BRT */
+ * Last edited on February 28 of 2021 at 13:42 BRT */
 
 #pragma once
 
@@ -68,8 +68,8 @@ public:
 
     inline const Argument &operator [](UIntPtr Index) const { return List[Index]; }
 
-    inline UIntPtr GetCount(Void) const { return Count; }
-    inline const Argument *GetList(Void) const { return List; }
+    inline UIntPtr GetCount() const { return Count; }
+    inline const Argument *GetList() const { return List; }
 private:
     UIntPtr Count;
     const Argument *List;

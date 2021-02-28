@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 05 of 2021, at 20:33 BRT
- * Last edited on February 18 of 2021, at 17:36 BRT */
+ * Last edited on February 28 of 2021 at 13:45 BRT */
 
 #pragma once
 
@@ -52,7 +52,7 @@ struct packed BootInfo {
 #ifdef USE_INIT_ARRAY
 extern "C" UIntPtr __init_array_start, __init_array_end;
 #else
-extern "C" Void _init(Void);
+extern "C" Void _init();
 #endif
 
 }

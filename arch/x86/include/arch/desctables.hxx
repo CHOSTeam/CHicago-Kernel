@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 29 of 2020, at 09:47 BRT
- * Last edited on February 17 of 2021, at 10:36 BRT */
+ * Last edited on February 28 of 2021 at 13:44 BRT */
 
 #pragma once
 
@@ -40,9 +40,9 @@ typedef Void (*InterruptHandlerFunc)(Registers&);
 
 extern "C" UIntPtr IdtDefaultHandlers[256];
 
-Void GdtInit(Void);
+Void GdtInit();
 
 Void IdtSetHandler(UInt8, InterruptHandlerFunc);
-Void IdtInit(Void);
+Void IdtInit();
 
 }

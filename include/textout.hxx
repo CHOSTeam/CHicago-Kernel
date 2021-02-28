@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 26 of 2020, at 13:16 BRT
- * Last edited on February 25 of 2021, at 11:30 BRT */
+ * Last edited on February 28 of 2021 at 13:42 BRT */
 
 #pragma once
 
@@ -34,24 +34,24 @@ public:
         return ret;
     }
 private:
-    virtual Void AfterWrite(Void) { }
+    virtual Void AfterWrite() { }
     virtual Boolean WriteInt(Char) = 0;
 };
 
 class TextConsole : public TextOutput {
 public:
-    TextConsole(Void);
+    TextConsole();
     TextConsole(BootInfo&, UInt32 = 0, UInt32 = 0xFFFFFFFF);
 
-    Void Clear(Void);
+    Void Clear();
 
     Void SetBackground(UInt32);
     Void SetForeground(UInt32);
-    Void RestoreBackground(Void);
-    Void RestoreForeground(Void);
+    Void RestoreBackground();
+    Void RestoreForeground();
 
-    inline UInt32 GetBackground(Void) const { return Background; }
-    inline UInt32 GetForeground(Void) const { return Foreground; }
+    inline UInt32 GetBackground() const { return Background; }
+    inline UInt32 GetForeground() const { return Foreground; }
 private:
     Boolean WriteInt(Char) override;
 

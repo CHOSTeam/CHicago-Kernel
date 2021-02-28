@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 14 of 2021, at 23:45 BRT
- * Last edited on February 17 of 2021, at 11:34 BRT */
+ * Last edited on February 28 of 2021 at 13:42 BRT */
 
 #include <mm.hxx>
 #include <panic.hxx>
@@ -56,7 +56,7 @@ Void Heap::Decrement(UIntPtr Amount) {
     }
 }
 
-Void Heap::ReturnPhysical(Void) {
+Void Heap::ReturnPhysical() {
     /* This function actually returns all the allocated PHYSICAL memory to the system (the system may call us if it is
      * running out of memory, or regularly to not let the waste accumulate). */
 

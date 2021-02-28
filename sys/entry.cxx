@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on February 28 of 2021 at 13:08 BRT */
+ * Last edited on February 28 of 2021 at 13:48 BRT */
 
 #include <arch.hxx>
 #include <mm.hxx>
@@ -21,7 +21,7 @@ extern "C" Void KernelEntry(BootInfo *Info) {
 
 #ifdef USE_INIT_ARRAY
     for (UIntPtr *i = &__init_array_start; i < &__init_array_end; i++) {
-        reinterpret_cast<Void (*)(Void)>(*i)();
+        reinterpret_cast<Void(*)()>(*i)();
     }
 #else
     _init();

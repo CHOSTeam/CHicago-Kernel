@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:37 BRT
- * Last edited on February 28 of 2021 at 13:01 BRT */
+ * Last edited on February 28 of 2021 at 13:44 BRT */
 
 #pragma once
 
@@ -46,13 +46,13 @@ extern FontData DefaultFont;
 
 class Image {
 public:
-    Image(Void);
+    Image();
     Image(Image&&);
     Image(const Image&);
     Image(UInt16, UInt16);
     Image(UInt32*, UInt16, UInt16);
 
-    ~Image(Void);
+    ~Image();
 
     Image &operator =(const Image&);
 
@@ -141,9 +141,9 @@ public:
     /* Some extra functions that allow us to access all the internal info about the image that we may need to
      * access. */
 
-    inline UInt32 *GetBuffer(Void) const { return Buffer; }
-    inline UInt16 GetWidth(Void) const { return Width; }
-    inline UInt16 GetHeight(Void) const { return Height; }
+    inline UInt32 *GetBuffer() const { return Buffer; }
+    inline UInt16 GetWidth() const { return Width; }
+    inline UInt16 GetHeight() const { return Height; }
 private:
     /* Some math functions that we're going to put here for now (later we should re-add the math.hxx header). */
 
@@ -163,7 +163,7 @@ private:
         return Left > Right ? Left : Right;
     }
 
-    Void Cleanup(Void);
+    Void Cleanup();
 
     UInt32 *Buffer;
     Boolean Allocated;

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 29 of 2020, at 11:24 BRT
- * Last edited on February 22 of 2021 at 18:04 BRT */
+ * Last edited on February 28 of 2021 at 13:44 BRT */
 
 #include <arch/desctables.hxx>
 #include <arch/port.hxx>
@@ -133,7 +133,7 @@ no_inline static Void IdtSetGate(UInt8 Num, UIntPtr Base, UInt16 Selector, UInt8
 #endif
 }
 
-Void IdtInit(Void) {
+Void IdtInit() {
 	/* Before anything else: We don't know the state of the IDT that the bootloader passed to us, it could not even
 	 * exist! We only know that interrupts are, for now, disabled (and that is for our security). So, let's remap the
 	 * PIC, and put it in a known state. */

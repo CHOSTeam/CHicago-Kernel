@@ -1,13 +1,13 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 21:14 BRT
- * Last edited on February 28 of 2021 at 13:02 BRT */
+ * Last edited on February 28 of 2021 at 13:44 BRT */
 
 #include <img.hxx>
 
 using namespace CHicago;
 
-Image::Image(Void) : Buffer(Null), Allocated(False), References(Null), Width(0), Height(0) { }
+Image::Image() : Buffer(Null), Allocated(False), References(Null), Width(0), Height(0) { }
 Image::Image(UInt32 *Buffer, UInt16 Width, UInt16 Height)
     : Buffer(Buffer), Allocated(False), References(Null), Width(Width), Height(Height) { }
 
@@ -42,7 +42,7 @@ Image::Image(UInt16 Width, UInt16 Height)
     }
 }
 
-Void Image::Cleanup(Void) {
+Void Image::Cleanup() {
     /* The Allocated variable should always be set to False if the buffer is Null/failed to be allocated, so we don't
      * need to handle that. The reference counter is what allows us to the stuff like we do on the display
      * initialization, if it wasn't for that, we would have some random memory overwriting it (and I did had this
@@ -61,7 +61,7 @@ Void Image::Cleanup(Void) {
     }
 }
 
-Image::~Image(Void) {
+Image::~Image() {
     Cleanup();
 }
 

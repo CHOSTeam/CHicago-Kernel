@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 29 of 2020, at 10:17 BRT
- * Last edited on February 17 of 2021, at 10:40 BRT */
+ * Last edited on February 28 of 2021 at 13:44 BRT */
 
 #include <arch/desctables.hxx>
 #include <string.hxx>
@@ -65,7 +65,7 @@ static Void GdtSetTss(UInt8 Num, UIntPtr Stack) {
 	GdtTssEntry.IoMapBase = sizeof(TssEntry);
 }
 
-Void GdtInit(Void) {
+Void GdtInit() {
 	/* Setup all the GDT entries: 0 is the null entry, 1 is the kernel code entry, 2 is kernel date entry, 3 is the
 	 * user code entry, 4 is the user date entry and, finally, 5 (and 6 on x86-64) is the TSS entry. */
 

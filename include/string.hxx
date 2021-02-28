@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on February 28 of 2021 at 13:02 BRT */
+ * Last edited on February 28 of 2021 at 13:42 BRT */
 
 #pragma once
 
@@ -12,13 +12,13 @@ namespace CHicago {
 
 class String {
 public:
-    String(Void);
+    String();
     String(UIntPtr);
     String(String&&);
     String(const String&);
     String(const Char*, Boolean = False);
 
-    ~String(Void);
+    ~String();
 
     String &operator =(const Char*);
     String &operator =(const String&);
@@ -47,16 +47,16 @@ public:
         return str.Append(Format, Args...), str;
     }
 
-    Void Clear(Void);
+    Void Clear();
 
     Void SetView(UIntPtr, UIntPtr);
 
     Int64 ToInt(UIntPtr&) const;
     UInt64 ToUInt(UIntPtr&, Boolean = False) const;
     Float ToFloat(UIntPtr&) const;
-    inline Int64 ToInt(Void) const { UIntPtr i = ViewStart; return ToInt(i); }
+    inline Int64 ToInt() const { UIntPtr i = ViewStart; return ToInt(i); }
     inline UInt64 ToUInt(Boolean OnlyDec = False) const { UIntPtr i = ViewStart; return ToUInt(i, OnlyDec); }
-    inline Float ToFloat(Void) const { UIntPtr i = ViewStart; return ToFloat(i); }
+    inline Float ToFloat() const { UIntPtr i = ViewStart; return ToFloat(i); }
 
     Status Append(Char);
     UIntPtr Append(Int64);
@@ -74,22 +74,22 @@ public:
     Boolean Compare(const String&) const;
     Boolean StartsWith(const String&) const;
 
-    Char *GetMutValue(Void) const;
-    inline const Char *GetValue(Void) const { return Value; }
-    inline UIntPtr GetLength(Void) const { return Length; }
-    inline UIntPtr GetViewStart(Void) const { return ViewStart; }
-    inline UIntPtr GetViewEnd(Void) const { return ViewEnd; }
+    Char *GetMutValue() const;
+    inline const Char *GetValue() const { return Value; }
+    inline UIntPtr GetLength() const { return Length; }
+    inline UIntPtr GetViewStart() const { return ViewStart; }
+    inline UIntPtr GetViewEnd() const { return ViewEnd; }
 
     /* Operators for ranges-for and for accessing the string as a normal character array. */
 
-    inline const Char *begin(Void) { return &Value[ViewStart]; }
-    inline const Char *begin(Void) const { return &Value[ViewStart]; }
-    inline const Char *end(Void) { return &Value[ViewEnd]; }
-    inline const Char *end(Void) const { return &Value[ViewEnd]; }
+    inline const Char *begin() { return &Value[ViewStart]; }
+    inline const Char *begin() const { return &Value[ViewStart]; }
+    inline const Char *end() { return &Value[ViewEnd]; }
+    inline const Char *end() const { return &Value[ViewEnd]; }
 
     inline Char operator [](UIntPtr Index) const { return Value[ViewStart + Index]; }
 private:
-    Void CalculateLength(Void);
+    Void CalculateLength();
 
     Char *Value;
     UIntPtr Capacity, Length, ViewStart, ViewEnd;

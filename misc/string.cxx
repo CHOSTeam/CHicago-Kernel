@@ -1,13 +1,13 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 28 of 2021 at 13:17 BRT */
+ * Last edited on February 28 of 2021 at 13:42 BRT */
 
 #include <string.hxx>
 
 using namespace CHicago;
 
-String::String(Void) : Value(const_cast<Char*>("")), Capacity(0), Length(0), ViewStart(0), ViewEnd(0) { }
+String::String() : Value(const_cast<Char*>("")), Capacity(0), Length(0), ViewStart(0), ViewEnd(0) { }
 
 String::String(UIntPtr Size) : Value(Null), Capacity(0), Length(0), ViewStart(0), ViewEnd(0) {
     Value = Size != 0 ? new Char[Size + 1] : Null;
@@ -46,7 +46,7 @@ String::String(const String &Value)
     }
 }
 
-Void String::CalculateLength(Void) {
+Void String::CalculateLength() {
     for (; Value != Null && Value[Length]; Length++) ;
     ViewEnd = Length;
 }
@@ -69,7 +69,7 @@ String::String(const Char *Value, Boolean Alloc)
     }
 }
 
-String::~String(Void) {
+String::~String() {
     /* If the allocated size (stored in the variable named Capacity) is greater than 0, we need to delete[] the array.
      * Also remember to set the allocated size to 0, as we may be called multiple times accidentally (probably not going
      * to happen, but let's do it just to be sure). */
@@ -269,7 +269,7 @@ String String::FromFloat(Char *Buffer, Float Value, UIntPtr Size, UIntPtr Precis
     return &Buffer[start + 1];
 }
 
-Void String::Clear(Void) {
+Void String::Clear() {
     /* And clearing is just deallocating (if required) and setting the Length and the Capacity variables to 0. */
 
     if (Capacity && Value != Null) {
@@ -496,7 +496,7 @@ Boolean String::StartsWith(const String &Value) const {
     return CompareMemory(this->Value + ViewStart, Value.Value + Value.ViewStart, Value.ViewEnd - Value.ViewStart);
 }
 
-Char *String::GetMutValue(Void) const {
+Char *String::GetMutValue() const {
     UIntPtr len = ViewEnd - ViewStart;
     Char *str = len ? new Char[len + 1] : Null;
 

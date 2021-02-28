@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 11:51 BRT
- * Last edited on February 28 of 2021 at 13:03 BRT */
+ * Last edited on February 28 of 2021 at 13:44 BRT */
 
 #pragma once
 
@@ -30,7 +30,7 @@ Void MoveMemory(Void*, const Void*, UIntPtr);
 
 template<class T> class List {
 public:
-    List(Void) : Elements(Null), Length(0), Capacity(0) { }
+    List() : Elements(Null), Length(0), Capacity(0) { }
     List(UIntPtr Size) : Elements(Null), Length(0), Capacity(0) { Reserve(Size); }
     List(const List &Source) : Elements(Null), Length(0), Capacity(0) { Reserve(Source.Length); Add(Source); }
 
@@ -39,7 +39,18 @@ public:
         Source.Length = Source.Capacity = 0;
     }
 
-    ~List(Void) { if (Elements != Null) { Clear(); Fit(); } }
+    List(const InitializerList<T> &Source) : Elements(Null), Length(0), Capacity(0) {
+        /* Let's already try to reserve the space that we need (if it fails, the Add() calls will also probably
+         * fail). */
+
+        Reserve(Source.GetSize());
+
+        for (const T &data : Source) {
+            Add(data);
+        }
+    }
+
+    ~List() { if (Elements != Null) { Clear(); Fit(); } }
 
     List &operator =(const List &Source) {
         /* Basic rule: If you are overwriting the copy constructor and the destructor, you also need to overwrite the
@@ -79,7 +90,7 @@ public:
         return Elements = buf, Capacity = Size, Status::Success;
     }
 
-    Status Fit(Void) {
+    Status Fit() {
         T *buf = Null;
 
         /* While the Reserve function allocates a buffer that can contain at least all the items that the user
@@ -102,7 +113,7 @@ public:
         return Elements = buf, Capacity = Length, Status::Success;
     }
 
-    inline Void Clear(Void) { while (Length) { Elements[--Length].~T(); } }
+    inline Void Clear() { while (Length) { Elements[--Length].~T(); } }
 
     inline Status Add(const List &Source, Boolean Move = False) { return Add(Source, Length, Move); }
     inline Status Add(const T &Data) { return Add(Data, Length); }
@@ -172,16 +183,16 @@ public:
         MergeSort(Elements, Length, Compare);
     }
 
-    inline UIntPtr GetLength(Void) const { return Length; }
-    inline UIntPtr GetCapacity(Void) const { return Capacity; }
+    inline UIntPtr GetLength() const { return Length; }
+    inline UIntPtr GetCapacity() const { return Capacity; }
 
     /* begin() and end() are required for using ranged-for loops (equivalent to C# foreach loops, but the format is
      * for (val : list)' instead of 'foreach (val in list)'). */
 
-    inline T *begin(Void) { return Elements; }
-    inline const T *begin(Void) const { return Elements; }
-    inline T *end(Void) { return Elements + Length; }
-    inline const T *end(Void) const { return Elements + Length; }
+    inline T *begin() { return Elements; }
+    inline const T *begin() const { return Elements; }
+    inline T *end() { return Elements + Length; }
+    inline const T *end() const { return Elements + Length; }
 
     inline T &operator [](UIntPtr Index) {
         /* For the non-const index operator, we can auto increase the length if we're accessing a region inside the

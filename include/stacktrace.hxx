@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 15:57 BRT
- * Last edited on February 22 of 2021 at 18:05 BRT */
+ * Last edited on February 28 of 2021 at 13:45 BRT */
 
 #pragma once
 
@@ -18,7 +18,7 @@ struct packed StackFrame {
     UIntPtr Address;
 };
 
-static unused no_inline StackFrame *GetStackFrame(Void) {
+static unused no_inline StackFrame *GetStackFrame() {
     return reinterpret_cast<StackFrame*>(__builtin_frame_address(0));
 }
 #else
