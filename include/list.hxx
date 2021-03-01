@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 11:51 BRT
- * Last edited on February 28 of 2021 at 14:17 BRT */
+ * Last edited on March 01 of 2021 at 11:41 BRT */
 
 #pragma once
 
@@ -39,7 +39,7 @@ public:
         Source.Length = Source.Capacity = 0;
     }
 
-    List(const InitializerList<T> &Source) : Elements(Null), Length(0), Capacity(0) {
+    List(const initializer_list<T> &Source) : Elements(Null), Length(0), Capacity(0) {
         /* Let's already try to reserve the space that we need (if it fails, the Add() calls will also probably
          * fail). */
 
@@ -51,6 +51,21 @@ public:
     }
 
     ~List() { if (Elements != Null) { Clear(); Fit(); } }
+
+    List &operator =(List &&Source) {
+        /* We need to overwrite the move operator, which is just the copy operator, but we have to clear/set to length=0
+         * the source list. */
+
+        if (this != &Source) {
+            Elements = Source.Elements;
+            Length = Source.Length;
+            Capacity = Source.Capacity;
+            Source.Elements = Null;
+            Source.Length = Source.Capacity = 0;
+        }
+
+        return *this;
+    }
 
     List &operator =(const List &Source) {
         /* Basic rule: If you are overwriting the copy constructor and the destructor, you also need to overwrite the
@@ -118,7 +133,7 @@ public:
     inline Status Add(const List &Source) { return Add(Source, Length); }
     inline Status Add(List &&Source) { return Add(Source, Length); }
     inline Status Add(const T &Data) { return Add(Data, Length); }
-    inline Status Add(const T &&Data) { return Add(Data, Length); }
+    inline Status Add(T &&Data) { return Add(Data, Length); }
 
     Status Add(const List &Source, UIntPtr Index) {
         Status status;

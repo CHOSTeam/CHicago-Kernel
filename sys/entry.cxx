@@ -1,10 +1,9 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on February 28 of 2021 at 14:13 BRT */
+ * Last edited on February 28 of 2021 at 14:52 BRT */
 
 #include <arch.hxx>
-#include <fs.hxx>
 #include <mm.hxx>
 #include <panic.hxx>
 
@@ -48,12 +47,6 @@ extern "C" Void KernelEntry(BootInfo *Info) {
     Debug.SetForeground(0xFF00FF00);
     Debug.Write("initialization finished, halting the machine\n");
     Debug.RestoreForeground();
-
-    List<String> parts = FileSys::TokenizePath(FileSys::CanonicalizePath("/System/Boot", "/Config/Drivers.conf"));
-
-    for (const String &part : parts) {
-        Debug.Write("{}\n", part);
-    }
 
     *((volatile UIntPtr*)nullptr) = 0;
     ASSERT(False);

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on May 11 of 2018, at 13:15 BRT
- * Last edited on February 28 of 2021, at 13:38 BRT */
+ * Last edited on March 01 of 2021, at 11:40 BRT */
 
 #pragma once
 
@@ -74,21 +74,16 @@ template<class T> struct RemoveReference { typedef T Value; };
 template<class T> struct RemoveReference<T&> { typedef T Value; };
 template<class T> struct RemoveReference<T&&> { typedef T Value; };
 
-template<class T> static inline constexpr typename RemoveReference<T>::Value&& Move(T &&Value) {
-    return static_cast<typename RemoveReference<T>::Value&&>(Value);
-}
-
 }
 
 /* We use this for aligning an allocation (from ::new or ::delete), the type name NEEDS to be align_val_t btw. nd yes,
- * this is hackish as hell, I know. Also, we need to put the initializer list on the std namespace. */
-
-#define AlignAlloc align_val_t
-#define InitializerList initializer_list
+ * this is hackish as hell, I know. Also, we need to put the initializer list on the std namespace.
+ * We also implement std::move here (and create a macro so that we can just call Move()) so that the compiler can
+ * properly warn us when we use Move in the wrong times. */
 
 namespace std {
 
-enum class AlignAlloc : long unsigned int { };
+enum class align_val_t : long unsigned int { };
 
 template<typename T> class initializer_list {
 public:
@@ -106,6 +101,10 @@ private:
     const T *Elements;
     long unsigned int Size;
 };
+
+template<class T> static inline constexpr typename CHicago::RemoveReference<T>::Value&& move(T &&Value) {
+    return static_cast<typename CHicago::RemoveReference<T>::Value&&>(Value);
+}
 
 }
 

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on February 28 of 2021 at 14:05 BRT */
+ * Last edited on February 28 of 2021 at 16:15 BRT */
 
 #pragma once
 
@@ -20,6 +20,7 @@ public:
 
     ~String();
 
+    String &operator =(String&&);
     String &operator =(const Char*);
     String &operator =(const String&);
 

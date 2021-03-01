@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on February 28 of 2021 at 14:08 BRT */
+ * Last edited on March 01 of 2021 at 11:14 BRT */
 
 #include <string.hxx>
 
@@ -80,6 +80,23 @@ String::~String() {
     }
 }
 
+String &String::operator =(String &&Source) {
+    /* This is just the move constructor, but we can't use ': field1(field1), field2(field2), etc', instead, we have to
+     * manually do it. */
+
+    if (this != &Source) {
+        Value = Source.Value;
+        Capacity = Source.Capacity;
+        Length = Source.Length;
+        ViewStart = Source.ViewStart;
+        ViewEnd = Source.ViewEnd;
+        Source.Value = Null;
+        Source.Capacity = Source.Length = Source.ViewStart = Source.ViewEnd = 0;
+    }
+
+    return *this;
+}
+
 String &String::operator =(const Char *Value) {
     /* Just set the new string value (if required) and recalculate the length. */
 
@@ -93,18 +110,18 @@ String &String::operator =(const Char *Value) {
     return *this;
 }
 
-String &String::operator =(const String &Value) {
+String &String::operator =(const String &Source) {
     /* Same as above, but fortunately the length is already calculated. */
 
-    if (this != &Value) {
+    if (this != &Source) {
         Clear();
 
-        if (Value.Capacity) {
-            Append(Value);
+        if (Source.Capacity) {
+            Append(Source);
         } else {
-            this->Value = Value.Value + Value.ViewStart;
+            Value = Source.Value + Source.ViewStart;
             ViewStart = 0;
-            Length = ViewEnd = Value.ViewEnd - Value.ViewStart;
+            Length = ViewEnd = Source.ViewEnd - Source.ViewStart;
         }
     }
 
@@ -116,10 +133,21 @@ String String::FromStatus(Status Code) {
 
     switch (Code) {
     case Status::Success: return "Success";
-    case Status::AlreadyMapped: return "Already Mapped";
     case Status::InvalidArg: return "Invalid Argument";
-    case Status::NotMapped: return "Not Mapped";
+    case Status::Unsupported: return "Unsupported";
     case Status::OutOfMemory: return "Out Of Memory";
+    case Status::NotMapped: return "Not Mapped";
+    case Status::AlreadyMapped: return "Already Mapped";
+    case Status::InvalidFs: return "Invalid FileSystem";
+    case Status::NotMounted: return "Not Mounted";
+    case Status::AlreadyMounted: return "Already Mounted";
+    case Status::DoesntExist: return "Doesn't Exist";
+    case Status::AlreadyExists: return "Already Exist";
+    case Status::NotFile: return "Not a File";
+    case Status::NotDirectory: return "Not a Directory";
+    case Status::NotRead: return "Not Readable";
+    case Status::NotWrite: return "Not Writeable";
+    case Status::NotExec: return "Not Executable";
     default: return "Invalid Status Code";
     }
 }
@@ -538,7 +566,11 @@ List<String> String::Tokenize(const String &Delimiters) const {
         }
     }
 
-    return (!str.GetLength() || ret.Add(str) == Status::Success) ? Move(ret) : List<String>();
+    if (str.GetLength() && ret.Add(str) != Status::Success) {
+        return {};
+    }
+
+    return ret;
 }
 
 Char *String::GetMutValue() const {

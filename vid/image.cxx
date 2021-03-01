@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 21:14 BRT
- * Last edited on February 28 of 2021 at 13:44 BRT */
+ * Last edited on February 28 of 2021 at 16:15 BRT */
 
 #include <img.hxx>
 
@@ -65,15 +65,31 @@ Image::~Image() {
     Cleanup();
 }
 
-Image &Image::operator =(const Image &Value) {
-    if (this != &Value) {
+Image &Image::operator =(Image &&Source) {
+    if (this != &Source) {
+        Buffer = Source.Buffer;
+        Allocated = Source.Allocated;
+        References = Source.References;
+        Width = Source.Width;
+        Height = Source.Height;
+        Source.Buffer = Null;
+        Source.Allocated = False;
+        Source.References = Null;
+        Source.Width = Source.Height = 0;
+    }
+
+    return *this;
+}
+
+Image &Image::operator =(const Image &Source) {
+    if (this != &Source) {
         Cleanup();
 
-        Buffer = Value.Buffer;
-        Allocated = Value.Allocated;
-        References = Value.References;
-        Width = Value.Width;
-        Height = Value.Height;
+        Buffer = Source.Buffer;
+        Allocated = Source.Allocated;
+        References = Source.References;
+        Width = Source.Width;
+        Height = Source.Height;
 
         if (References != Null) {
             (*References)++;

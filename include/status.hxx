@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 16:12 BRT
- * Last edited on February 16 of 2021, at 10:25 BRT */
+ * Last edited on February 28 of 2021, at 17:17 BRT */
 
 #pragma once
 
@@ -15,11 +15,16 @@ namespace CHicago {
 enum class Status : Int32 {
     /* Misc status codes. */
 
-    Success = 0, InvalidArg,
+    Success = 0, InvalidArg, Unsupported,
 
     /* Memory errors. */
 
-    OutOfMemory, NotMapped, AlreadyMapped
+    OutOfMemory, NotMapped, AlreadyMapped,
+
+    /* File system errors. */
+
+    InvalidFs, NotMounted, AlreadyMounted, DoesntExist, AlreadyExists,
+    NotFile, NotDirectory, NotRead, NotWrite, NotExec
 };
 
 }

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:37 BRT
- * Last edited on February 28 of 2021 at 13:44 BRT */
+ * Last edited on February 28 of 2021 at 16:13 BRT */
 
 #pragma once
 
@@ -54,6 +54,7 @@ public:
 
     ~Image();
 
+    Image &operator =(Image&&);
     Image &operator =(const Image&);
 
     /* Same basic alpha blending functions, now also with a dummy arch-independent round function (it's on the private
