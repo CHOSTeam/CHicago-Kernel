@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 11:51 BRT
- * Last edited on March 01 of 2021 at 12:01 BRT */
+ * Last edited on March 01 of 2021 at 15:48 BRT */
 
 #pragma once
 
@@ -220,6 +220,11 @@ public:
     inline const T *begin() const { return Elements; }
     inline T *end() { return Elements + Length; }
     inline const T *end() const { return Elements + Length; }
+
+    inline ReverseIterator<T> rbegin() { return Elements + Length - 1; }
+    inline ConstReverseIterator<T> rbegin() const { return Elements + Length - 1; }
+    inline ReverseIterator<T> rend() { return Elements - 1; }
+    inline ConstReverseIterator<T> rend() const { return Elements - 1; }
 
     inline T &operator [](UIntPtr Index) {
         /* For the non-const index operator, we can auto increase the length if we're accessing a region inside the

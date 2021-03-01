@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 15 of 2021, at 11:36 BRT
- * Last edited on February 28 of 2021 at 13:42 BRT */
+ * Last edited on March 01 of 2021 at 15:39 BRT */
 
 #include <arch.hxx>
 #include <panic.hxx>
@@ -28,6 +28,12 @@ static inline always_inline no_return Void Epilogue(const SourceLocation &Locati
 extern "C" no_return Void __ubsan_handle_invalid_builtin(InvalidBuiltinData &Data) {
     Prologue();
     Debug.Write("passed 0 to {}\n", !Data.Kind ? "ctz()" : "clz()");
+    Epilogue(Data.Location);
+}
+
+extern "C" no_return Void __ubsan_handle_vla_bound_not_positive(OneArgData &Data, UIntPtr) {
+    Prologue();
+    Debug.Write("negative vla bound for {}\n", Data.Type.Name);
     Epilogue(Data.Location);
 }
 

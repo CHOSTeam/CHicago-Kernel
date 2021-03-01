@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on February 28 of 2021 at 16:15 BRT */
+ * Last edited on March 01 of 2021 at 15:48 BRT */
 
 #pragma once
 
@@ -84,10 +84,15 @@ public:
 
     /* Operators for ranges-for and for accessing the string as a normal character array. */
 
-    inline const Char *begin() { return &Value[ViewStart]; }
+    inline Char *begin() { return &Value[ViewStart]; }
     inline const Char *begin() const { return &Value[ViewStart]; }
-    inline const Char *end() { return &Value[ViewEnd]; }
+    inline Char *end() { return &Value[ViewEnd]; }
     inline const Char *end() const { return &Value[ViewEnd]; }
+
+    inline ReverseIterator<Char> rbegin() { return &Value[ViewEnd - 1]; }
+    inline ConstReverseIterator<Char> rbegin() const { return &Value[ViewEnd - 1]; }
+    inline ReverseIterator<Char> rend() { return &Value[ViewStart - 1]; }
+    inline ConstReverseIterator<Char> rend() const { return &Value[ViewStart - 1]; }
 
     inline Char operator [](UIntPtr Index) const { return Value[ViewStart + Index]; }
 private:
@@ -97,10 +102,7 @@ private:
     UIntPtr Capacity, Length, ViewStart, ViewEnd;
 };
 
-Void CopyMemory(Void*, const Void*, UIntPtr);
-Void SetMemory(Void*, UInt8, UIntPtr);
 Void SetMemory32(Void*, UInt32, UIntPtr);
-Void MoveMemory(Void*, const Void*, UIntPtr);
 Boolean CompareMemory(const Void*, const Void*, UIntPtr);
 
 }
