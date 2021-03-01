@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 14:02 BRT
- * Last edited on March 01 of 2021 at 12:18 BRT */
+ * Last edited on March 01 of 2021 at 12:29 BRT */
 
 #include <fs.hxx>
 
@@ -270,6 +270,13 @@ Status FileSys::Register(const FsImpl &Info) {
     return FileSystems.Add(Info);
 }
 
+static String FixView(const String &Path) {
+    String path(Path.GetValue());
+    for (; path[Path.GetViewEnd() - Path.GetViewStart()] == '/';
+           path.SetView(Path.GetViewStart(), Path.GetViewEnd() - 1)) ;
+    return path;
+}
+
 Status FileSys::CheckMountPoint(const String &Path) {
     /* We could probably only return a Boolean, BUT, we need to check if the Path starts with a slash, and in
      * the case have trailing slashes, we need to allocate memory, both return different status codes, so just
@@ -281,9 +288,7 @@ Status FileSys::CheckMountPoint(const String &Path) {
         return Status::NotMounted;
     }
 
-    String path(Path.GetValue());
-    for (; path[Path.GetViewEnd() - Path.GetViewStart()] == '/';
-           path.SetView(Path.GetViewStart(), Path.GetViewEnd() - 1)) ;
+    String path = FixView(Path);
 
     for (const MountPoint &mp : MountPoints) {
         if (!(mp.GetPath().Compare(path))) {
@@ -304,9 +309,7 @@ Status FileSys::CreateMountPoint(const String &Path, const File &Root) {
         return Status::InvalidArg;
     }
 
-    String path(Path.GetValue());
-    for (; path[Path.GetViewEnd() - Path.GetViewStart()] == '/';
-           path.SetView(Path.GetViewStart(), Path.GetViewEnd() - 1)) ;
+    String path = FixView(Path);
 
     if (MountPoints.GetLength()) {
         if (CheckMountPoint(path) != Status::NotMounted) {
@@ -464,9 +467,7 @@ Status FileSys::Unmount(const String &Path) {
     }
 
     UIntPtr idx = 0;
-    String path(Path.GetValue());
-    for (; path[Path.GetViewEnd() - Path.GetViewStart()] == '/';
-           path.SetView(Path.GetViewStart(), Path.GetViewEnd() - 1)) ;
+    String path = FixView(Path);
 
     for (const MountPoint &mp : MountPoints) {
         if (!(mp.GetPath().Compare(path))) {
