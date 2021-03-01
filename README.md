@@ -4,7 +4,7 @@
 
 # CHicago Kernel
 
-This is the portable kernel that CHicago uses. Currently, the kernel supports x86, amd64, and arm64.
+This is the portable kernel that CHicago uses. Currently, the kernel supports x86 and amd64.
 
 # Building
 
