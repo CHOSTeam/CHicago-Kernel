@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 21:14 BRT
- * Last edited on February 28 of 2021 at 16:15 BRT */
+ * Last edited on March 01 of 2021 at 12:23 BRT */
 
 #include <img.hxx>
 
@@ -12,13 +12,9 @@ Image::Image(UInt32 *Buffer, UInt16 Width, UInt16 Height)
     : Buffer(Buffer), Allocated(False), References(Null), Width(Width), Height(Height) { }
 
 Image::Image(Image &&Source)
-    : Buffer(Source.Buffer), Allocated(Source.Allocated), References(Source.References), Width(Source.Width),
-      Height(Source.Height) {
-    Source.Buffer = Null;
-    Source.References = Null;
-    Source.Allocated = False;
-    Source.Width = Source.Height = 0;
-}
+    : Buffer { Exchange(Source.Buffer, Null) }, Allocated { Exchange(Source.Allocated, False) },
+      References { Exchange(Source.References, Null) }, Width { Exchange(Source.Width, 0) },
+      Height { Exchange(Source.Height, 0) } { }
 
 Image::Image(const Image &Source)
     : Buffer(Source.Buffer), Allocated(Source.Allocated), References(Source.References), Width(Source.Width),
@@ -67,15 +63,11 @@ Image::~Image() {
 
 Image &Image::operator =(Image &&Source) {
     if (this != &Source) {
-        Buffer = Source.Buffer;
-        Allocated = Source.Allocated;
-        References = Source.References;
-        Width = Source.Width;
-        Height = Source.Height;
-        Source.Buffer = Null;
-        Source.Allocated = False;
-        Source.References = Null;
-        Source.Width = Source.Height = 0;
+        Buffer = Exchange(Source.Buffer, Null);
+        Allocated = Exchange(Source.Allocated, False);
+        References = Exchange(Source.References, Null);
+        Width = Exchange(Source.Width, 0);
+        Height = Exchange(Source.Height, 0);
     }
 
     return *this;

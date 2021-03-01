@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on May 11 of 2018, at 13:15 BRT
- * Last edited on March 01 of 2021, at 11:40 BRT */
+ * Last edited on March 01 of 2021, at 11:59 BRT */
 
 #pragma once
 
@@ -70,16 +70,10 @@ typedef bool Boolean;
 
 #define Null nullptr
 
-template<class T> struct RemoveReference { typedef T Value; };
-template<class T> struct RemoveReference<T&> { typedef T Value; };
-template<class T> struct RemoveReference<T&&> { typedef T Value; };
-
 }
 
 /* We use this for aligning an allocation (from ::new or ::delete), the type name NEEDS to be align_val_t btw. nd yes,
- * this is hackish as hell, I know. Also, we need to put the initializer list on the std namespace.
- * We also implement std::move here (and create a macro so that we can just call Move()) so that the compiler can
- * properly warn us when we use Move in the wrong times. */
+ * this is hackish as hell, I know. Also, we need to put the initializer list on the std namespace.  */
 
 namespace std {
 
@@ -101,10 +95,6 @@ private:
     const T *Elements;
     long unsigned int Size;
 };
-
-template<class T> static inline constexpr typename CHicago::RemoveReference<T>::Value&& move(T &&Value) {
-    return static_cast<typename CHicago::RemoveReference<T>::Value&&>(Value);
-}
 
 }
 

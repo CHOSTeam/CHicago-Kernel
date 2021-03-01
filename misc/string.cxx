@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on March 01 of 2021 at 11:14 BRT */
+ * Last edited on March 01 of 2021 at 12:20 BRT */
 
 #include <string.hxx>
 
@@ -20,11 +20,9 @@ String::String(UIntPtr Size) : Value(Null), Capacity(0), Length(0), ViewStart(0)
 }
 
 String::String(String &&Value)
-        : Value(Value.Value), Capacity(Value.Capacity), Length(Value.Length), ViewStart(Value.ViewStart),
-          ViewEnd(Value.ViewEnd) {
-    Value.Value = Null;
-    Value.Capacity = Value.Length = Value.ViewStart = Value.ViewEnd = 0;
-}
+        : Value { Exchange(Value.Value, Null) }, Capacity { Exchange(Value.Capacity, 0) },
+          Length { Exchange(Value.Length, 0) }, ViewStart { Exchange(Value.ViewStart, 0) },
+          ViewEnd { Exchange(Value.ViewEnd, 0) } { }
 
 String::String(const String &Value)
     : Value(Value.Value + Value.ViewStart), Capacity(0), Length(Value.ViewEnd - Value.ViewStart), ViewStart(0),
@@ -85,13 +83,11 @@ String &String::operator =(String &&Source) {
      * manually do it. */
 
     if (this != &Source) {
-        Value = Source.Value;
-        Capacity = Source.Capacity;
-        Length = Source.Length;
-        ViewStart = Source.ViewStart;
-        ViewEnd = Source.ViewEnd;
-        Source.Value = Null;
-        Source.Capacity = Source.Length = Source.ViewStart = Source.ViewEnd = 0;
+        Value = Exchange(Source.Value, Null);
+        Capacity = Exchange(Source.Capacity, 0);
+        Length = Exchange(Source.Length, 0);
+        ViewStart = Exchange(Source.ViewStart, 0);
+        ViewEnd = Exchange(Source.ViewEnd, 0);
     }
 
     return *this;

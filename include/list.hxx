@@ -1,11 +1,12 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 11:51 BRT
- * Last edited on March 01 of 2021 at 11:41 BRT */
+ * Last edited on March 01 of 2021 at 12:01 BRT */
 
 #pragma once
 
 #include <mm.hxx>
+#include <utility.hxx>
 
 #define DO_ADD(x) \
     Status status; \

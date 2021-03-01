@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 14:01 BRT
- * Last edited on March 01 of 2021 at 11:41 BRT */
+ * Last edited on March 01 of 2021 at 12:18 BRT */
 
 #pragma once
 
@@ -77,7 +77,7 @@ public:
     MountPoint() : Root(), Path() { }
     MountPoint(const MountPoint &Source) = default;
     MountPoint(const String &Path, const File &Root) : Root(Root), Path(Path) { }
-    MountPoint(MountPoint &&Source) : Root(move(Source.Root)), Path(move(Source.Path)) { }
+    MountPoint(MountPoint &&Source) : Root(Move(Source.Root)), Path(Move(Source.Path)) { }
 
     MountPoint &operator =(MountPoint&&);
     MountPoint &operator =(const MountPoint&);

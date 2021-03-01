@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 14:02 BRT
- * Last edited on March 01 of 2021 at 11:43 BRT */
+ * Last edited on March 01 of 2021 at 12:18 BRT */
 
 #include <fs.hxx>
 
@@ -13,15 +13,10 @@ List<FsImpl> FileSys::FileSystems;
 List<MountPoint> FileSys::MountPoints;
 
 File::File() : Name(), Flags(0), Fs(), Priv(Null), References(Null), Length(0), INode(0) { }
-
 File::File(File &&Source)
-        : Name(move(Source.Name)), Flags(Source.Flags), Fs(Source.Fs), Priv(Source.Priv),
-          References(Source.References), Length(Source.Length), INode(Source.INode) {
-    Source.Flags = 0;
-    Source.Priv = Source.References = Null;
-    Source.Length = Source.INode = 0;
-    SetMemory(&Source.Fs, 0, sizeof(FsImpl));
-}
+        : Name(Move(Source.Name)), Flags { Exchange(Source.Flags, 0) }, Fs { Exchange(Source.Fs, {}) },
+          Priv { Exchange(Source.Priv, Null) }, References { Exchange(Source.References, Null) },
+          Length { Exchange(Source.Length, 0) }, INode { Exchange(Source.INode, 0) } { }
 
 File::File(const File &Source)
         : Name(Source.Name), Flags(Source.Flags), Fs(Source.Fs), Priv(Source.Priv), References(Source.References),
@@ -64,17 +59,13 @@ Void File::Close() {
 
 File &File::operator =(File &&Source) {
     if (this != &Source) {
-        Name = move(Source.Name);
-        Flags = Source.Flags;
-        Fs = Source.Fs;
-        Length = Source.Length;
-        Priv = Source.Priv;
-        INode = Source.INode;
-        References = Source.References;
-        Source.Flags = 0;
-        Source.Priv = Source.References = Null;
-        Source.Length = Source.INode = 0;
-        SetMemory(&Source.Fs, 0, sizeof(FsImpl));
+        Name = Move(Source.Name);
+        Flags = Exchange(Source.Flags, 0);
+        Fs = Exchange(Source.Fs, {});
+        Priv = Exchange(Source.Priv, Null);
+        References = Exchange(Source.References, Null);
+        Length = Exchange(Source.Length, 0);
+        INode = Exchange(Source.INode, 0);
     }
 
     return *this;
@@ -177,8 +168,8 @@ Status File::Unmount() const {
 
 MountPoint &MountPoint::operator =(MountPoint &&Source) {
     if (this != &Source) {
-        Root = move(Source.Root);
-        Path = move(Source.Path);
+        Root = Move(Source.Root);
+        Path = Move(Source.Path);
     }
 
     return *this;
@@ -386,7 +377,7 @@ Status FileSys::Open(const String &Path, UInt8 Flags, File &Out) {
 
     while (parts.GetLength() != 1) {
         File cur;
-        String name = move(parts[0]);
+        String name = Move(parts[0]);
 
         parts.Remove(0);
 
@@ -397,7 +388,7 @@ Status FileSys::Open(const String &Path, UInt8 Flags, File &Out) {
             }
         }
 
-        dir = move(cur);
+        dir = Move(cur);
     }
 
     /* Now only the creation of the file/directory itself is left, we can remove the last list entry, delete the
@@ -405,7 +396,7 @@ Status FileSys::Open(const String &Path, UInt8 Flags, File &Out) {
      * should only try to create the file, and if we don't find it and the create flag is set, we need to try creating
      * it. */
 
-    String name = move(parts[0]);
+    String name = Move(parts[0]);
 
     parts.Remove(0);
 
