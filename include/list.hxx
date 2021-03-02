@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 11:51 BRT
- * Last edited on March 02 of 2021 at 11:51 BRT */
+ * Last edited on March 02 of 2021 at 12:21 BRT */
 
 #pragma once
 
@@ -213,8 +213,8 @@ public:
     inline UIntPtr GetLength() const { return Length; }
     inline UIntPtr GetCapacity() const { return Capacity; }
 
-    inline ReverseIterator<T> Reverse(Void) { return { Elements, &Elements[Length] }; }
-    inline ConstReverseIterator<T> Reverse(Void) const { return { Elements, &Elements[Length] }; }
+    inline ReverseIterator<T, T*> Reverse() { return { begin(), end() }; }
+    inline ConstReverseIterator<T, const T*> Reverse() const { return { begin(), end() }; }
 
     /* begin() and end() are required for using ranged-for loops (equivalent to C# foreach loops, but the format is
      * for (val : list)' instead of 'foreach (val in list)'). */

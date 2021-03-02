@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on March 02 of 2021 at 11:50 BRT */
+ * Last edited on March 02 of 2021 at 12:21 BRT */
 
 #pragma once
 
@@ -82,8 +82,8 @@ public:
     inline UIntPtr GetViewStart() const { return ViewStart; }
     inline UIntPtr GetViewEnd() const { return ViewEnd; }
 
-    inline ReverseIterator<Char> Reverse(Void) { return { &Value[ViewStart], &Value[ViewEnd] }; }
-    inline ConstReverseIterator<Char> Reverse(Void) const { return { &Value[ViewStart], &Value[ViewEnd] }; }
+    inline ReverseIterator<Char, Char*> Reverse() { return { begin(), end() }; }
+    inline ConstReverseIterator<Char, const Char*> Reverse() const { return { begin(), end() }; }
 
     /* Operators for ranges-for and for accessing the string as a normal character array. */
 
