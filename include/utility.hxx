@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 01 of 2021, at 11:59 BRT
- * Last edited on March 01 of 2021, at 15:54 BRT */
+ * Last edited on March 02 of 2021, at 11:46 BRT */
 
 #pragma once
 
@@ -12,45 +12,6 @@ namespace CHicago {
 template<class T> struct RemoveReference { typedef T Value; };
 template<class T> struct RemoveReference<T&> { typedef T Value; };
 template<class T> struct RemoveReference<T&&> { typedef T Value; };
-
-/* The reverse iterator/wrapper structs (and begin/end functions) are just so we can easily iterate using rbegin/rend. */
-
-template<typename T> class ReverseIterator {
-public:
-    ReverseIterator(T *Value) : Value(Value) { }
-
-    T &operator *(Void) { return *Value; }
-    ReverseIterator &operator ++(Void) { return Value--, *this; }
-    Boolean operator ==(const ReverseIterator &Value) const { return this->Value == Value.Value; }
-private:
-    T *Value;
-};
-
-template<typename T> class ConstReverseIterator {
-public:
-    ConstReverseIterator(const T *Value) : Value(Value) { }
-
-    const T &operator *(Void) const { return *Value; }
-    ConstReverseIterator &operator ++(Void) { return Value--, *this; }
-    Boolean operator ==(const ConstReverseIterator &Value) const { return this->Value == Value.Value; }
-private:
-    const T *Value;
-};
-
-template<typename T> struct ReverseWrapper {
-    ReverseWrapper(T &Value) : Value(Value) { }
-    T &Value;
-};
-
-template<typename T> struct ConstReverseWrapper {
-    ConstReverseWrapper(const T &Value) : Value(Value) { }
-    const T &Value;
-};
-
-template<typename T> static inline auto begin(ReverseWrapper<T> Value) { return Value.Value.rbegin(); }
-template<typename T> static inline auto begin(ConstReverseWrapper<T> Value) { return Value.Value.rbegin(); }
-template<typename T> static inline auto end(ReverseWrapper<T> Value) { return Value.Value.rend(); }
-template<typename T> static inline auto end(ConstReverseWrapper<T> Value) { return Value.Value.rend(); }
 
 /* Forward, Move and Exchange are compiler black magic used for making our life a bit easier when, for example, we want
  * to implement move operators/constructors, or force a value to be moved instead of copied. */
@@ -76,5 +37,47 @@ template<class T> static inline constexpr Void Swap(T &Left, T &Right) {
     T tmp = Move(Left);
     Left = Move(Right), Right = Move(tmp);
 }
+
+/* The reverse iterator/wrapper struct are just so we can easily iterate on reverse (duh). */
+
+template<typename T> class ReverseIterator {
+public:
+    class Iterator {
+    public:
+        Iterator(T *Value) : Value(Value) { }
+        T &operator *(Void) { return *Value; }
+        Iterator &operator ++(Void) { return Value--, *this; }
+        Boolean operator ==(const Iterator &Value) const { return this->Value == Value.Value; }
+    private:
+        T *Value;
+    };
+
+    ReverseIterator(T *Start, T *End) : Start(Start), End(End) { }
+
+    inline auto begin(Void) { return Iterator(End - 1); }
+    inline auto end(Void) { return Iterator(Start - 1); }
+private:
+    T *Start, *End;
+};
+
+template<typename T> class ConstReverseIterator {
+public:
+    class Iterator {
+    public:
+        Iterator(const T *Value) : Value(Value) { }
+        T operator *(Void) const { return *Value; }
+        Iterator &operator ++(Void) { return Value--, *this; }
+        Boolean operator ==(const Iterator &Value) const { return this->Value == Value.Value; }
+    private:
+        const T *Value;
+    };
+
+    ConstReverseIterator(const T *Start, const T *End) : Start(Start), End(End) { }
+
+    inline auto begin(Void) const { return Iterator(End - 1); }
+    inline auto end(Void) const { return Iterator(Start - 1); }
+private:
+    const T *Start, *End;
+};
 
 }

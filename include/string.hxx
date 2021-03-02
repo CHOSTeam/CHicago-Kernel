@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on March 01 of 2021 at 15:48 BRT */
+ * Last edited on March 02 of 2021 at 11:50 BRT */
 
 #pragma once
 
@@ -82,6 +82,9 @@ public:
     inline UIntPtr GetViewStart() const { return ViewStart; }
     inline UIntPtr GetViewEnd() const { return ViewEnd; }
 
+    inline ReverseIterator<Char> Reverse(Void) { return { &Value[ViewStart], &Value[ViewEnd] }; }
+    inline ConstReverseIterator<Char> Reverse(Void) const { return { &Value[ViewStart], &Value[ViewEnd] }; }
+
     /* Operators for ranges-for and for accessing the string as a normal character array. */
 
     inline Char *begin() { return &Value[ViewStart]; }
@@ -89,11 +92,7 @@ public:
     inline Char *end() { return &Value[ViewEnd]; }
     inline const Char *end() const { return &Value[ViewEnd]; }
 
-    inline ReverseIterator<Char> rbegin() { return &Value[ViewEnd - 1]; }
-    inline ConstReverseIterator<Char> rbegin() const { return &Value[ViewEnd - 1]; }
-    inline ReverseIterator<Char> rend() { return &Value[ViewStart - 1]; }
-    inline ConstReverseIterator<Char> rend() const { return &Value[ViewStart - 1]; }
-
+    inline Char &operator [](UIntPtr Index) { return Value[ViewStart + Index]; }
     inline Char operator [](UIntPtr Index) const { return Value[ViewStart + Index]; }
 private:
     Void CalculateLength();

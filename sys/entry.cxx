@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on February 28 of 2021 at 14:52 BRT */
+ * Last edited on March 02 of 2021 at 11:54 BRT */
 
 #include <arch.hxx>
 #include <mm.hxx>
@@ -47,6 +47,15 @@ extern "C" Void KernelEntry(BootInfo *Info) {
     Debug.SetForeground(0xFF00FF00);
     Debug.Write("initialization finished, halting the machine\n");
     Debug.RestoreForeground();
+
+    /* Test ranged-for loops (and also the ReverseIterator). */
+
+    String str = "Hello!";
+    Debug.Write("\nNormal:\n");
+    for (Char ch : str) Debug.Write("    {}\n", ch);
+    Debug.Write("\nReverse:\n");
+    for (Char ch : str.Reverse()) Debug.Write("    {}\n", ch);
+    Debug.Write("\n");
 
     *((volatile UIntPtr*)nullptr) = 0;
     ASSERT(False);
