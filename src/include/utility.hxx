@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 01 of 2021, at 11:59 BRT
- * Last edited on March 02 of 2021, at 13:21 BRT */
+ * Last edited on March 03 of 2021, at 12:11 BRT */
 
 #pragma once
 
@@ -45,8 +45,11 @@ public:
     class Iterator {
     public:
         Iterator(U Value) : Value(Value) { }
-        T &operator *(Void) { return *Value; }
-        Iterator &operator ++(Void) { return Value--, *this; }
+
+        U &GetIterator() { return Value; }
+
+        T &operator *() { return *Value; }
+        Iterator &operator ++() { return Value--, *this; }
         Boolean operator ==(const Iterator &Value) const { return this->Value == Value.Value; }
     private:
         U Value;
@@ -54,8 +57,8 @@ public:
 
     ReverseIterator(U Start, U End) : Start(Start), End(End) { this->Start--, this->End--; }
 
-    inline auto begin(Void) { return Iterator(End); }
-    inline auto end(Void) { return Iterator(Start); }
+    inline Iterator begin() { return End; }
+    inline Iterator end() { return Start; }
 private:
     U Start, End;
 };
@@ -65,8 +68,11 @@ public:
     class Iterator {
     public:
         Iterator(U Value) : Value(Value) { }
-        T operator *(Void) const { return *Value; }
-        Iterator &operator ++(Void) { return Value--, *this; }
+
+        U &GetIterator() { return Value; }
+
+        T operator *() const { return *Value; }
+        Iterator &operator ++() { return Value--, *this; }
         Boolean operator ==(const Iterator &Value) const { return this->Value == Value.Value; }
     private:
         U Value;
@@ -74,8 +80,8 @@ public:
 
     ConstReverseIterator(U Start, U End) : Start(Start), End(End) { this->Start--, this->End--; }
 
-    inline auto begin(Void) const { return Iterator(End); }
-    inline auto end(Void) const { return Iterator(Start); }
+    inline Iterator begin() const { return End; }
+    inline Iterator end() const { return Start; }
 private:
     U Start, End;
 };

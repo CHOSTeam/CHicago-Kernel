@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on March 02 of 2021 at 12:21 BRT */
+ * Last edited on March 03 of 2021 at 12:16 BRT */
 
 #pragma once
 
@@ -17,6 +17,8 @@ public:
     String(String&&);
     String(const String&);
     String(const Char*, Boolean = False);
+    String(ReverseIterator<Char, Char*>);
+    String(const ConstReverseIterator<Char, const Char*>&);
 
     ~String();
 

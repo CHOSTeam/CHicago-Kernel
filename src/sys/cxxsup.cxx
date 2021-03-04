@@ -1,11 +1,16 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 25 of 2020, at 09:22 BRT
- * Last edited on March 01 of 2021, at 11:44 BRT */
+ * Last edited on March 04 of 2021, at 10:57 BRT */
 
 #include <mm.hxx>
 
 using namespace CHicago;
+
+/* For local static variables, GCC uses __cxa_guard_acquire/release. */
+
+extern "C" Boolean __cxa_guard_acquire(const UInt64 *Guard) { return !*Guard; }
+extern "C" Void __cxa_guard_release(UInt64 *Guard) { *Guard = True; }
 
 /* Those are the 4 ::new operators that we have to implement: two for normal allocations, and two for aligned
  * allocations. GCC for some reason used long unsigned int for this. */

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:08 BRT
- * Last edited on March 01 of 2021 at 12:20 BRT */
+ * Last edited on March 03 of 2021 at 12:25 BRT */
 
 #include <string.hxx>
 
@@ -64,6 +64,29 @@ String::String(const Char *Value, Boolean Alloc)
             Capacity = Length + 1;
             this->Value = str;
         }
+    }
+}
+
+String::String(ReverseIterator<Char, Char*> Source)
+    : String(ConstReverseIterator<Char, const Char*>(Source.end().GetIterator() + 1,
+                                                     Source.begin().GetIterator() + 1)) { }
+
+String::String(const ConstReverseIterator<Char, const Char*> &Source)
+    : Value(Null), Capacity(0), Length(0), ViewStart(0), ViewEnd(0) {
+    /* .begin() and .end() are inverted (that is, to get the actual length we need to do begin() - end() instead of
+     * end() - begin()). We just need to get the length, try allocating the required space, and then copying. */
+
+    UIntPtr len = reinterpret_cast<UIntPtr>(Source.begin().GetIterator()) -
+                  reinterpret_cast<UIntPtr>(Source.end().GetIterator()), i = 0;
+
+    if ((Value = len ? new Char[len + 1] : Null) != Null) {
+        for (Char ch : Source) {
+            Value[i++] = ch;
+        }
+
+        Length = ViewEnd = len;
+        Capacity = len + 1;
+        Value[i] = 0;
     }
 }
 

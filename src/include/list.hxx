@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 11:51 BRT
- * Last edited on March 02 of 2021 at 12:21 BRT */
+ * Last edited on March 03 of 2021 at 12:16 BRT */
 
 #pragma once
 
@@ -44,10 +44,39 @@ public:
         /* Let's already try to reserve the space that we need (if it fails, the Add() calls will also probably
          * fail). */
 
-        Reserve(Source.GetSize());
+        Reserve(Source.GetLength());
 
         for (const T &data : Source) {
             Add(data);
+        }
+    }
+
+    List(const ConstReverseIterator<T, const T*> &Source) : Elements(Null), Length(0), Capacity(0) {
+        /* Finally, let's also allow to initialize the list using a reverse iterator (as our .Reverse() function only
+         * returns a reverse iterator, not the whole list actually reversed). */
+
+        Reserve((reinterpret_cast<UIntPtr>(Source.begin().GetIterator()) -
+                 reinterpret_cast<UIntPtr>(Source.end().GetIterator())) / sizeof(T));
+
+        for (const T &data : Source) {
+            Add(data);
+        }
+    }
+
+    List(ReverseIterator<T, T*> Source, Boolean ShouldMove = False) : Elements(Null), Length(0), Capacity(0) {
+        /* Same as above, but here we can Move() if we want to. */
+
+        Reserve((reinterpret_cast<UIntPtr>(Source.begin().GetIterator()) -
+                 reinterpret_cast<UIntPtr>(Source.end().GetIterator())) / sizeof(T));
+
+        if (ShouldMove) {
+            for (T &data : Source) {
+                Add(Move(data));
+            }
+        } else {
+            for (T &data : Source) {
+                Add(data);
+            }
         }
     }
 
@@ -250,7 +279,19 @@ private:
         }
 
         UIntPtr i = 0, j = 0, k = 0, llen = Length / 2, rlen = Length - llen;
-        T left[llen], right[rlen];
+        T *left, *right;
+
+        if ((left = static_cast<T*>(sizeof(T) * llen <= 64 ? __builtin_alloca(sizeof(T) * llen)
+                                                           : new T[llen])) == Null) {
+            return;
+        } else if ((right = static_cast<T*>(sizeof(T) * rlen <= 64 ? __builtin_alloca(sizeof(T) * rlen)
+                                                                   : new T[rlen])) == Null) {
+            if (sizeof(T) * llen > 64) {
+                delete[] left;
+            }
+
+            return;
+        }
 
         CopyMemory(left, Array, sizeof(T) * llen);
         CopyMemory(right, Array + llen, sizeof(T) * rlen);
@@ -275,6 +316,14 @@ private:
 
         for (; k < rlen; i++, k++) {
             CopyMemory(&Array[i], &right[k], sizeof(T));
+        }
+
+        if (sizeof(T) * llen > 64) {
+            delete[] left;
+        }
+
+        if (sizeof(T) * rlen > 64) {
+            delete[] right;
         }
     }
 

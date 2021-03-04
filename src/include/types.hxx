@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on May 11 of 2018, at 13:15 BRT
- * Last edited on March 01 of 2021, at 11:59 BRT */
+ * Last edited on March 03 of 2021, at 11:39 BRT */
 
 #pragma once
 
@@ -86,7 +86,7 @@ public:
     constexpr const T *begin() const { return Elements; }
     constexpr const T *end() const { return &Elements[Size]; }
 
-    constexpr long unsigned int GetSize() const { return Size; }
+    constexpr long unsigned int GetLength() const { return Size; }
 private:
     /* GCC expects the main constructor to be private and constexpr. */
 
