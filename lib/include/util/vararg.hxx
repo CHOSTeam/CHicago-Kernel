@@ -1,15 +1,16 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 22 of 2021, at 15:27 BRT
- * Last edited on February 28 of 2021 at 13:42 BRT */
+ * Last edited on March 05 of 2021 at 14:12 BRT */
 
 #pragma once
 
-#include <status.hxx>
+#include <base/status.hxx>
 
 namespace CHicago {
 
 class String;
+class StringView;
 
 /* The Long and ULong types are required for 64-bits support (else, we gonna get some errors to do with ambiguity). */
 
@@ -17,7 +18,7 @@ enum class ArgumentType {
     Float, Long, Int32, Int64,
     ULong, UInt32, UInt64,
     Char, Boolean, Pointer, CString,
-    Status, CHString
+    Status, CHString, CHStringView
 };
 
 union ArgumentValue {
@@ -34,6 +35,7 @@ union ArgumentValue {
     const Void *PointerValue;
     const Char *CStringValue;
     const String *CHStringValue;
+    const StringView *CHStringViewValue;
 };
 
 class Argument {
@@ -54,6 +56,7 @@ public:
     Argument(const Void *Value) : Type(ArgumentType::Pointer), Value({ .PointerValue = Value }) { }
     Argument(const Char *Value) : Type(ArgumentType::CString), Value({ .CStringValue = Value }) { }
     Argument(const String &Value) : Type(ArgumentType::CHString), Value({ .CHStringValue = &Value }) { }
+    Argument(const StringView &Value) : Type(ArgumentType::CHStringView), Value({ .CHStringViewValue = &Value }) { }
 
     inline ArgumentType GetType() const { return Type; }
     inline ArgumentValue GetValue() const { return Value; }
@@ -79,10 +82,10 @@ private:
  * ArgumentList, and one that takes normal varargs, the second one will convert the varargs into an ArgumentList, and
  * redirect (and as it is a template<> function, it needs to be inline). */
 
-UIntPtr VariadicFormatInt(Boolean (*)(Char, Void*), Void*, const String&, const ArgumentList&);
+UIntPtr VariadicFormatInt(Boolean (*)(Char, Void*), Void*, const StringView&, const ArgumentList&);
 
 template<typename... T> static inline UIntPtr VariadicFormat(Boolean (*Function)(Char, Void*), Void *Context,
-                                                             const String &Format, T... Args) {
+                                                             const StringView &Format, T... Args) {
     Argument list[] { Args... };
     return VariadicFormatInt(Function, Context, Format, ArgumentList(sizeof...(Args), list));
 }

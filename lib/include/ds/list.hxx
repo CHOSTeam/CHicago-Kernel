@@ -1,12 +1,13 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 11:51 BRT
- * Last edited on March 03 of 2021 at 12:16 BRT */
+ * Last edited on March 04 of 2021 at 17:24 BRT */
 
 #pragma once
 
-#include <mm.hxx>
-#include <utility.hxx>
+#include <base/std.hxx>
+#include <sys/mm.hxx>
+#include <util/misc.hxx>
 
 #define DO_ADD(x) \
     Status status; \
@@ -120,7 +121,7 @@ public:
 
         if (Size <= Capacity) {
             return Status::InvalidArg;
-        } else if ((buf = (T*)Heap::Allocate(sizeof(T) * Size)) == Null) {
+        } else if ((buf = static_cast<T*>(Heap::Allocate(sizeof(T) * Size))) == Null) {
             return Status::OutOfMemory;
         }
 
@@ -148,7 +149,7 @@ public:
         } else if (!Length) {
             Heap::Deallocate(Elements);
             return Elements = Null, Capacity = 0, Status::Success;
-        } else if ((buf = (T*)Heap::Allocate(sizeof(T) * Length)) == Null) {
+        } else if ((buf = static_cast<T*>(Heap::Allocate(sizeof(T) * Length))) == Null) {
             return Status::OutOfMemory;
         }
 

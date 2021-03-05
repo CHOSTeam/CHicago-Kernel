@@ -1,12 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 14:01 BRT
- * Last edited on March 01 of 2021 at 12:18 BRT */
+ * Last edited on March 05 of 2021 at 13:51 BRT */
 
 #pragma once
 
-#include <list.hxx>
-#include <string.hxx>
+#include <base/string.hxx>
 
 #define OPEN_DIR 0x01
 #define OPEN_READ 0x02
@@ -54,8 +53,8 @@ public:
     Status Read(UInt64, UInt64, Void*, UInt64&) const;
     Status Write(UInt64, UInt64, const Void*, UInt64&) const;
     Status ReadDirectory(UIntPtr, String&) const;
-    Status Search(const String&, UInt8, File&) const;
-    Status Create(const String&, UInt8) const;
+    Status Search(const StringView&, UInt8, File&) const;
+    Status Create(const StringView&, UInt8) const;
     Status Control(UIntPtr, const Void*, Void*) const;
     Status Unmount() const;
     Void Close();
@@ -91,19 +90,19 @@ private:
 
 class FileSys {
 public:
-    static List<String> TokenizePath(const String&);
-    static String CanonicalizePath(const String&, const String& = "");
+    static List<String> TokenizePath(const StringView&);
+    static String CanonicalizePath(const StringView&, const StringView& = "");
 
     static Status Register(const FsImpl&);
-    static Status CheckMountPoint(const String&);
-    static Status CreateMountPoint(const String&, const File&);
+    static Status CheckMountPoint(const StringView&);
+    static Status CreateMountPoint(const StringView&, const File&);
 
-    static Status Open(const String&, UInt8, File&);
-    static Status Mount(const String&, const String&, UInt8);
-    static Status Unmount(const String&);
+    static Status Open(const StringView&, UInt8, File&);
+    static Status Mount(const StringView&, const StringView&, UInt8);
+    static Status Unmount(const StringView&);
 private:
-    static const FsImpl &GetFileSys(const String&);
-    static const MountPoint &GetMountPoint(const String&, String&);
+    static const FsImpl &GetFileSys(const StringView&);
+    static const MountPoint &GetMountPoint(const StringView&, String&);
 
     static const FsImpl EmptyFs;
     static const MountPoint EmptyMp;

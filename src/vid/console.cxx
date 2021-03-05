@@ -1,9 +1,9 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 00:14 BRT
- * Last edited on February 28 of 2021 at 13:42 BRT */
+ * Last edited on February 28 of 2021 at 13:25 BRT */
 
-#include <textout.hxx>
+#include <vid/console.hxx>
 
 namespace CHicago {
 

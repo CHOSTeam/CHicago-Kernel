@@ -1,11 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 15:57 BRT
- * Last edited on February 28 of 2021 at 13:45 BRT */
+ * Last edited on March 05 of 2021 at 13:58 BRT */
 
 #pragma once
 
-#include <textout.hxx>
+#include <vid/console.hxx>
 
 /* On some archs (well, on all the three currently supported archs), we can just use __builtin_frame_address(0), and
  * what we get will already be a valid StackFrame pointer. */
@@ -29,7 +29,7 @@ class StackTrace {
 public:
     static Void Initialize(BootInfo&);
 
-    static Boolean GetSymbol(UIntPtr, String&, UIntPtr&);
+    static Boolean GetSymbol(UIntPtr, StringView&, UIntPtr&);
     static UIntPtr Trace(UIntPtr *Addresses, UIntPtr Max) { return Trace(GetStackFrame(), Addresses, Max); }
 
     static inline always_inline UIntPtr Trace(StackFrame *Frame, UIntPtr *Addresses, UIntPtr Max) {
@@ -69,7 +69,7 @@ public:
             /* If possible let's print the symbol information (may not be possible if it's some left over of the
              * bootloader, or if the symbol table hasn't been initialized). */
 
-            String name;
+            StringView name;
 
             if (GetSymbol(addr[i], name, off)) {
                 Debug.Write("    0x{:0*:16}: {} +0x{:0:16}\n", addr[i], name.GetValue(), off);

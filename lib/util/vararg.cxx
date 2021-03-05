@@ -1,9 +1,9 @@
-/* File author is Ítalo Lima Marconato Matias
+    /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 15:57 BRT
- * Last edited on February 25 of 2021 at 11:37 BRT */
+ * Last edited on March 05 of 2021 at 14:16 BRT */
 
-#include <string.hxx>
+#include <base/string.hxx>
 
 using namespace CHicago;
 
@@ -63,7 +63,7 @@ static Boolean IsNormal(Float Value) {
     return !(val.IntValue & 0xFFFFFFFFFFFFF);
 }
 
-UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const String &Format,
+UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const StringView &Format,
                           const ArgumentList &Arguments) {
     if (Function == Null) {
         return 0;
@@ -217,7 +217,7 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
 
             Int64 ival = type == ArgumentType::Long ? val.LongValue : (type == ArgumentType::Int32 ? val.Int32Value
                                                                                                    : val.Int64Value);
-            String str = String::FromUInt(buf, ival < 0 ? -ival : ival, 65, base);
+            StringView str = StringView::FromUInt(buf, ival < 0 ? -ival : ival, 65, base);
             UIntPtr len = str.GetLength(), flen = len + (ival < 0),
                     spaces = !zero && width > flen && width > prec ? width - prec - (prec ? 0 : flen) : 0,
                     pad = zero ? (width > prec ? width : prec) : prec;
@@ -251,7 +251,7 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
                           (type == ArgumentType::UInt32 ? val.UInt32Value :
                           (type == ArgumentType::UInt64 ? val.UInt64Value :
                                                           reinterpret_cast<UIntPtr>(val.PointerValue)));
-            String str = String::FromUInt(buf, ival, 65, base);
+            StringView str = StringView::FromUInt(buf, ival, 65, base);
             UIntPtr len = str.GetLength(),
                     spaces = !zero && width > len && width > prec ? width - prec - (prec ? 0 : len) : 0,
                     pad = zero ? (width > prec ? width : prec) : prec;
@@ -274,7 +274,7 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
 
             Float fval = val.FloatValue;
             Boolean neg = IsNormal(fval) && fval < 0;
-            String str = String::FromFloat(buf, neg ? -fval : fval, 65, pset ? prec : 6);
+            StringView str = StringView::FromFloat(buf, neg ? -fval : fval, 65, pset ? prec : 6);
             UIntPtr len = str.GetLength(), flen = len + neg, pad = width > flen ? width - flen : 0;
 
             if (neg) {
@@ -286,13 +286,16 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
 
             break;
         }
-        case ArgumentType::Boolean: case ArgumentType::Status: case ArgumentType::CString: {
+        case ArgumentType::Boolean: case ArgumentType::Status: case ArgumentType::CString:
+        case ArgumentType::CHString: case ArgumentType::CHStringView: {
             /* And for strings, we just need to remember the padding (which will be spaces), and limiting the length
              * (using the precision). */
 
-            String str = type == ArgumentType::CString ? val.CStringValue :
-                         (type == ArgumentType::Boolean ? (val.BooleanValue ? "True" : "False") :
-                                                           String::FromStatus(val.StatusValue));
+            const StringView &str = type == ArgumentType::CString ? val.CStringValue :
+                                    (type == ArgumentType::CHString ? StringView(*val.CHStringValue) :
+                                    (type == ArgumentType::CHStringView ? *val.CHStringViewValue :
+                                    (type == ArgumentType::Boolean ? (val.BooleanValue ? "True" : "False") :
+                                                                     StringView::FromStatus(val.StatusValue))));
             UIntPtr len = str.GetLength();
 
             if (pset && len > prec) {
@@ -301,21 +304,6 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
 
             PAD(width > len ? width - len : 0, ' ');
             WRITE_STRING(str.GetValue(), len);
-
-            break;
-        }
-        case ArgumentType::CHString: {
-            /* While CHString is also a string, we need to handle it in a different way, as the start and end depends
-             * on the set view start/end. */
-
-            UIntPtr len = val.CHStringValue->GetViewEnd() - val.CHStringValue->GetViewStart();
-
-            if (pset && len > prec) {
-                len = prec;
-            }
-
-            PAD(width > len ? width - len : 0, ' ');
-            WRITE_STRING(val.CHStringValue->GetValue() + val.CHStringValue->GetViewStart(), len);
 
             break;
         }

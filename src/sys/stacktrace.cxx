@@ -1,9 +1,9 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 09 of 2021, at 12:54 BRT
- * Last edited on February 22 of 2021 at 18:04 BRT */
+ * Last edited on March 05 of 2021, at 13:58 BRT */
 
-#include <stacktrace.hxx>
+#include <util/stacktrace.hxx>
 
 using namespace CHicago;
 
@@ -25,7 +25,7 @@ Void StackTrace::Initialize(BootInfo &Info) {
     }
 }
 
-Boolean StackTrace::GetSymbol(UIntPtr Address, String &Name, UIntPtr &Offset) {
+Boolean StackTrace::GetSymbol(UIntPtr Address, StringView &Name, UIntPtr &Offset) {
     if (!Initialized) {
         return False;
     }

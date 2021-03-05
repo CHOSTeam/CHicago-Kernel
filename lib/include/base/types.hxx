@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on May 11 of 2018, at 13:15 BRT
- * Last edited on March 03 of 2021, at 11:39 BRT */
+ * Last edited on March 04 of 2021, at 17:04 BRT */
 
 #pragma once
 
@@ -71,31 +71,3 @@ typedef bool Boolean;
 #define Null nullptr
 
 }
-
-/* We use this for aligning an allocation (from ::new or ::delete), the type name NEEDS to be align_val_t btw. nd yes,
- * this is hackish as hell, I know. Also, we need to put the initializer list on the std namespace.  */
-
-namespace std {
-
-enum class align_val_t : long unsigned int { };
-
-template<typename T> class initializer_list {
-public:
-    constexpr initializer_list() : Elements(Null), Size(0) { }
-
-    constexpr const T *begin() const { return Elements; }
-    constexpr const T *end() const { return &Elements[Size]; }
-
-    constexpr long unsigned int GetLength() const { return Size; }
-private:
-    /* GCC expects the main constructor to be private and constexpr. */
-
-    constexpr initializer_list(const T *Elements, long unsigned int Size) : Elements(Elements), Size(Size) { }
-
-    const T *Elements;
-    long unsigned int Size;
-};
-
-}
-
-using namespace std;

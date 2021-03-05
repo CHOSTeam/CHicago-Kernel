@@ -1,10 +1,10 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 15 of 2021, at 11:36 BRT
- * Last edited on March 01 of 2021 at 15:39 BRT */
+ * Last edited on March 05 of 2021, at 13:24 BRT */
 
-#include <arch.hxx>
-#include <panic.hxx>
+#include <sys/arch.hxx>
+#include <sys/panic.hxx>
 
 using namespace CHicago;
 using namespace UBSan;

@@ -1,11 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:47 BRT
- * Last edited on February 18 of 2021 at 18:03 BRT */
+ * Last edited on March 05 of 2021, at 13:22 BRT */
 
 #include <arch/desctables.hxx>
-#include <arch.hxx>
-#include <textout.hxx>
+#include <sys/arch.hxx>
+#include <vid/console.hxx>
 
 using namespace CHicago;
 

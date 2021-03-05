@@ -1,13 +1,14 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 21:14 BRT
- * Last edited on March 01 of 2021 at 12:23 BRT */
+ * Last edited on March 05 of 2021 at 12:53 BRT */
 
-#include <img.hxx>
+#include <vid/img.hxx>
 
 using namespace CHicago;
 
 Image::Image() : Buffer(Null), Allocated(False), References(Null), Width(0), Height(0) { }
+
 Image::Image(UInt32 *Buffer, UInt16 Width, UInt16 Height)
     : Buffer(Buffer), Allocated(False), References(Null), Width(Width), Height(Height) { }
 

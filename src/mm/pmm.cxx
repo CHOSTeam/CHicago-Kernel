@@ -1,10 +1,10 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on February 22 of 2021 at 18:05 BRT */
+ * Last edited on March 05 of 2021, at 13:24 BRT */
 
-#include <mm.hxx>
-#include <panic.hxx>
+#include <sys/mm.hxx>
+#include <sys/panic.hxx>
 
 using namespace CHicago;
 

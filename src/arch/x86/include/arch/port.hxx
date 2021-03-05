@@ -1,11 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 26 of 2020, at 18:24 BRT
- * Last edited on February 17 of 2021, at 09:29 BRT */
+ * Last edited on March 05 of 2021, at 13:22 BRT */
 
 #pragma once
 
-#include <types.hxx>
+#include <base/types.hxx>
 
 /* For accessing most of the devices (that aren't memory mapped), we need to
  * use the in/out instructions, this class let us do this easily. */

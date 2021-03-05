@@ -1,10 +1,10 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 29 of 2020, at 10:17 BRT
- * Last edited on February 28 of 2021 at 13:44 BRT */
+ * Last edited on March 05 of 2021, at 13:22 BRT */
 
 #include <arch/desctables.hxx>
-#include <string.hxx>
+#include <base/string.hxx>
 
 namespace CHicago {
 

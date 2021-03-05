@@ -1,12 +1,15 @@
 /* File author is Ítalo Lima Marconato Matias
  *
- * Created on July 01 of 2020, at 16:07 BRT
- * Last edited on February 28 of 2021 at 13:43 BRT */
+ * Created on March 04 of 2021, at 17:19 BRT
+ * Last edited on March 05 of 2021 at 13:29 BRT */
 
 #pragma once
 
-#include <boot.hxx>
-#include <status.hxx>
+#include <base/status.hxx>
+
+#ifdef KERNEL
+#include <sys/arch.hxx>
+#endif
 
 #ifndef PAGE_SIZE
 #define PAGE_SHIFT 12
@@ -57,27 +60,19 @@
 
 namespace CHicago {
 
-struct AllocBlock {
-    UIntPtr Magic;
-    UIntPtr Start, Size;
-    UInt64 Pad;
-#ifndef _LP64
-    UInt32 Pad2;
-#endif
-    AllocBlock *Next, *Prev;
-};
-
 class PhysMem {
 public:
+#ifdef KERNEL
     struct packed Region {
         UIntPtr Free, Used, Pages[PHYS_REGION_BITMAP_LEN];
     };
 
     static Void Initialize(BootInfo&);
+#endif
 
-	/* Each one of the functions (allocate/free/reference/dereference) needs three different versions of itself, one
-	 * for doing said operation on a single page, one for multiple, contiguous, pages, and one for multiple, but
-	 * non-contiguous, pages. */
+    /* Each one of the functions (allocate/free/reference/dereference) needs three different versions of itself, one
+     * for doing said operation on a single page, one for multiple, contiguous, pages, and one for multiple, but
+     * non-contiguous, pages. */
 
     static Status AllocSingle(UIntPtr&, UIntPtr = PAGE_SIZE);
     static Status AllocContig(UIntPtr, UIntPtr&, UIntPtr = PAGE_SIZE);
@@ -95,10 +90,11 @@ public:
     static Status DereferenceContig(UIntPtr, UIntPtr);
     static Status DereferenceNonContig(UIntPtr*, UIntPtr);
 
-	/* Now we also need some helper functions for getting reference count of one page, to get the kernel (physical)
-	 * start/end, to get the amount of memory the system has, how much has been used, and how much is free. */
+    /* Now we also need some helper functions for getting reference count of one page, to get the kernel (physical)
+     * start/end, to get the amount of memory the system has, how much has been used, and how much is free. */
 
     static UInt8 GetReferences(UIntPtr);
+#ifdef KERNEL
     static inline UIntPtr GetKernelStart() { return KernelStart; }
     static inline UIntPtr GetKernelEnd() { return KernelEnd; }
     static inline UIntPtr GetMinAddress() { return MinAddress; }
@@ -116,15 +112,32 @@ private:
     static Region *Regions;
     static UInt8 *References;
     static Boolean Initialized;
+#else
+    static UIntPtr GetSize();
+    static UIntPtr GetUsage();
+    static UIntPtr GetFree();
+#endif
 };
 
 class VirtMem {
 public:
+#ifdef KERNEL
     static Void Initialize(BootInfo&);
+#endif
 
     static Status Query(UIntPtr, UIntPtr&, UInt32&);
     static Status Map(UIntPtr, UIntPtr, UIntPtr, UInt32);
     static Status Unmap(UIntPtr, UIntPtr, Boolean = False);
+};
+
+struct AllocBlock {
+    UIntPtr Magic;
+    UIntPtr Start, Size;
+    UInt64 Pad;
+#ifndef _LP64
+    UInt32 Pad2;
+#endif
+    AllocBlock *Next, *Prev;
 };
 
 class Heap {
@@ -133,16 +146,19 @@ public:
      * pre-map the entries that will be used (on the top level, so that we don't accidentally waste too much
      * memory). */
 
+#ifdef KERNEL
     static Void Initialize(UIntPtr, UIntPtr);
+    static Void ReturnPhysical();
+#endif
 
     static Status Increment(UIntPtr);
     static Void Decrement(UIntPtr);
-    static Void ReturnPhysical();
 
     static Void *Allocate(UIntPtr);
     static Void *Allocate(UIntPtr, UIntPtr);
     static Void Deallocate(Void*);
 
+#ifdef KERNEL
     static inline Void *GetStart() { return reinterpret_cast<Void*>(Start); }
     static inline Void *GetEnd() { return reinterpret_cast<Void*>(End); }
     static inline Void *GetCurrent() { return reinterpret_cast<Void*>(Current); }
@@ -160,6 +176,14 @@ private:
     static Boolean Initialized;
     static AllocBlock *Base, *Tail;
     static UIntPtr Start, End, Current, CurrentAligned;
+#else
+    static Void *GetStart();
+    static Void *GetEnd();
+    static Void *GetCurrent();
+    static UIntPtr GetSize();
+    static UIntPtr GetUsage();
+    static UIntPtr GetFree();
+#endif
 };
 
 }

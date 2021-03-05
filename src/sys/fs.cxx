@@ -1,9 +1,9 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 14:02 BRT
- * Last edited on March 01 of 2021 at 12:29 BRT */
+ * Last edited on March 05 of 2021, at 14:07 BRT */
 
-#include <fs.hxx>
+#include <sys/fs.hxx>
 
 using namespace CHicago;
 
@@ -50,10 +50,10 @@ Void File::Close() {
         }
     }
 
-    Name = {};
     Flags = 0;
-    Priv = References = Null;
+    Name = String{};
     Length = INode = 0;
+    Priv = References = Null;
     SetMemory(&Fs, 0, sizeof(FsImpl));
 }
 
@@ -122,10 +122,10 @@ Status File::ReadDirectory(UIntPtr Index, String &Name) const {
         return status;
     }
 
-    return Name = String(out, True), delete out, !Name.GetLength() ? Status::OutOfMemory : Status::Success;
+    return Name = out, delete out, !Name.GetLength() ? Status::OutOfMemory : Status::Success;
 }
 
-Status File::Search(const String &Name, UInt8 Flags, File &Out) const {
+Status File::Search(const StringView &Name, UInt8 Flags, File &Out) const {
     /* ->Search returns the Priv and INode values for the file, we should mount the wrapper around the returned values,
      * remembering that the Fs remains the same. */
 
@@ -148,7 +148,7 @@ Status File::Search(const String &Name, UInt8 Flags, File &Out) const {
     return Out = File(Name, Flags, Fs, len, priv, inode), Status::Success;
 }
 
-Status File::Create(const String &Name, UInt8 Flags) const {
+Status File::Create(const StringView &Name, UInt8 Flags) const {
     return (!(this->Flags & OPEN_DIR) || !(this->Flags & OPEN_WRITE) || Fs.Create == Null)
            ? Status::Unsupported : Fs.Create(Priv, INode, Name.GetValue(), Flags);
 }
@@ -184,7 +184,7 @@ MountPoint &MountPoint::operator =(const MountPoint &Source) {
     return *this;
 }
 
-List<String> FileSys::TokenizePath(const String &Path) {
+List<String> FileSys::TokenizePath(const StringView &Path) {
     /* The String class already have a function that tokenizes the string, and return a List<> of tokens, but we have
      * some tokens that we need to remove... */
 
@@ -211,7 +211,7 @@ List<String> FileSys::TokenizePath(const String &Path) {
     return ret;
 }
 
-String FileSys::CanonicalizePath(const String &Path, const String &Increment) {
+String FileSys::CanonicalizePath(const StringView &Path, const StringView &Increment) {
     /* This time, we need to tokenize TWO strings, append the contents of the second list to the first, and do the same
      * process we did in the TokenizePath function. */
 
@@ -270,14 +270,13 @@ Status FileSys::Register(const FsImpl &Info) {
     return FileSystems.Add(Info);
 }
 
-static String FixView(const String &Path) {
-    String path(Path.GetValue());
-    for (; path[Path.GetViewEnd() - Path.GetViewStart()] == '/';
-           path.SetView(Path.GetViewStart(), Path.GetViewEnd() - 1)) ;
-    return path;
+static StringView FixView(const StringView &Path) {
+    UIntPtr i = Path.GetLength();
+    for (; Path[i - 1] == '/'; i--) ;
+    return { Path.GetValue(), i };
 }
 
-Status FileSys::CheckMountPoint(const String &Path) {
+Status FileSys::CheckMountPoint(const StringView &Path) {
     /* We could probably only return a Boolean, BUT, we need to check if the Path starts with a slash, and in
      * the case have trailing slashes, we need to allocate memory, both return different status codes, so just
      * a Boolean isn't enough. */
@@ -288,7 +287,7 @@ Status FileSys::CheckMountPoint(const String &Path) {
         return Status::NotMounted;
     }
 
-    String path = FixView(Path);
+    StringView path = FixView(Path);
 
     for (const MountPoint &mp : MountPoints) {
         if (!(mp.GetPath().Compare(path))) {
@@ -301,7 +300,7 @@ Status FileSys::CheckMountPoint(const String &Path) {
     return Status::NotMounted;
 }
 
-Status FileSys::CreateMountPoint(const String &Path, const File &Root) {
+Status FileSys::CreateMountPoint(const StringView &Path, const File &Root) {
     /* We need to export this to be visible so the user can mount the boot directory, the root directory, the
      * /Devices folder etc. */
 
@@ -309,7 +308,7 @@ Status FileSys::CreateMountPoint(const String &Path, const File &Root) {
         return Status::InvalidArg;
     }
 
-    String path = FixView(Path);
+    StringView path = FixView(Path);
 
     if (MountPoints.GetLength()) {
         if (CheckMountPoint(path) != Status::NotMounted) {
@@ -337,7 +336,7 @@ static Status CheckFlags(UInt8 SourceFlags, UInt8 Flags) {
     return ((Flags & OPEN_EXEC) && !(SourceFlags & OPEN_EXEC)) ? Status::NotExec : Status::Success;
 }
 
-Status FileSys::Open(const String &Path, UInt8 Flags, File &Out) {
+Status FileSys::Open(const StringView &Path, UInt8 Flags, File &Out) {
     if (Path[0] != '/') {
         return Status::InvalidArg;
     } else if (MountPoints.GetLength() == 0) {
@@ -419,7 +418,7 @@ Status FileSys::Open(const String &Path, UInt8 Flags, File &Out) {
     return Status::Success;
 }
 
-Status FileSys::Mount(const String &Dest, const String &Source, UInt8 Flags) {
+Status FileSys::Mount(const StringView &Dest, const StringView &Source, UInt8 Flags) {
     /* We removed the option to manually specify the file system type, this makes the code a bit smaller, and we have
      * less things to do, we may add it again later, but for now just do the same checks that we did in the old code
      * (dest doesn't exist, source exists and we can do whatever the Flags say, etc). */
@@ -455,7 +454,7 @@ Status FileSys::Mount(const String &Dest, const String &Source, UInt8 Flags) {
     return Status::InvalidFs;
 }
 
-Status FileSys::Unmount(const String &Path) {
+Status FileSys::Unmount(const StringView &Path) {
     /* Unmounting is just a matter of finding the mount point struct that points to Path (Path has to be the EXACT
      * mount path, not some sub-folder or file inside the mount point). We need to do the same handling of trailing
      * slashes on the Path as we do on the CreateMountPoint function. */
@@ -467,7 +466,7 @@ Status FileSys::Unmount(const String &Path) {
     }
 
     UIntPtr idx = 0;
-    String path = FixView(Path);
+    StringView path = FixView(Path);
 
     for (const MountPoint &mp : MountPoints) {
         if (!(mp.GetPath().Compare(path))) {
@@ -484,8 +483,8 @@ Status FileSys::Unmount(const String &Path) {
     return Status::NotMounted;
 }
 
-const FsImpl &FileSys::GetFileSys(const String &Path) {
-    /* As the String class contains a constructor around C-strings, they will be auto converted into CHicago strings,
+const FsImpl &FileSys::GetFileSys(const StringView &Path) {
+    /* As the StringView class contains a constructor around C-strings, they will be auto converted into CHicago strings
      * which makes our job a lot easier. */
 
     if (FileSystems.GetLength()) {
@@ -499,7 +498,7 @@ const FsImpl &FileSys::GetFileSys(const String &Path) {
     return EmptyFs;
 }
 
-const MountPoint &FileSys::GetMountPoint(const String &Path, String &Remain) {
+const MountPoint &FileSys::GetMountPoint(const StringView &Path, String &Remain) {
     /* We have two options to iterate through the list and try to get the right mount point: checking each mount point
      * that the path is equal to the start of our Path, and return the one with the bigger length, or, copying the
      * string, and doing something like what we do at CreateMountPoint, but remembering to save the length, and only do
@@ -509,13 +508,11 @@ const MountPoint &FileSys::GetMountPoint(const String &Path, String &Remain) {
         return EmptyMp;
     }
 
-    String path(Path.GetValue());
-    UIntPtr end = Path.GetViewEnd(), start = 0;
-    for (; end > Path.GetViewStart() && path[end - Path.GetViewStart()] == '/'; end--) ;
-    UIntPtr len = end - Path.GetViewStart();
+    UIntPtr len = Path.GetLength(), end = len, start = 0;
+    for (; end && Path[end - 1] == '/'; end--) ;
 
-    for (path.SetView(Path.GetViewStart(), Path.GetViewStart() + 1);
-         path.GetViewEnd() <= end; path.SetView(Path.GetViewStart(), Path.GetViewEnd() + 1), start++, len--) {
+    for (StringView path { Path.GetValue(), end-- }; path.GetLength(); path = StringView { Path.GetValue(), end-- },
+                                                                       start++, len--) {
         for (const MountPoint &mp : MountPoints) {
             if (mp.GetPath().Compare(path)) {
                 for (UIntPtr i = 1; i < len; i++) {

@@ -1,11 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 03 of 2020, at 17:28 BRT
- * Last edited on March 01 of 2021, at 11:13 BRT */
+ * Last edited on March 05 of 2021, at 13:22 BRT */
 
 #pragma once
 
-#include <types.hxx>
+#include <base/types.hxx>
 
 /* There are some page flags that are global to both x86-32 and x86-64. x86-64 also have some extra flags, as instead
  * of each entry being 32-bits, each entry is 64-bits (well, x86-32 with PAE also would have 64-bits per entry, but we

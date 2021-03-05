@@ -1,11 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 09 of 2021, at 14:24 BRT
- * Last edited on February 18 of 2021 at 10:43 BRT */
+ * Last edited on March 05 of 2021 at 13:48 BRT */
 
 #pragma once
 
-#include <stacktrace.hxx>
+#include <util/stacktrace.hxx>
 
 #define ASSERT(x) ((x) ? (Void)0 : Panic::AssertFailed(#x, __FILE__, __PRETTY_FUNCTION__, __LINE__))
 
@@ -48,7 +48,7 @@ namespace CHicago {
 
 class Panic {
 public:
-    static no_return Void AssertFailed(const String&, const String&, const String&, UInt32);
+    static no_return Void AssertFailed(const StringView&, const StringView&, const StringView&, UInt32);
 };
 
 }

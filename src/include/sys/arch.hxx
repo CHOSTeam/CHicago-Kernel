@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <boot.hxx>
+#include <sys/boot.hxx>
 
 namespace CHicago {
 

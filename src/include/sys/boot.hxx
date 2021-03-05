@@ -1,11 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 05 of 2021, at 20:33 BRT
- * Last edited on February 28 of 2021 at 13:45 BRT */
+ * Last edited on March 05 of 2021 at 13:18 BRT */
 
 #pragma once
 
-#include <types.hxx>
+#include <base/types.hxx>
 
 #define BOOT_INFO_MAGIC 0xC4057D41
 

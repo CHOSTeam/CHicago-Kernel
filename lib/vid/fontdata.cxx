@@ -1,12 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on August 06 of 2020, at 19:53 BRT
- * Last edited on February 16 of 2021 at 10:35 BRT */
+ * Last edited on March 05 of 2021 at 12:53 BRT */
 
-#include <img.hxx>
+#include <vid/img.hxx>
 
-/* The font data was extracted from the Fira Code font (https://github.com/tonsky/FiraCode)./
- * The font's license is available at the root directory of both CHicago and CHicago-Kernel projects. */
+/* The font data was extracted from the Fira Code font (https://github.com/tonsky/FiraCode). */
 
 namespace CHicago {
 

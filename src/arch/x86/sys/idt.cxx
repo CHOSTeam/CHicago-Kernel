@@ -1,12 +1,12 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 29 of 2020, at 11:24 BRT
- * Last edited on February 28 of 2021 at 13:44 BRT */
+ * Last edited on March 05 of 2021, at 13:59 BRT */
 
 #include <arch/desctables.hxx>
 #include <arch/port.hxx>
-#include <arch.hxx>
-#include <panic.hxx>
+#include <sys/arch.hxx>
+#include <sys/panic.hxx>
 
 namespace CHicago {
 
@@ -49,7 +49,7 @@ extern "C" force_align_arg_pointer Void IdtDefaultHandler(Registers &Regs) {
 	if (Regs.IntNum >= 32 && InterruptHandlers[Regs.IntNum - 32] != Null) {
 		InterruptHandlers[Regs.IntNum - 32](Regs);
 	} else if (Regs.IntNum < 32) {
-	    String name;
+	    StringView name;
 	    UIntPtr cr0, cr2, cr3, cr4, off;
         asm volatile("mov %%cr0, %0; mov %%cr2, %1; mov %%cr3, %2; mov %%cr4, %3" : "=r"(cr0), "=r"(cr2), "=r"(cr3),
                                                                                     "=r"(cr4));
