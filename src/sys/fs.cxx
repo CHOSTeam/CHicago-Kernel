@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 14:02 BRT
- * Last edited on March 05 of 2021, at 14:07 BRT */
+ * Last edited on March 06 of 2021, at 21:36 BRT */
 
 #include <sys/fs.hxx>
 
@@ -51,7 +51,7 @@ Void File::Close() {
     }
 
     Flags = 0;
-    Name = String{};
+    Name = {};
     Length = INode = 0;
     Priv = References = Null;
     SetMemory(&Fs, 0, sizeof(FsImpl));
@@ -133,7 +133,8 @@ Status File::Search(const StringView &Name, UInt8 Flags, File &Out) const {
     UInt64 inode, len;
 
     Status status = (!(this->Flags & OPEN_DIR) || !(this->Flags & OPEN_READ) || Fs.Search == Null)
-                    ? Status::Unsupported : Fs.Search(Priv, INode, Name.GetValue(), &priv, &inode, &len);
+                    ? Status::Unsupported : Fs.Search(Priv, INode, Name.GetValue() + Name.GetViewStart(),
+                                                      Name.GetViewEnd() - Name.GetViewStart(), &priv, &inode, &len);
 
     if (status != Status::Success) {
         return status;
@@ -150,7 +151,8 @@ Status File::Search(const StringView &Name, UInt8 Flags, File &Out) const {
 
 Status File::Create(const StringView &Name, UInt8 Flags) const {
     return (!(this->Flags & OPEN_DIR) || !(this->Flags & OPEN_WRITE) || Fs.Create == Null)
-           ? Status::Unsupported : Fs.Create(Priv, INode, Name.GetValue(), Flags);
+           ? Status::Unsupported : Fs.Create(Priv, INode, Name.GetValue() + Name.GetViewStart(),
+                                             Name.GetViewEnd() - Name.GetViewStart(), Flags);
 }
 
 Status File::Control(UIntPtr Function, const Void *InBuffer, Void *OutBuffer) const {
@@ -271,9 +273,9 @@ Status FileSys::Register(const FsImpl &Info) {
 }
 
 static StringView FixView(const StringView &Path) {
-    UIntPtr i = Path.GetLength();
+    UIntPtr i = Path.GetViewEnd() - Path.GetViewStart();
     for (; Path[i - 1] == '/'; i--) ;
-    return { Path.GetValue(), i };
+    return { Path.GetValue() + Path.GetViewStart(), 0, i };
 }
 
 Status FileSys::CheckMountPoint(const StringView &Path) {
@@ -508,11 +510,11 @@ const MountPoint &FileSys::GetMountPoint(const StringView &Path, String &Remain)
         return EmptyMp;
     }
 
-    UIntPtr len = Path.GetLength(), end = len, start = 0;
+    UIntPtr len = Path.GetViewEnd() - Path.GetViewStart(), end = len, start = 0;
     for (; end && Path[end - 1] == '/'; end--) ;
 
-    for (StringView path { Path.GetValue(), end-- }; path.GetLength(); path = StringView { Path.GetValue(), end-- },
-                                                                       start++, len--) {
+    for (StringView path { Path.GetValue() + Path.GetViewStart(), 0, end-- }; path.GetLength(); path.SetView(0, end--),
+                                                                                                start++, len--) {
         for (const MountPoint &mp : MountPoints) {
             if (mp.GetPath().Compare(path)) {
                 for (UIntPtr i = 1; i < len; i++) {

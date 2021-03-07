@@ -6,6 +6,7 @@
 #include <sys/arch.hxx>
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
+#include <util/algo.hxx>
 
 using namespace CHicago;
 

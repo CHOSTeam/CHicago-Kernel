@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 01 of 2021, at 11:59 BRT
- * Last edited on March 04 of 2021, at 17:16 BRT */
+ * Last edited on March 04 of 2021, at 17:28 BRT */
 
 #pragma once
 
@@ -9,23 +9,23 @@
 
 namespace CHicago {
 
-template<class T> struct RemoveReference { typedef T Value; };
-template<class T> struct RemoveReference<T&> { typedef T Value; };
-template<class T> struct RemoveReference<T&&> { typedef T Value; };
+template<class T> struct RemoveReference { using Type = T; };
+template<class T> struct RemoveReference<T&> { using Type = T; };
+template<class T> struct RemoveReference<T&&> { using Type = T; };
 
 /* Forward, Move and Exchange are compiler black magic used for making our life a bit easier when, for example, we want
  * to implement move operators/constructors, or force a value to be moved instead of copied. */
 
-template<class T> static inline constexpr T &&Forward(typename RemoveReference<T>::Value &Value) {
+template<class T> static inline constexpr T &&Forward(typename RemoveReference<T>::Type &Value) {
     return static_cast<T&&>(Value);
 }
 
-template<class T> static inline constexpr T &&Forward(typename RemoveReference<T>::Value &&Value) {
+template<class T> static inline constexpr T &&Forward(typename RemoveReference<T>::Type &&Value) {
     return static_cast<T&&>(Value);
 }
 
-template<class T> static inline constexpr typename RemoveReference<T>::Value &&Move(T &&Value) {
-    return static_cast<typename RemoveReference<T>::Value&&>(Value);
+template<class T> static inline constexpr typename RemoveReference<T>::Type &&Move(T &&Value) {
+    return static_cast<typename RemoveReference<T>::Type&&>(Value);
 }
 
 template<class T, class U = T> static inline constexpr T Exchange(T &Old, U &&New) {

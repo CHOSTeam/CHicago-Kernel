@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 15:57 BRT
- * Last edited on March 05 of 2021 at 13:58 BRT */
+ * Last edited on March 06 of 2021 at 21:34 BRT */
 
 #pragma once
 
@@ -72,7 +72,7 @@ public:
             StringView name;
 
             if (GetSymbol(addr[i], name, off)) {
-                Debug.Write("    0x{:0*:16}: {} +0x{:0:16}\n", addr[i], name.GetValue(), off);
+                Debug.Write("    0x{:0*:16}: {} +0x{:0:16}\n", addr[i], name, off);
             } else {
                 Debug.Write("    0x{:0*:16}: <no symbol information available>\n", addr[i]);
             }

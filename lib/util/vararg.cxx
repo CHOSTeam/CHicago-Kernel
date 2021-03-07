@@ -1,7 +1,7 @@
     /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 15:57 BRT
- * Last edited on March 05 of 2021 at 14:16 BRT */
+ * Last edited on March 06 of 2021 at 21:51 BRT */
 
 #include <base/string.hxx>
 
@@ -73,7 +73,7 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
 
     /* Let's parse the format string, most of it will probably just be raw text. */
 
-    while (Format[pos]) {
+    while (pos < Format.GetViewEnd() - Format.GetViewStart() && Format[pos]) {
         /* Let's already get the easiest one of the way: If the character isn't the format start character, just print
          * it normally (also get where the first format character would be, so that we can print all text before it at
          * the same time). */
@@ -296,7 +296,7 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
                                     (type == ArgumentType::CHStringView ? *val.CHStringViewValue :
                                     (type == ArgumentType::Boolean ? (val.BooleanValue ? "True" : "False") :
                                                                      StringView::FromStatus(val.StatusValue))));
-            UIntPtr len = str.GetLength();
+            UIntPtr len = str.GetViewEnd() - str.GetViewStart();
 
             if (pset && len > prec) {
                 len = prec;

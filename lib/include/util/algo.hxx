@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 04 of 2021, at 11:50 BRT
- * Last edited on March 05 of 2021, at 12:41 BRT */
+ * Last edited on March 05 of 2021, at 17:57 BRT */
 
 #pragma once
 
@@ -9,13 +9,13 @@
 
 namespace CHicago {
 
-static inline constexpr UInt64 ConstHash(const Char *Data, UIntPtr Length) {
-    /* "Seedless" MurmurHash64A implementation (should be good and fast enough for basic non-crypto safe hashing, to add
-     * a seed, just xor it with the length * 0xc6a... value). Also, this function expects that if you're gonna call us
-     * in a constexpr, the Data is a const Char* (that is, a string, else the compiler will complain and error out). */
+static inline constexpr UInt64 ConstHash(const Char *Data, UIntPtr Length, UInt64 Seed = 0) {
+    /* MurmurHash64A implementation (should be good and fast enough for basic non-crypto safe hashing). Also, this
+     * function expects that if you're gonna call us in a constexpr, the Data is a const Char* (that is, a string, else
+     * the compiler will complain and error out). */
 
     const Char *end = Data + (Length >> 5);
-    UInt64 ret = Length * 0xC6A4A7935BD1E995;
+    UInt64 ret = Seed ^ (Length * 0xC6A4A7935BD1E995);
 
     for (; Data < end; Data += 8) {
         UInt64 ch = ((static_cast<UInt64>(Data[0]) << 56) | (static_cast<UInt64>(Data[1]) << 48) |
@@ -38,8 +38,8 @@ static inline constexpr UInt64 ConstHash(const Char *Data, UIntPtr Length) {
     return ret = (ret ^ (ret >> 47)) * 0xC6A4A7935BD1E995, ret ^ (ret >> 47);
 }
 
-static inline UInt64 Hash(const Void *Data, UIntPtr Length) {
-    return ConstHash(static_cast<const Char*>(Data), Length);
+static inline UInt64 Hash(const Void *Data, UIntPtr Length, UInt64 Seed = 0) {
+    return ConstHash(static_cast<const Char*>(Data), Length, Seed);
 }
 
 }

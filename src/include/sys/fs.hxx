@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 14:01 BRT
- * Last edited on March 05 of 2021 at 13:51 BRT */
+ * Last edited on March 06 of 2021 at 21:33 BRT */
 
 #pragma once
 
@@ -28,8 +28,8 @@ struct packed FsImpl {
     Status (*Read)(const Void*, UInt64, UInt64, UInt64, Void*, UInt64*);
     Status (*Write)(const Void*, UInt64, UInt64, UInt64, const Void*, UInt64*);
     Status (*ReadDirectory)(const Void*, UInt64, UIntPtr, Char**);
-    Status (*Search)(const Void*, UInt64, const Char*, Void**, UInt64*, UInt64*);
-    Status (*Create)(const Void*, UInt64, const Char*, UInt8);
+    Status (*Search)(const Void*, UInt64, const Char*, UIntPtr, Void**, UInt64*, UInt64*);
+    Status (*Create)(const Void*, UInt64, const Char*, UIntPtr, UInt8);
     Status (*Control)(const Void*, UInt64, UIntPtr, const Void*, Void*);
     Status (*Mount)(const Void*, Void**, UInt64*);
     Status (*Unmount)(const Void*, UInt64);

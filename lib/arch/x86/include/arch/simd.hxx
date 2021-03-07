@@ -1,12 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 18 of 2021, at 13:17 BRT
- * Last edited on February 19 of 2021 at 20:43 BRT */
-
-#pragma once
-
-/* No need to enter the CHicago namespace, nor anything like that, only simd.hxx (the global one) should be including
- * us, and we should already be inside the SIMD class. */
+ * Last edited on March 06 of 2021 at 15:27 BRT */
 
 disable_ubsan static inline always_inline Floatx2 Round(Floatx2 Vector) { return __builtin_ia32_roundpd(Vector, 0); }
 #ifndef NO_256_SIMD

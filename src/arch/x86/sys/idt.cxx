@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 29 of 2020, at 11:24 BRT
- * Last edited on March 05 of 2021, at 13:59 BRT */
+ * Last edited on March 06 of 2021, at 21:34 BRT */
 
 #include <arch/desctables.hxx>
 #include <arch/port.hxx>
@@ -87,7 +87,7 @@ extern "C" force_align_arg_pointer Void IdtDefaultHandler(Registers &Regs) {
                     Regs.Cs, Regs.Ds, Regs.Es, Regs.Fs, Regs.Gs, Regs.Cs == 0x08 ? Regs.Ss : Regs.Ss2);
 
         if (StackTrace::GetSymbol(Regs.Ip, name, off)) {
-            Debug.Write("at: {} +0x{::16}\n", name.GetValue(), off);
+            Debug.Write("at: {} +0x{::16}\n", name, off);
         }
 
 	    StackTrace::Dump();

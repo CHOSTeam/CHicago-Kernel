@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 04 of 2021, at 11:25 BRT
- * Last edited on March 05 of 2021, at 14:28 BRT */
+ * Last edited on March 06 of 2021, at 21:49 BRT */
 
 #pragma once
 
@@ -12,7 +12,8 @@ namespace CHicago {
 
 class Type {
 public:
-    constexpr Type(const StringView &Name) : Name(Name), ID(ConstHash(Name.GetValue(), Name.GetLength())) { }
+    constexpr Type(const StringView &Name) : Name(Name), ID(ConstHash(Name.GetValue() + Name.GetViewStart(),
+                                                                      Name.GetViewEnd() - Name.GetViewStart())) { }
 
     inline constexpr Boolean operator ==(const Type &Value) const { return ID == Value.ID; }
     inline constexpr Boolean operator !=(const Type &Value) const { return ID == Value.ID; }
@@ -25,7 +26,7 @@ private:
 };
 
 template<typename> inline constexpr StringView NameOf() {
-    return { __PRETTY_FUNCTION__ + 81, sizeof(__PRETTY_FUNCTION__) - 83 };
+    return { __PRETTY_FUNCTION__ + 81, 0, sizeof(__PRETTY_FUNCTION__) - 83 };
 }
 
 template<typename T> inline constexpr StringView NameOf(T) { return NameOf<T>(); }

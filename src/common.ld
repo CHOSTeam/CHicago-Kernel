@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  * 
  * Created on February 06 of 2021, at 12:54 BRT
- * Last edited on February 15 of 2021, at 23:38 BRT */
+ * Last edited on March 06 of 2021, at 14:35 BRT */
 
 ENTRY(KernelEntry)
 
@@ -15,11 +15,11 @@ SECTIONS {
     . = ALIGN(4K);
 
     .init : {
-        KEEP(*(SORT_NONE(.init)))
+        KEEP(*(.init))
     } :text
 
     .fini : {
-        KEEP(*(SORT_NONE(.fini)))
+        KEEP(*(.fini))
     } :text
 
     .init_array : {
