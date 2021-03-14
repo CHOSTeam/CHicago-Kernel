@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 04 of 2021, at 11:50 BRT
- * Last edited on March 14 of 2021, at 11:18 BRT */
+ * Last edited on March 14 of 2021, at 11:37 BRT */
 
 #pragma once
 
@@ -103,17 +103,20 @@ template<typename T, typename U> Void HeapSort(T *Start, T *End, U Compare) {
 }
 
 template<typename T, typename U> T *SortPartition(T *Start, T *End, U Compare) {
-    /* Quick sort selection algorithm (basic/non-optimized version for now): Simply iterate from start to end, swapping
-     * elements around (based on the condition from the compare function), by the end, we should have everything that
-     * satisfies the compare on the left, and everything that doesn't on the right. */
+    /* Quick sort selection algorithm: Simply iterate from start to end, swapping elements around (based on the
+     * condition from the compare function), by the end, we should have everything that satisfies the compare on the
+     * left, and everything that doesn't on the right. */
 
-    for (T *i = Start + 1; i < End; i++) {
-        if (Compare(*i)) {
-            Swap(*i, *Start++);
+    for (T *i = Start, *j = End - 1;;) {
+        for (; i < j && Compare(*i); i++);
+        for (; i < j && !Compare(*j); j--);
+
+        if (i >= j) {
+            return j;
         }
-    }
 
-    return Start;
+        Swap(*i, *j);
+    }
 }
 
 template<typename T, typename U> Void Sort(T *Start, T *End, UIntPtr Depth, U Compare) {
@@ -141,7 +144,7 @@ template<typename T, typename U> Void Sort(T *Start, T *End, UIntPtr Depth, U Co
 
     Swap(Start[(End - Start) / 2], End[-1]);
 
-    T *mid = SortPartition(Start, End[-1], [=](T &a) { return Compare(a, End[-1]); });
+    T *mid = SortPartition(Start, End - 1, [=](T &a) { return Compare(a, End[-1]); });
 
     Swap(*mid, End[-1]);
     Sort(Start, mid, Depth, Compare);

@@ -1,13 +1,13 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 11:51 BRT
- * Last edited on March 14 of 2021 at 11:16 BRT */
+ * Last edited on March 14 of 2021 at 11:30 BRT */
 
 #pragma once
 
 #include <base/std.hxx>
 #include <sys/mm.hxx>
-#include <util/misc.hxx>
+#include <util/algo.hxx>
 
 #define DO_ADD(x) \
     Status status; \
@@ -228,6 +228,8 @@ public:
 
         return Status::Success;
     }
+
+    template<typename U> Void Sort(U Compare) { CHicago::Sort(Elements, Elements + Length, Compare); }
 
     inline UIntPtr GetLength() const { return Length; }
     inline UIntPtr GetCapacity() const { return Capacity; }
