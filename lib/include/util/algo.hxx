@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 04 of 2021, at 11:50 BRT
- * Last edited on March 14 of 2021, at 11:37 BRT */
+ * Last edited on March 14 of 2021, at 13:28 BRT */
 
 #pragma once
 
@@ -65,12 +65,12 @@ template<typename T, typename U> static inline Void MakeHeap(T *Start, UIntPtr R
     while (2 * Root + 1 <= End) {
         UIntPtr i = 2 * Root + 1;
 
-        if (i + 1 <= End && !Compare(Start[i + 1], Start[i])) {
+        if (i + 1 <= End && Compare(Start[i], Start[i + 1])) {
             i++;
         }
 
-        if (!Compare(Start[i + 1], Start[Root])) {
-            Swap(Start[i], Start[Root]);
+        if (Compare(Start[Root], Start[i + 1])) {
+            Swap(Start[Root], Start[i]);
         }
 
         Root = i;
@@ -82,7 +82,7 @@ template<typename T, typename U> Void HeapSort(T *Start, T *End, U Compare) {
      * (except possibly one swap if the length is 2). */
 
     if (Start >= End || End - Start <= 2) {
-        if (Start < End && End - Start == 2 && !Compare(Start[0], Start[1])) {
+        if (Start < End && End - Start == 2 && Compare(Start[1], Start[0])) {
             Swap(Start[0], Start[1]);
         }
 
@@ -107,52 +107,63 @@ template<typename T, typename U> T *SortPartition(T *Start, T *End, U Compare) {
      * condition from the compare function), by the end, we should have everything that satisfies the compare on the
      * left, and everything that doesn't on the right. */
 
-    for (T *i = Start, *j = End - 1;;) {
-        for (; i < j && Compare(*i); i++);
+    if (Start >= End) {
+        return Start;
+    }
+
+    T *i = Start, *j = End - 1;
+
+    for (; i < j;) {
+        for (; Compare(*i); i++);
         for (; i < j && !Compare(*j); j--);
 
-        if (i >= j) {
-            return j;
+        if (i < j) {
+            Swap(*i, *j);
         }
-
-        Swap(*i, *j);
     }
+
+    return j;
 }
 
-template<typename T, typename U> Void Sort(T *Start, T *End, UIntPtr Depth, U Compare) {
-    /* Quick Sort+Heap Sort+Insertion Sort (also known as Introsort): First, check if we haven't reached the point where
-     * quick sort starts being too inefficient, if we have, we can switch to heap sort (if we just reached depth 0), or
-     * to insertion sort (if the length is less than 16). */
+template<typename T, typename U> static inline Void Sort(T *Start, T *End, UIntPtr Depth, U Compare) {
+    /* Use a loop so that we can remove one of the recursive calls. */
 
-    if (Start >= End || End - Start <= 2) {
-        if (Start < End && End - Start == 2 && !Compare(Start[0], Start[1])) {
-            Swap(Start[0], Start[1]);
+    while (Start < End) {
+        /* Quick Sort+Heap Sort+Insertion Sort (also known as Introsort): First, check if we haven't reached the point
+         * where quick sort starts being too inefficient, if we have, we can switch to heap sort (if we just reached
+         * depth 0), or to insertion sort (if the length is less than 16). */
+
+        if (End - Start <= 2) {
+            if (End - Start == 2 && Compare(Start[1], Start[0])) {
+                Swap(Start[0], Start[1]);
+            }
+
+            return;
+        } else if (!Depth--) {
+            HeapSort(Start, End, Compare);
+            return;
+        } else if (End - Start < 16) {
+            InsertionSort(Start, End, Compare);
+            return;
         }
 
-        return;
-    } else if (!Depth--) {
-        HeapSort(Start, End, Compare);
-        return;
-    } else if (End - Start < 15) {
-        InsertionSort(Start, End, Compare);
-        return;
+        /* Else, just perform a recursive quick sort: Put the pivot in the end, partition the area between the start and
+         * one lesser than the end (as in the end we have now the pivot), put the pivot back in place, and recursively
+         * call ourselves in one half (and let the loop handle the other half). */
+
+        Swap(Start[(End - Start) / 2], End[-1]);
+
+        T *pivot = SortPartition(Start, End - 1, [=](T &a) { return Compare(a, End[-1]); });
+
+        Swap(*pivot, End[-1]);
+        Sort(Start, pivot, Depth, Compare);
+
+        Start = pivot + 1;
     }
-
-    /* Else, just perform a recursive quick sort: Put the pivot in the end, partition the area between the start and one
-     * lesser than the end (as in the end we have now the pivot), put the pivot back in place, and recursively call
-     * ourselves in each half of the partitioned space. */
-
-    Swap(Start[(End - Start) / 2], End[-1]);
-
-    T *mid = SortPartition(Start, End - 1, [=](T &a) { return Compare(a, End[-1]); });
-
-    Swap(*mid, End[-1]);
-    Sort(Start, mid, Depth, Compare);
-    Sort(mid + 1, End, Depth, Compare);
 }
 
 template<typename T, typename U> Void Sort(T *Start, T *End, U Compare) {
-    Sort(Start, End, LOG2(End - Start) * 0.6931471805599453 + 0.5, Compare);
+    Sort(Start, End, LOG2(End - Start) * 1.38629436111989 + 0.5, Compare);
 }
 
 }
