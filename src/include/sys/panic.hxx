@@ -1,12 +1,13 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 09 of 2021, at 14:24 BRT
- * Last edited on March 05 of 2021 at 13:48 BRT */
+ * Last edited on March 06 of 2021 at 22:18 BRT */
 
 #pragma once
 
 #include <util/stacktrace.hxx>
 
+#define STATIC_ASSERT(x, msg) _Static_assert(x, msg)
 #define ASSERT(x) ((x) ? (Void)0 : Panic::AssertFailed(#x, __FILE__, __PRETTY_FUNCTION__, __LINE__))
 
 namespace UBSan {

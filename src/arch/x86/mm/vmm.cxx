@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 12 of 2021, at 14:54 BRT
- * Last edited on March 05 of 2021, at 13:22 BRT */
+ * Last edited on March 14 of 2021, at 11:13 BRT */
 
 #include <arch/mm.hxx>
 #include <sys/mm.hxx>
@@ -119,14 +119,14 @@ static IntPtr CheckLevel(UIntPtr Address, UIntPtr Index, UIntPtr *&Entry, Boolea
      * update it if we unmap something). */
 
     if (Clean) {
-        SetMemory(&reinterpret_cast<UIntPtr*>(Address)[Index], 0, PAGE_SIZE);
+        SetMemory(reinterpret_cast<UIntPtr*>(Address) + Index, 0, PAGE_SIZE);
         return -1;
     }
 
     /* Now, get/save the entry and check if it is present/huge. */
 
-    return Entry = &reinterpret_cast<UIntPtr*>(Address)[Index], !(*Entry & PAGE_PRESENT) ? -1 :
-                                                                 ((*Entry & PAGE_HUGE) ? -2 : 0);
+    return Entry = reinterpret_cast<UIntPtr*>(Address) + Index, !(*Entry & PAGE_PRESENT) ? -1 :
+                                                                ((*Entry & PAGE_HUGE) ? -2 : 0);
 }
 
 static IntPtr CheckDirectory(UIntPtr Address, UIntPtr *&Entry, UIntPtr &Level, Boolean Clean = False) {

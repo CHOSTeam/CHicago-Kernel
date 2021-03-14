@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 05 of 2021, at 10:21 BRT
- * Last edited on March 06 of 2021 at 21:17 BRT */
+ * Last edited on March 14 of 2021 at 11:15 BRT */
 
 #include <base/string.hxx>
 
@@ -60,8 +60,7 @@ String::String(const ConstReverseIterator<Char, const Char*> &Source) : String()
     /* .begin() and .end() are inverted (that is, to get the actual length we need to do begin() - end() instead of
      * end() - begin()). We just need to get the length, try allocating the required space, and then copying. */
 
-    UIntPtr len = reinterpret_cast<UIntPtr>(Source.begin().GetIterator()) -
-                  reinterpret_cast<UIntPtr>(Source.end().GetIterator()), i = 0;
+    UIntPtr len = Source.begin().GetIterator() - Source.end().GetIterator(), i = 0;
 
     if (len > 16 && (Value = new Char[len + 1]) != Null) {
         for (Char ch : Source) {

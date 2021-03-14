@@ -1,11 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 05 of 2021, at 20:33 BRT
- * Last edited on March 05 of 2021 at 13:18 BRT */
+ * Last edited on March 14 of 2021 at 11:11 BRT */
 
 #pragma once
 
-#include <base/types.hxx>
+#include <sys/acpi.hxx>
 
 #define BOOT_INFO_MAGIC 0xC4057D41
 
@@ -26,6 +26,12 @@ struct packed BootInfo {
     UIntPtr KernelStart, RegionsStart, KernelEnd, EfiTempAddress,
             MinPhysicalAddress, MaxPhysicalAddress, PhysicalMemorySize;
     Void *Directory;
+
+    struct packed {
+        Boolean Extended;
+        UInt32 Size;
+        UIntPtr Sdt;
+    } Acpi;
 
     struct packed {
         UIntPtr Count;

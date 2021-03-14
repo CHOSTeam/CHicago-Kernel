@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 11:51 BRT
- * Last edited on March 04 of 2021 at 17:24 BRT */
+ * Last edited on March 14 of 2021 at 11:16 BRT */
 
 #pragma once
 
@@ -33,15 +33,12 @@ Void MoveMemory(Void*, const Void*, UIntPtr);
 template<class T> class List {
 public:
     List() : Elements(Null), Length(0), Capacity(0) { }
-    List(UIntPtr Size) : Elements(Null), Length(0), Capacity(0) { Reserve(Size); }
-    List(const List &Source) : Elements(Null), Length(0), Capacity(0) { Reserve(Source.Length); Add(Source); }
+    List(UIntPtr Size) : List() { Reserve(Size); }
+    List(const List &Source) : List() { Reserve(Source.Length); Add(Source); }
+    List(List &&Source) : Elements { Exchange(Source.Elements, Null) }, Length { Exchange(Source.Length, 0) },
+                          Capacity { Exchange(Source.Capacity, 0) } { }
 
-    List(List &&Source) : Elements(Source.Elements), Length(Source.Length), Capacity(Source.Capacity) {
-        Source.Elements = Null;
-        Source.Length = Source.Capacity = 0;
-    }
-
-    List(const initializer_list<T> &Source) : Elements(Null), Length(0), Capacity(0) {
+    List(const initializer_list<T> &Source) : List() {
         /* Let's already try to reserve the space that we need (if it fails, the Add() calls will also probably
          * fail). */
 
@@ -52,23 +49,21 @@ public:
         }
     }
 
-    List(const ConstReverseIterator<T, const T*> &Source) : Elements(Null), Length(0), Capacity(0) {
+    List(const ConstReverseIterator<T, const T*> &Source) : List() {
         /* Finally, let's also allow to initialize the list using a reverse iterator (as our .Reverse() function only
          * returns a reverse iterator, not the whole list actually reversed). */
 
-        Reserve((reinterpret_cast<UIntPtr>(Source.begin().GetIterator()) -
-                 reinterpret_cast<UIntPtr>(Source.end().GetIterator())) / sizeof(T));
+        Reserve(Source.begin().GetIterator() - Source.end().GetIterator());
 
         for (const T &data : Source) {
             Add(data);
         }
     }
 
-    List(ReverseIterator<T, T*> Source, Boolean ShouldMove = False) : Elements(Null), Length(0), Capacity(0) {
+    List(ReverseIterator<T, T*> Source, Boolean ShouldMove = False) : List() {
         /* Same as above, but here we can Move() if we want to. */
 
-        Reserve((reinterpret_cast<UIntPtr>(Source.begin().GetIterator()) -
-                 reinterpret_cast<UIntPtr>(Source.end().GetIterator())) / sizeof(T));
+        Reserve(Source.begin().GetIterator() - Source.end().GetIterator());
 
         if (ShouldMove) {
             for (T &data : Source) {
@@ -88,11 +83,9 @@ public:
          * the source list. */
 
         if (this != &Source) {
-            Elements = Source.Elements;
-            Length = Source.Length;
-            Capacity = Source.Capacity;
-            Source.Elements = Null;
-            Source.Length = Source.Capacity = 0;
+            Elements = Exchange(Source.Elements, Null);
+            Length = Exchange(Source.Length, 0);
+            Capacity = Exchange(Source.Capacity, 0);
         }
 
         return *this;
@@ -236,10 +229,6 @@ public:
         return Status::Success;
     }
 
-    Void Sort(Boolean (*Compare)(const T&, const T&)) {
-        MergeSort(Elements, Length, Compare);
-    }
-
     inline UIntPtr GetLength() const { return Length; }
     inline UIntPtr GetCapacity() const { return Capacity; }
 
@@ -268,68 +257,10 @@ public:
 
     inline const T &operator [](UIntPtr Index) const { return Elements[Index]; }
 private:
-    inline static Void MergeSort(T *Array, UIntPtr Length, Boolean (*Compare)(const T&, const T&)) {
-        /* Merge sort is a divide and conquer sorting algorithm, we subdivide the array until we the length is <= 1, and
-         * we sort the subdivided arrays, best/worst/avg cases are O(nlogn), but the space complexity is O(n), we're
-         * allocating space on the stack for the temp array, so we may need to increase the kernel stack size in the
-         * future. Other choice would be implementing something like quick sort, or trying to implement an in-place
-         * merge sort algorithm. */
-
-        if (Length <= 1) {
-            return;
-        }
-
-        UIntPtr i = 0, j = 0, k = 0, llen = Length / 2, rlen = Length - llen;
-        T *left, *right;
-
-        if ((left = static_cast<T*>(sizeof(T) * llen <= 64 ? __builtin_alloca(sizeof(T) * llen)
-                                                           : new T[llen])) == Null) {
-            return;
-        } else if ((right = static_cast<T*>(sizeof(T) * rlen <= 64 ? __builtin_alloca(sizeof(T) * rlen)
-                                                                   : new T[rlen])) == Null) {
-            if (sizeof(T) * llen > 64) {
-                delete[] left;
-            }
-
-            return;
-        }
-
-        CopyMemory(left, Array, sizeof(T) * llen);
-        CopyMemory(right, Array + llen, sizeof(T) * rlen);
-        MergeSort(left, llen, Compare);
-        MergeSort(right, rlen, Compare);
-
-        for (; j < llen && k < rlen; i++) {
-            T *src;
-
-            if (Compare(left[j], right[k])) {
-                src = &left[j++];
-            } else {
-                src = &right[k++];
-            }
-
-            CopyMemory(&Array[i], src, sizeof(T));
-        }
-
-        for (; j < llen; i++, j++) {
-            CopyMemory(&Array[i], &left[j], sizeof(T));
-        }
-
-        for (; k < rlen; i++, k++) {
-            CopyMemory(&Array[i], &right[k], sizeof(T));
-        }
-
-        if (sizeof(T) * llen > 64) {
-            delete[] left;
-        }
-
-        if (sizeof(T) * rlen > 64) {
-            delete[] right;
-        }
-    }
-
     T *Elements;
     UIntPtr Length, Capacity;
 };
 
 }
+
+#undef DO_ADD
