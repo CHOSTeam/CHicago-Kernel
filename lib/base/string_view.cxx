@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 05 of 2021, at 16:12 BRT
- * Last edited on March 06 of 2021 at 21:17 BRT */
+ * Last edited on March 15 of 2021 at 17:51 BRT */
 
 #include <base/string.hxx>
 
@@ -36,9 +36,7 @@ StringView StringView::FromStatus(Status Code) {
 }
 
 static UIntPtr CountDigits(UInt64 Value, UInt8 Base) {
-    if (!Value) {
-        return 1;
-    }
+    if (!Value) return 1;
 
     UIntPtr ret = 0;
     for (; Value; Value /= Base, ret++) ;
@@ -58,11 +56,8 @@ StringView StringView::FromInt(Char *Buffer, Int64 Value, UIntPtr Size) {
     Int64 sign = Value < 0 ? -1 : 1;
     Value *= sign;
 
-    if (Buffer == Null || (Value && Size < CountDigits(Value, 10) + (sign < 0 ? 1 : 0) + 1)) {
-        return {};
-    } else if (!Value) {
-        return "0";
-    }
+    if (Buffer == Null || (Value && Size < CountDigits(Value, 10) + (sign < 0 ? 1 : 0) + 1)) return {};
+    else if (!Value) return "0";
 
     /* Now with the easy cases out of the way, let's first handle saving the sign, and converting the value into a
      * positive value. */
@@ -73,20 +68,14 @@ StringView StringView::FromInt(Char *Buffer, Int64 Value, UIntPtr Size) {
      * and return! */
 
     ::FromUInt(Buffer, Value, 10, cur, end);
-
-    if (sign) {
-        Buffer[cur--] = '-';
-    }
+    if (sign) Buffer[cur--] = '-';
 
     return &Buffer[cur + 1];
 }
 
 StringView StringView::FromUInt(Char *Buffer, UInt64 Value, UIntPtr Size, UInt8 Base) {
-    if (Buffer == Null || Base < 2 || Base > 36 || (Value && Size < CountDigits(Value, Base) + 1)) {
-        return {};
-    } else if (!Value) {
-        return "0";
-    }
+    if (Buffer == Null || Base < 2 || Base > 36 || (Value && Size < CountDigits(Value, Base) + 1)) return {};
+    else if (!Value) return "0";
 
     /* As the UInt value is always positive, we can just call the int function and return (no need to handle the val
      * sign). */
@@ -125,13 +114,9 @@ StringView StringView::FromFloat(Char *Buffer, Float Value, UIntPtr Size, UIntPt
      * precision to 17 (trying to print more than this is a bit useless/starts to lose too much accuracy, and also we
      * use a precalculated table for pow10). */
 
-    if (IsInfinite(Value)) {
-        return Value < 0 ? "-Infinite" : "Infinite";
-    } else if (IsNaN(Value)) {
-        return "NaN";
-    } else if (Precision > 17) {
-        Precision = 17;
-    }
+    if (IsInfinite(Value)) return Value < 0 ? "-Infinite" : "Infinite";
+    else if (IsNaN(Value)) return "NaN";
+    else if (Precision > 17) Precision = 17;
 
     /* Extract the sign, and do the basic buffer size checks. */
 
@@ -149,7 +134,7 @@ StringView StringView::FromFloat(Char *Buffer, Float Value, UIntPtr Size, UIntPt
     /* Start by printing the fractional part into the buffer. */
 
     IntPtr cur = static_cast<IntPtr>(Size - (Precision ? Precision + 1 : 0) - 2), start = cur - 1,
-            end = sign < 0 ? 1 : 0;
+           end = sign < 0 ? 1 : 0;
 
     if (Precision) {
         /* Add pow10(-prec), to make sure we will print 1 instead of 0.999999... (for example). */
@@ -167,29 +152,17 @@ StringView StringView::FromFloat(Char *Buffer, Float Value, UIntPtr Size, UIntPt
 
     /* And then the integer/whole part of the float into the buffer (this uses the same process as FromInt). */
 
-    if (!static_cast<UInt64>(Value)) {
-        Buffer[start--] = '0';
-    } else {
-        ::FromUInt(Buffer, Value, 10, start, end);
-    }
-
-    if (sign < 0) {
-        Buffer[start--] = '-';
-    }
+    if (!static_cast<UInt64>(Value)) Buffer[start--] = '0';
+    else ::FromUInt(Buffer, Value, 10, start, end);
+    if (sign < 0) Buffer[start--] = '-';
 
     return &Buffer[start + 1];
 }
 
 Void StringView::SetView(UIntPtr Start, UIntPtr End) {
-    if (Start > End) {
-        return;
-    } else if (Start <= Length) {
-        ViewStart = Start;
-    }
-
-    if (End <= Length) {
-        ViewEnd = End;
-    }
+    if (Start > End) return;
+    else if (Start <= Length) ViewStart = Start;
+    if (End <= Length) ViewEnd = End;
 }
 
 static inline Boolean IsDigit(Char Value) { return Value >= '0' && Value <= '9'; }
@@ -212,28 +185,19 @@ Int64 StringView::ToInt(UIntPtr &Position) const {
     /* ToInt doesn't need to handle different bases (only base 10), so we can just parse everything while we encounter
      * characters from '0' to '9'. */
 
-    if (Position >= Length) {
-        return 0;
-    }
+    if (Position >= Length) return 0;
 
     UInt64 ret;
     Boolean neg = False;
 
-    if (Position < Length && Value[Position] == '-') {
-        Position++;
-        neg = True;
-    }
+    if (Position < Length && Value[Position] == '-') Position++, neg = True;
 
     return ret = ToUInt(Position, True), neg ? -ret : ret;
 }
 
 static UInt64 Pow(UIntPtr X, UIntPtr Y) {
     UInt64 i = 1;
-
-    while (Y--) {
-        i *= X;
-    }
-
+    while (Y--) i *= X;
     return i;
 }
 
@@ -242,18 +206,13 @@ Float StringView::ToFloat(UIntPtr &Position) const {
      * the same as ToInt, but once we enter the actual float/double world, we gonna store the precision (as we add more
      * digits), and at the end divide by 10^prec. */
 
-    if (Position >= Length) {
-        return 0;
-    }
+    if (Position >= Length) return 0;
 
     Float ret;
     Boolean neg = False, nege = False;
     UInt64 main, dec = 0, exp = 0, prec = 1, base = 10;
 
-    if (Position < Length && Value[Position] == '-') {
-        Position++;
-        neg = True;
-    }
+    if (Position < Length && Value[Position] == '-') Position++, neg = True;
 
     if (Position + 1 < Length && Value[Position] == '0' && Value[Position + 1] == 'x') {
         /* Base 16/hex float, for the main and dec values we use hexadecimal (handle them in the same way that we do
@@ -288,11 +247,7 @@ Float StringView::ToFloat(UIntPtr &Position) const {
 
     if (Position < Length && ((base == 2 && (Value[Position] == 'p' || Value[Position] == 'P')) ||
                               (base == 10 && (Value[Position] == 'e' || Value[Position] == 'E')))) {
-        if (Position + 1 < Length && Value[Position + 1] == '-') {
-            Position++;
-            nege = True;
-        }
-
+        if (Position + 1 < Length && Value[Position + 1] == '-') Position++, nege = True;
         Position++;
         exp = ToUInt(Position, True);
     }
@@ -305,9 +260,7 @@ UInt64 StringView::ToUInt(UIntPtr &Position, Boolean OnlyDec) const {
     /* ToUInt does need to handle other bases, and for that we take the first two characters, for different bases, they
      * should always be 0<n> where <n> is 'b' for binary, 'o' for octal and 'x' for hexadecimal. */
 
-    if (Position >= Length) {
-        return 0;
-    }
+    if (Position >= Length) return 0;
 
     UInt64 ret = 0;
     Boolean canb = !OnlyDec && Position + 1 < Length && Value[Position] == '0';
@@ -320,10 +273,8 @@ UInt64 StringView::ToUInt(UIntPtr &Position, Boolean OnlyDec) const {
         for (Position += 2; Position < Length && Value[Position] >= '0' && Value[Position] <= '7'; Position++) {
             ret = (ret * 8) + (Value[Position] - '0');
         }
-    } else if (canb && Value[Position + 1] == 'x') {
-        Position += 2;
-        ret = ToHexUInt(Value, Length, Position);
-    } else {
+    } else if (canb && Value[Position + 1] == 'x') Position += 2, ret = ToHexUInt(Value, Length, Position);
+    else {
         for (; Position < Length && IsDigit(Value[Position]); Position++) {
             ret = (ret * 10) + (Value[Position] - '0');
         }
@@ -335,11 +286,8 @@ UInt64 StringView::ToUInt(UIntPtr &Position, Boolean OnlyDec) const {
 Boolean StringView::Compare(const StringView &Value) const {
     /* Very basic compare function, it just returns if both strings are equal (same length and contents). */
 
-    if (this->Value == Value.Value) {
-        return True;
-    } else if (this->Value == Null || Value.Value == Null || Length != Value.Length) {
-        return False;
-    }
+    if (this->Value == Value.Value) return True;
+    else if (this->Value == Null || Value.Value == Null || Length != Value.Length) return False;
 
     return CompareMemory(this->Value, Value.Value, Length);
 }
@@ -348,20 +296,15 @@ Boolean StringView::StartsWith(const StringView &Value) const {
     /* This is like the Compare function, but we want to limit the length to the Value's length/active view (so our
      * length/active view only needs to be at least the same as the Value's one, not exactly the same). */
 
-    if (this->Value == Value.Value) {
-        return True;
-    } else if (this->Value == Null || Value.Value == Null || Length < Value.Length) {
-        return False;
-    }
+    if (this->Value == Value.Value) return True;
+    else if (this->Value == Null || Value.Value == Null || Length < Value.Length) return False;
 
     return CompareMemory(this->Value, Value.Value, Value.Length);
 }
 
 static Boolean IsDelimiter(const StringView &Delimiters, Char Value) {
     for (Char ch : Delimiters) {
-        if (ch == Value) {
-            return True;
-        }
+        if (ch == Value) return True;
     }
 
     return False;
@@ -371,9 +314,7 @@ List<String> StringView::Tokenize(const StringView &Delimiters) const {
     /* Start by checking if the delimiters string have at least one delimiter, creating the output list, and creating
      * one "global" string pointer, we're going to initialize it to Null, and only alloc it if we need. */
 
-    if (Value == Null || !Delimiters.Length) {
-        return {};
-    }
+    if (Value == Null || !Delimiters.Length) return {};
 
     String str;
     List<String> ret;
@@ -383,25 +324,18 @@ List<String> StringView::Tokenize(const StringView &Delimiters) const {
             /* If this is one of the delimiters, we can add the string we have been creating to the list. If the string
              * is still empty, we can just skip and go to the next character. */
 
-            if (!str.Length) {
-                continue;
-            } else if (ret.Add(str) != Status::Success) {
-                return {};
-            }
+            if (!str.Length) continue;
+            else if (ret.Add(str) != Status::Success) return {};
 
             str.Clear();
 
             continue;
         }
 
-        if (str.Append(Value[i]) != Status::Success) {
-            return {};
-        }
+        if (str.Append(Value[i]) != Status::Success) return {};
     }
 
-    if (str.Length && ret.Add(str) != Status::Success) {
-        return {};
-    }
+    if (str.Length && ret.Add(str) != Status::Success) return {};
 
     return ret;
 }

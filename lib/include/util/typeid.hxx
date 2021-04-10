@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 04 of 2021, at 11:25 BRT
- * Last edited on March 06 of 2021, at 21:49 BRT */
+ * Last edited on March 15 of 2021, at 18:05 BRT */
 
 #pragma once
 
@@ -25,12 +25,12 @@ private:
     UInt64 ID;
 };
 
-template<typename> inline constexpr StringView NameOf() {
+template<class> inline constexpr StringView NameOf() {
     return { __PRETTY_FUNCTION__ + 81, 0, sizeof(__PRETTY_FUNCTION__) - 83 };
 }
 
-template<typename T> inline constexpr StringView NameOf(T) { return NameOf<T>(); }
-template<typename T> inline constexpr Type TypeOf(T) { return NameOf<T>(); }
-template<typename T> inline constexpr Type TypeOf() { return NameOf<T>(); }
+template<class T> inline constexpr StringView NameOf(T) { return NameOf<T>(); }
+template<class T> inline constexpr Type TypeOf(T) { return NameOf<T>(); }
+template<class T> inline constexpr Type TypeOf() { return NameOf<T>(); }
 
 }

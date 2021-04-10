@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:47 BRT
- * Last edited on March 11 of 2021, at 18:05 BRT */
+ * Last edited on April 10 of 2021, at 17:06 BRT */
 
 #include <arch/desctables.hxx>
 #include <sys/arch.hxx>
@@ -21,13 +21,6 @@ Void Arch::Initialize(BootInfo&) {
 }
 
 no_return Void Arch::Halt(Boolean Full) {
-    if (Full) {
-        while (True) {
-            asm volatile("cli; hlt");
-        }
-    } else {
-        while (True) {
-            asm volatile("hlt");
-        }
-    }
+    if (Full) while (True) asm volatile("cli; hlt");
+    else while (True) asm volatile("hlt");
 }

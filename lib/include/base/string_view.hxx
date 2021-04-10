@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 05 of 2021, at 16:09 BRT
- * Last edited on March 06 of 2021 at 21:51 BRT */
+ * Last edited on March 15 of 2021 at 17:56 BRT */
 
 #pragma once
 
@@ -22,18 +22,12 @@ public:
 
     constexpr StringView(const Char *Value, UIntPtr Start = 0) : Value(Value), Length(0), ViewStart(Start), ViewEnd(0) {
         Length = CalculateLength(Value);
-
-        if (Start > Length) {
-            ViewStart = Length;
-        }
-
+        if (Start > Length) ViewStart = Length;
         ViewEnd = Length - ViewStart;
     }
 
     constexpr StringView(const Char *Value, UIntPtr Start, UIntPtr End) : StringView(Value, Start) {
-        if (End <= Length) {
-            ViewEnd = End;
-        }
+        if (End <= Length) ViewEnd = End;
     }
 
     inline constexpr StringView &operator =(StringView &&Source) {

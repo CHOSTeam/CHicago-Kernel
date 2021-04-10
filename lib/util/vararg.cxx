@@ -1,7 +1,7 @@
     /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 15:57 BRT
- * Last edited on March 06 of 2021 at 21:51 BRT */
+ * Last edited on April 10 of 2021 at 17:26 BRT */
 
 #include <base/string.hxx>
 
@@ -9,25 +9,9 @@ using namespace CHicago;
 
 /* Some macros to make our life a bit easier. */
 
-#define WRITE_CHAR(c) \
-    if (!Function(c, Context)) { \
-        return written; \
-    } \
-    \
-    written++
-
-#define WRITE_STRING(str, sz) \
-    if (!WriteString(str, sz, Function, Context)) { \
-        return written; \
-    } \
-    \
-    written += sz
-
-#define PAD(cnt, c) \
-    do { for (UIntPtr i = 0; i < (cnt); i++) { \
-             WRITE_CHAR(c); \
-         } \
-       } while (False)
+#define WRITE_CHAR(c) if (!Function(c, Context)) return written; written++
+#define WRITE_STRING(str, sz) if (!WriteString(str, sz, Function, Context)) return written; written += sz
+#define PAD(cnt, c) do { for (UIntPtr i = 0; i < (cnt); i++) WRITE_CHAR(c); } while (False)
 
 namespace CHicago {
 
@@ -37,22 +21,14 @@ static const Char *FindFirst(const Char *Data, Char Value, UIntPtr Length) {
     /* Just find the first occurrence of the character Value in the buffer Data. This can be extended to not only
      * strings (if we just change const Char* into const Void*). */
 
-    for (; Length--; Data++) {
-        if (*Data == Value) {
-            return Data;
-        }
-    }
-
+    for (; Length--; Data++) if (*Data == Value) return Data;
     return Null;
 }
 
 static Boolean WriteString(const Char *Data, UIntPtr DataSize, Boolean (*Function)(Char, Void*), Void *Context) {
     while (*Data) {
-        if (!(DataSize--)) {
-            break;
-        } else if (!Function(*Data++, Context)) {
-            return False;
-        }
+        if (!(DataSize--)) break;
+        else if (!Function(*Data++, Context)) return False;
     }
 
     return True;
@@ -65,9 +41,7 @@ static Boolean IsNormal(Float Value) {
 
 UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const StringView &Format,
                           const ArgumentList &Arguments) {
-    if (Function == Null) {
-        return 0;
-    }
+    if (Function == Null) return 0;
 
     UIntPtr last = 0, pos = 0, written = 0;
 
@@ -82,9 +56,7 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
             const Char *end = FindFirst(Format.GetValue() + pos, '{', Format.GetLength() - pos);
             UIntPtr size = end != Null ? end - Format.GetValue() - pos : Format.GetLength() - pos;
 
-            if (!WriteString(Format.GetValue() + pos, size, Function, Context)) {
-                break;
-            }
+            if (!WriteString(Format.GetValue() + pos, size, Function, Context)) break;
 
             pos += size;
             written += size;
@@ -118,18 +90,14 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
             /* Expect a number, which will tell us the position of the argument on the arg list, if it is not here,
              * error out. */
 
-            if (!IsDigit(Format[pos])) {
-                return written;
-            }
+            if (!IsDigit(Format[pos])) return written;
 
             idx = Format.ToUInt(pos, True);
             iset = True;
 
             /* Remember to make sure the index is not crazy (as we DO have the var arg list size). */
 
-            if (idx >= Arguments.GetCount()) {
-                return written;
-            }
+            if (idx >= Arguments.GetCount()) return written;
         }
 
         if (Format[pos] == ':') {
@@ -149,25 +117,18 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
                     wset = True;
                     pos++;
                 } else {
-                    if (!IsDigit(Format[pos])) {
-                        return written;
-                    }
-
+                    if (!IsDigit(Format[pos])) return written;
                     width = Format.ToUInt(pos, True);
                 }
             }
 
-            if (Format[pos] != '.' && Format[pos] != ':' && Format[pos] != '}') {
-                return written;
-            } else if (Format[pos] == '.' && Format[pos + 1] == '*') {
+            if (Format[pos] != '.' && Format[pos] != ':' && Format[pos] != '}') return written;
+            else if (Format[pos] == '.' && Format[pos + 1] == '*') {
                 prec = sizeof(UIntPtr) * 2;
                 pset = 2;
                 pos += 2;
             } else if (Format[pos] == '.') {
-                if (!IsDigit(Format[++pos])) {
-                    return written;
-                }
-
+                if (!IsDigit(Format[++pos])) return written;
                 prec = Format.ToUInt(pos, True);
                 pset = 1;
             }
@@ -176,26 +137,18 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
         if (Format[pos] == ':') {
             /* Last possible format specifier, the base, just parse it as an integer. */
 
-            if (!IsDigit(Format[++pos])) {
-                return written;
-            }
-
+            if (!IsDigit(Format[++pos])) return written;
             base = Format.ToUInt(pos, True);
         }
 
-        if (Format[pos++] != '}') {
-            return written;
-        }
+        if (Format[pos++] != '}') return written;
 
         /* Now, let's go into actually printing: We can what kind of data we should print using the argument type, so
          * it is not hard. But before that, we have to make sure to set the index if it hasn't been set yet. */
 
         if (!iset) {
             idx = last++;
-
-            if (idx >= Arguments.GetCount()) {
-                return written;
-            }
+            if (idx >= Arguments.GetCount()) return written;
         }
 
         ArgumentType type = Arguments[idx].GetType();
@@ -207,13 +160,8 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
              * sign and making it positive) into a string, do the padding, write the sign (if necessary), and finally
              * write the number. */
 
-            if (wset) {
-                width = sizeof(UIntPtr) * 2;
-            }
-
-            if (pset == 2) {
-                prec = sizeof(UIntPtr) * 2;
-            }
+            if (wset) width = sizeof(UIntPtr) * 2;
+            if (pset == 2) prec = sizeof(UIntPtr) * 2;
 
             Int64 ival = type == ArgumentType::Long ? val.LongValue : (type == ArgumentType::Int32 ? val.Int32Value
                                                                                                    : val.Int64Value);
@@ -226,9 +174,7 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
 
             PAD(spaces, ' ');
 
-            if (ival < 0) {
-                WRITE_CHAR('-');
-            }
+            if (ival < 0) { WRITE_CHAR('-'); }
 
             PAD(pad, '0');
             WRITE_STRING(str.GetValue(), len);
@@ -239,13 +185,8 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
             /* For unsigned integers, what we gonna do is very similar to what we did above, but there is no need to
              * handle the sign. */
 
-            if (wset) {
-                width = sizeof(UIntPtr) * 2;
-            }
-
-            if (pset == 2) {
-                prec = sizeof(UIntPtr) * 2;
-            }
+            if (wset) width = sizeof(UIntPtr) * 2;
+            if (pset == 2) prec = sizeof(UIntPtr) * 2;
 
             UInt64 ival = type == ArgumentType::ULong ? val.ULongValue :
                           (type == ArgumentType::UInt32 ? val.UInt32Value :
@@ -268,19 +209,14 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
             /* For floats/doubles, again, it's pretty much the same, but the precision is handled differently, and we
              * use FromFloat. */
 
-            if (pset == 2) {
-                prec = 16;
-            }
+            if (pset == 2) prec = 16;
 
             Float fval = val.FloatValue;
             Boolean neg = IsNormal(fval) && fval < 0;
             StringView str = StringView::FromFloat(buf, neg ? -fval : fval, 65, pset ? prec : 6);
             UIntPtr len = str.GetLength(), flen = len + neg, pad = width > flen ? width - flen : 0;
 
-            if (neg) {
-                WRITE_CHAR('-');
-            }
-
+            if (neg) { WRITE_CHAR('-'); }
             PAD(pad, IsNormal(fval) ? '0' : ' ');
             WRITE_STRING(str.GetValue(), len);
 
@@ -298,9 +234,7 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
                                                                      StringView::FromStatus(val.StatusValue))));
             UIntPtr len = str.GetViewEnd() - str.GetViewStart();
 
-            if (pset && len > prec) {
-                len = prec;
-            }
+            if (pset && len > prec) len = prec;
 
             PAD(width > len ? width - len : 0, ' ');
             WRITE_STRING(str.GetValue(), len);

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 14:02 BRT
- * Last edited on March 06 of 2021, at 21:36 BRT */
+ * Last edited on April 10 of 2021, at 17:20 BRT */
 
 #include <sys/fs.hxx>
 
@@ -20,17 +20,11 @@ File::File(File &&Source)
 
 File::File(const File &Source)
         : Name(Source.Name), Flags(Source.Flags), Fs(Source.Fs), Priv(Source.Priv), References(Source.References),
-          Length(Source.Length), INode(Source.INode) {
-    if (References != Null) {
-        (*References)++;
-    }
-}
+          Length(Source.Length), INode(Source.INode) { if (References != Null) (*References)++; }
 
 File::File(const String &Name, UInt8 Flags, const FsImpl &Fs, UInt64 Length, const Void *Priv, UInt64 INode)
     : Name(Name), Flags(Flags), Fs(Fs), Priv(Priv), References(new UIntPtr), Length(Length), INode(INode) {
-    if (References != Null) {
-        (*References)++;
-    }
+    if (References != Null) (*References)++;
 }
 
 File::~File() {
@@ -41,13 +35,8 @@ Void File::Close() {
     /* Remove a bit of redundancy. */
 
     if (References == Null || !--(*References)) {
-        if (References != Null) {
-            delete References;
-        }
-
-        if (Fs.Close != Null) {
-            Fs.Close(Priv, INode);
-        }
+        if (References != Null) delete References;
+        if (Fs.Close != Null) Fs.Close(Priv, INode);
     }
 
     Flags = 0;
@@ -83,9 +72,7 @@ File &File::operator =(const File &Source) {
         INode = Source.INode;
         References = Source.References;
 
-        if (References != Null) {
-            (*References)++;
-        }
+        if (References != Null) (*References)++;
     }
 
     return *this;
@@ -96,19 +83,13 @@ File &File::operator =(const File &Source) {
  * implement said wrappers on the File class itself. */
 
 Status File::Read(UInt64 Offset, UInt64 Length, Void *Buffer, UInt64 &Count) const {
-    if (Buffer == Null || !Length) {
-        return Status::InvalidArg;
-    }
-
+    if (Buffer == Null || !Length) return Status::InvalidArg;
     return Count = 0, ((Flags & OPEN_DIR) || !(Flags & OPEN_READ) || Fs.Read == Null)
                       ? Status::Unsupported : Fs.Read(Priv, INode, Offset, Length, Buffer, &Count);
 }
 
 Status File::Write(UInt64 Offset, UInt64 Length, const Void *Buffer, UInt64 &Count) const {
-    if (Buffer == Null || !Length) {
-        return Status::InvalidArg;
-    }
-
+    if (Buffer == Null || !Length) return Status::InvalidArg;
     return Count = 0, ((Flags & OPEN_DIR) || !(Flags & OPEN_WRITE) || Fs.Write == Null)
                       ? Status::Unsupported : Fs.Write(Priv, INode, Offset, Length, Buffer, &Count);
 }
@@ -118,10 +99,7 @@ Status File::ReadDirectory(UIntPtr Index, String &Name) const {
     Status status = (!(Flags & OPEN_DIR) || !(Flags & OPEN_READ) || Fs.ReadDirectory == Null)
                     ? Status::Unsupported : Fs.ReadDirectory(Priv, INode, Index, &out);
 
-    if (status != Status::Success) {
-        return status;
-    }
-
+    if (status != Status::Success) return status;
     return Name = out, delete out, !Name.GetLength() ? Status::OutOfMemory : Status::Success;
 }
 
@@ -136,13 +114,9 @@ Status File::Search(const StringView &Name, UInt8 Flags, File &Out) const {
                     ? Status::Unsupported : Fs.Search(Priv, INode, Name.GetValue() + Name.GetViewStart(),
                                                       Name.GetViewEnd() - Name.GetViewStart(), &priv, &inode, &len);
 
-    if (status != Status::Success) {
-        return status;
-    } else if (Fs.Open != Null && (status = Fs.Open(priv, inode, Flags)) != Status::Success) {
-        if (Fs.Close != Null) {
-            Fs.Close(priv, inode);
-        }
-
+    if (status != Status::Success) return status;
+    else if (Fs.Open != Null && (status = Fs.Open(priv, inode, Flags)) != Status::Success) {
+        if (Fs.Close != Null) Fs.Close(priv, inode);
         return status;
     }
 
@@ -200,14 +174,9 @@ List<String> FileSys::TokenizePath(const StringView &Path) {
             /* '..' means the parent directory, we need to remove ourselves and the token before us (or,
              * in case there is no entry before us, only remove ourselves. */
 
-            if (i > 0) {
-                ret.Remove(--i);
-            }
-
+            if (i > 0) ret.Remove(--i);
             ret.Remove(i);
-        } else {
-            i++;
-        }
+        } else i++;
     }
 
     return ret;
@@ -219,9 +188,7 @@ String FileSys::CanonicalizePath(const StringView &Path, const StringView &Incre
 
     List<String> lpath = Path.Tokenize("/"), lincr = Increment.Tokenize("/");
 
-    if (lincr.GetLength() && lpath.Add(lincr) != Status::Success) {
-        return {};
-    }
+    if (lincr.GetLength() && lpath.Add(lincr) != Status::Success) return {};
 
     /* Now, we can do the same process to remove the '.' and the '..'s. */
 
@@ -233,28 +200,18 @@ String FileSys::CanonicalizePath(const StringView &Path, const StringView &Incre
             /* '..' means the parent directory, we need to remove ourselves and the token before us (or,
              * in case there is no entry before us, only remove ourselves. */
 
-            if (i > 0) {
-                lpath.Remove(--i);
-            }
-
+            if (i > 0) lpath.Remove(--i);
             lpath.Remove(i);
-        } else {
-            i++;
-        }
+        } else i++;
     }
 
     /* Finally, let's try to alloc the return string, let's just hope that the allocations are not going to fail here,
      * at the very end. */
 
-    if (!lpath.GetLength()) {
-        return "/";
-    }
+    if (!lpath.GetLength()) return "/";
 
     String ret;
-
-    for (const String &part : lpath) {
-        ret.Append("/{}", part);
-    }
+    for (const String &part : lpath) ret.Append("/{}", part);
 
     return ret;
 }
@@ -263,11 +220,8 @@ Status FileSys::Register(const FsImpl &Info) {
     /* Almost all of the Impl fields can be Null, except for the Name field, as we use it to make sure there
      * is no duplicate filesystem registered. */
 
-    if (Info.Name == Null) {
-        return Status::InvalidArg;
-    } else if (&GetFileSys(Info.Name) != &EmptyFs) {
-        return Status::AlreadyExists;
-    }
+    if (Info.Name == Null) return Status::InvalidArg;
+    else if (&GetFileSys(Info.Name) != &EmptyFs) return Status::AlreadyExists;
 
     return FileSystems.Add(Info);
 }
@@ -283,19 +237,13 @@ Status FileSys::CheckMountPoint(const StringView &Path) {
      * the case have trailing slashes, we need to allocate memory, both return different status codes, so just
      * a Boolean isn't enough. */
 
-    if (Path[0] != '/') {
-        return Status::InvalidArg;
-    } else if (!MountPoints.GetLength()) {
-        return Status::NotMounted;
-    }
+    if (Path[0] != '/') return Status::InvalidArg;
+    else if (!MountPoints.GetLength()) return Status::NotMounted;
 
     StringView path = FixView(Path);
 
     for (const MountPoint &mp : MountPoints) {
-        if (!(mp.GetPath().Compare(path))) {
-            continue;
-        }
-
+        if (!(mp.GetPath().Compare(path))) continue;
         return Status::AlreadyMounted;
     }
 
@@ -312,40 +260,26 @@ Status FileSys::CreateMountPoint(const StringView &Path, const File &Root) {
 
     StringView path = FixView(Path);
 
-    if (MountPoints.GetLength()) {
-        if (CheckMountPoint(path) != Status::NotMounted) {
-            return Status::AlreadyMounted;
-        }
-    }
-
-    return MountPoints.Add(MountPoint(path, Root));
+    return MountPoints.GetLength() && CheckMountPoint(path) != Status::NotMounted ? Status::AlreadyMounted :
+           MountPoints.Add(MountPoint(path, Root));
 }
 
 static Status CheckFlags(UInt8 SourceFlags, UInt8 Flags) {
     /* We can't just implement one big comparison that returns a boolean, as each case have one specific error
      * code. */
 
-    if ((Flags & OPEN_DIR) && !(SourceFlags & OPEN_DIR)) {
-        return Status::NotDirectory;
-    } else if (!(Flags & OPEN_DIR) && (SourceFlags & OPEN_DIR)) {
-        return Status::NotFile;
-    } else if ((Flags & OPEN_READ) && !(SourceFlags & OPEN_READ)) {
-        return Status::NotRead;
-    } else if (((Flags & OPEN_WRITE) && !(SourceFlags & OPEN_WRITE))) {
-        return Status::NotWrite;
-    }
+    if ((Flags & OPEN_DIR) && !(SourceFlags & OPEN_DIR)) return Status::NotDirectory;
+    else if (!(Flags & OPEN_DIR) && (SourceFlags & OPEN_DIR)) return Status::NotFile;
+    else if ((Flags & OPEN_READ) && !(SourceFlags & OPEN_READ)) return Status::NotRead;
+    else if (((Flags & OPEN_WRITE) && !(SourceFlags & OPEN_WRITE))) return Status::NotWrite;
 
     return ((Flags & OPEN_EXEC) && !(SourceFlags & OPEN_EXEC)) ? Status::NotExec : Status::Success;
 }
 
 Status FileSys::Open(const StringView &Path, UInt8 Flags, File &Out) {
-    if (Path[0] != '/') {
-        return Status::InvalidArg;
-    } else if (MountPoints.GetLength() == 0) {
-        return Status::DoesntExist;
-    } else if ((Flags & OPEN_RECUR_CREATE) && !(Flags & OPEN_CREATE)) {
-        Flags |= OPEN_CREATE;
-    }
+    if (Path[0] != '/') return Status::InvalidArg;
+    else if (MountPoints.GetLength() == 0) return Status::DoesntExist;
+    else if ((Flags & OPEN_RECUR_CREATE) && !(Flags & OPEN_CREATE)) Flags |= OPEN_CREATE;
 
     /* The 'Flags' variable aren't on the format that the File class expects. It contains info about if we should create
      * the file in case it doesn't exists, if we can create all the folders in a recur way etc. We can extract the valid
@@ -359,23 +293,14 @@ Status FileSys::Open(const StringView &Path, UInt8 Flags, File &Out) {
     UInt8 ffile = Flags & FILE_FLAGS_MASK, fdir = ffile | OPEN_DIR;
     const MountPoint &mp = GetMountPoint(Path, remain);
 
-    if (Flags & OPEN_CREATE) {
-        fdir |= OPEN_WRITE;
-    }
-
-    if (&mp == &EmptyMp) {
-        return Status::NotMounted;
-    } else if ((status = CheckFlags(mp.GetRoot().GetFlags(), !remain.GetLength() ? ffile : fdir)) != Status::Success) {
+    if (Flags & OPEN_CREATE) fdir |= OPEN_WRITE;
+    if (&mp == &EmptyMp) return Status::NotMounted;
+    else if ((status = CheckFlags(mp.GetRoot().GetFlags(), !remain.GetLength() ? ffile : fdir)) != Status::Success) {
         return status;
-    } else if (!remain.GetLength()) {
-        return Out = mp.GetRoot(), Status::Success;
-    }
+    } else if (!remain.GetLength()) return Out = mp.GetRoot(), Status::Success;
 
     List<String> parts = TokenizePath(remain);
-
-    if (!parts.GetLength()) {
-        return Status::OutOfMemory;
-    }
+    if (!parts.GetLength()) return Status::OutOfMemory;
 
     File dir = mp.GetRoot();
 
@@ -387,9 +312,7 @@ Status FileSys::Open(const StringView &Path, UInt8 Flags, File &Out) {
 
         if ((status = dir.Search(name, fdir, cur)) != Status::Success) {
             if (status != Status::DoesntExist || !(Flags & OPEN_RECUR_CREATE) ||
-                (status = dir.Create(name, fdir)) != Status::Success) {
-                return status;
-            }
+                (status = dir.Create(name, fdir)) != Status::Success) return status;
         }
 
         dir = Move(cur);
@@ -406,16 +329,9 @@ Status FileSys::Open(const StringView &Path, UInt8 Flags, File &Out) {
 
     if ((status = dir.Search(name, ffile, Out)) != Status::Success) {
         if (status != Status::DoesntExist || !(Flags & OPEN_CREATE) ||
-            (status = dir.Create(name, ffile)) != Status::Success) {
-            return status;
-        }
-
-        if ((status = dir.Search(name, ffile, Out)) != Status::Success) {
-            return status;
-        }
-    } else if (Flags & OPEN_ONLY_CREATE) {
-        return Status::AlreadyExists;
-    }
+            (status = dir.Create(name, ffile)) != Status::Success) return status;
+        if ((status = dir.Search(name, ffile, Out)) != Status::Success) return status;
+    } else if (Flags & OPEN_ONLY_CREATE) return Status::AlreadyExists;
 
     return Status::Success;
 }
@@ -434,9 +350,7 @@ Status FileSys::Mount(const StringView &Dest, const StringView &Source, UInt8 Fl
 
     if (Open(Dest, OPEN_READ, dst) == Status::Success || Open(Dest, OPEN_DIR | OPEN_READ, dst) == Status::Success) {
         return Status::AlreadyMounted;
-    } else if ((status = Open(Source, Flags, src)) != Status::Success) {
-        return status;
-    }
+    } else if ((status = Open(Source, Flags, src)) != Status::Success) return status;
 
     for (const FsImpl &fs : FileSystems) {
         if ((status = fs.Mount((Void*)&src, &priv, &inode)) == Status::Success) {
@@ -461,11 +375,8 @@ Status FileSys::Unmount(const StringView &Path) {
      * mount path, not some sub-folder or file inside the mount point). We need to do the same handling of trailing
      * slashes on the Path as we do on the CreateMountPoint function. */
 
-    if (Path[0] != '/') {
-        return Status::InvalidArg;
-    } else if (!MountPoints.GetLength()) {
-        return Status::NotMounted;
-    }
+    if (Path[0] != '/') return Status::InvalidArg;
+    else if (!MountPoints.GetLength()) return Status::NotMounted;
 
     UIntPtr idx = 0;
     StringView path = FixView(Path);
@@ -489,14 +400,7 @@ const FsImpl &FileSys::GetFileSys(const StringView &Path) {
     /* As the StringView class contains a constructor around C-strings, they will be auto converted into CHicago strings
      * which makes our job a lot easier. */
 
-    if (FileSystems.GetLength()) {
-        for (const FsImpl &fs : FileSystems) {
-            if (Path.Compare(fs.Name)) {
-                return fs;
-            }
-        }
-    }
-
+    if (FileSystems.GetLength()) for (const FsImpl &fs : FileSystems) if (Path.Compare(fs.Name)) return fs;
     return EmptyFs;
 }
 
@@ -506,9 +410,7 @@ const MountPoint &FileSys::GetMountPoint(const StringView &Path, String &Remain)
      * string, and doing something like what we do at CreateMountPoint, but remembering to save the length, and only do
      * the 'stop at next slash' after each iteration. We're going with the second option. */
 
-    if (!MountPoints.GetLength()) {
-        return EmptyMp;
-    }
+    if (!MountPoints.GetLength()) return EmptyMp;
 
     UIntPtr len = Path.GetViewEnd() - Path.GetViewStart(), end = len, start = 0;
     for (; end && Path[end - 1] == '/'; end--) ;

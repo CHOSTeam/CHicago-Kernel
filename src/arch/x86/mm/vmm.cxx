@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 12 of 2021, at 14:54 BRT
- * Last edited on March 14 of 2021, at 11:13 BRT */
+ * Last edited on April 10 of 2021, at 17:06 BRT */
 
 #include <arch/mm.hxx>
 #include <sys/mm.hxx>
@@ -16,8 +16,7 @@ using namespace CHicago;
 #define L2_ADDRESS 0xFFC00000
 #define HEAP_END L2_ADDRESS
 
-#define GET_INDEXES() \
-    UIntPtr l1e = (Address >> 22) & 0x3FF, l2e = (Address >> 12) & 0xFFFFF
+#define GET_INDEXES() UIntPtr l1e = (Address >> 22) & 0x3FF, l2e = (Address >> 12) & 0xFFFFF
 #else
 #define L1_ADDRESS 0xFFFFFFFFFFFFF000
 #define L2_ADDRESS 0xFFFFFFFFFFE00000
@@ -32,19 +31,10 @@ using namespace CHicago;
 
 /* The FULL_CHECK/LAST_CHECK macros are just so that we don't have as much repetition on the CheckDirectory function. */
 
-#define FULL_CHECK(a, i) \
-        if ((ret = CheckLevel((a), (i), Entry, Clean)) < 0) { \
-            return ret; \
-        } \
-        \
-        Level++
+#define FULL_CHECK(a, i) if ((ret = CheckLevel((a), (i), Entry, Clean)) < 0) return ret; Level++
+#define LAST_CHECK(a, i) return CheckLevel((a), (i), Entry, Clean)
 
-#define LAST_CHECK(a, i) \
-        return CheckLevel((a), (i), Entry, Clean)
-
-static inline Void UpdateTLB(UIntPtr Address) {
-    asm volatile("invlpg (%0)" :: "r"(Address) : "memory");
-}
+static inline Void UpdateTLB(UIntPtr Address) { asm volatile("invlpg (%0)" :: "r"(Address) : "memory"); }
 
 static inline UIntPtr GetOffset(UIntPtr Address, UIntPtr Level) {
 #ifdef __i386__
@@ -63,24 +53,15 @@ static inline UInt32 ToFlags(UIntPtr Entry) {
     ret |= MAP_EXEC;
 #endif
 
-    if (Entry & PAGE_WRITE) {
-        ret |= MAP_WRITE;
-    }
-
-    if (Entry & PAGE_USER) {
-        ret |= MAP_USER;
-    }
+    if (Entry & PAGE_WRITE) ret |= MAP_WRITE;
+    if (Entry & PAGE_USER) ret |= MAP_USER;
 
     /* Let's not distinguish between differently sized huge pages here. */
 
-    if (Entry & PAGE_HUGE) {
-        ret |= MAP_HUGE;
-    }
+    if (Entry & PAGE_HUGE) ret |= MAP_HUGE;
 
 #ifndef __i386__
-    if (!(Entry & PAGE_NO_EXEC)) {
-        ret |= MAP_EXEC;
-    }
+    if (!(Entry & PAGE_NO_EXEC)) ret |= MAP_EXEC;
 #endif
 
     return ret;
@@ -91,24 +72,14 @@ static inline UInt32 FromFlags(UInt32 Flags) {
 
     UInt32 ret = (Flags & MAP_AOR) ? PAGE_AOR : PAGE_PRESENT;
 
-    if (Flags & MAP_COW) {
-        ret |= PAGE_COW;
-    } else if (Flags & MAP_WRITE) {
-        ret |= PAGE_WRITE;
-    }
+    if (Flags & MAP_COW) ret |= PAGE_COW;
+    else if (Flags & MAP_WRITE) ret |= PAGE_WRITE;
 
-    if (Flags & MAP_USER) {
-        ret |= PAGE_USER;
-    }
-
-    if (Flags & MAP_HUGE) {
-        ret |= PAGE_HUGE;
-    }
+    if (Flags & MAP_USER) ret |= PAGE_USER;
+    if (Flags & MAP_HUGE) ret |= PAGE_HUGE;
 
 #ifndef __i386__
-    if (!(Flags & MAP_EXEC)) {
-        ret |= PAGE_NO_EXEC;
-    }
+    if (!(Flags & MAP_EXEC)) ret |= PAGE_NO_EXEC;
 #endif
 
     return ret;
@@ -138,22 +109,14 @@ static IntPtr CheckDirectory(UIntPtr Address, UIntPtr *&Entry, UIntPtr &Level, B
     GET_INDEXES();
 
     switch (Level) {
-    case 1: {
-        FULL_CHECK(L1_ADDRESS, l1e);
-    }
-    case 2: {
+    case 1: FULL_CHECK(L1_ADDRESS, l1e);
+    case 2:
 #ifdef __i386__
         LAST_CHECK(L2_ADDRESS, l2e);
-    }
 #else
         FULL_CHECK(L2_ADDRESS, l2e);
-    }
-    case 3: {
-        FULL_CHECK(L3_ADDRESS, l3e);
-    }
-    case 4: {
-        LAST_CHECK(L4_ADDRESS, l4e);
-    }
+    case 3: FULL_CHECK(L3_ADDRESS, l3e);
+    case 4: LAST_CHECK(L4_ADDRESS, l4e);
 #endif
     }
 
@@ -165,11 +128,7 @@ Status VirtMem::Query(UIntPtr Virtual, UIntPtr &Physical, UInt32 &Flags) {
      * the physical address and the flags (at the same time). */
 
     UIntPtr *ent, lvl = 1;
-
-    if (CheckDirectory(Virtual, ent, lvl) == -1) {
-        return Status::NotMapped;
-    }
-
+    if (CheckDirectory(Virtual, ent, lvl) == -1) return Status::NotMapped;
     return Physical = (*ent & ~PAGE_MASK) | GetOffset(Virtual, lvl), Flags = ToFlags(*ent), Status::Success;
 }
 
@@ -191,11 +150,8 @@ static Status DoMap(UIntPtr Virtual, UIntPtr Physical, UInt32 Flags) {
         /* The entry doesn't exist, and so we need to allocate this level (alloc a physical address, set it up, and
          * call CheckDirectory again). */
 
-        if (lvl >= dlvl) {
-            break;
-        } else if ((status = PhysMem::ReferenceSingle(0, phys)) != Status::Success) {
-            return status;
-        }
+        if (lvl >= dlvl) break;
+        else if ((status = PhysMem::ReferenceSingle(0, phys)) != Status::Success) return status;
 
         lvl++;
         *ent = phys | PAGE_PRESENT | PAGE_WRITE |
@@ -210,13 +166,8 @@ static Status DoMap(UIntPtr Virtual, UIntPtr Physical, UInt32 Flags) {
 
     /* If the address is already mapped, just error out (let's not even try remapping it). */
 
-    if (res != -1 || lvl > dlvl) {
-        return Status::AlreadyMapped;
-    }
-
-    *ent = Physical | Flags;
-
-    return Status::Success;
+    if (res != -1 || lvl > dlvl) return Status::AlreadyMapped;
+    return *ent = Physical | Flags, Status::Success;
 }
 
 Status VirtMem::Map(UIntPtr Virtual, UIntPtr Physical, UIntPtr Size, UInt32 Flags) {
@@ -232,9 +183,7 @@ Status VirtMem::Map(UIntPtr Virtual, UIntPtr Physical, UIntPtr Size, UInt32 Flag
     Status status;
 
     for (UIntPtr i = 0; i < Size; i += (Flags & MAP_HUGE) ? HUGE_PAGE_SIZE : PAGE_SIZE) {
-        if ((status = DoMap(Virtual + i, Physical + i, FromFlags(Flags))) != Status::Success) {
-            return status;
-        }
+        if ((status = DoMap(Virtual + i, Physical + i, FromFlags(Flags))) != Status::Success) return status;
     }
 
     return Status::Success;
@@ -251,11 +200,8 @@ static Status DoUnmap(UIntPtr Virtual, Boolean Huge) {
             dlvl = Huge ? 3 : 4;
 #endif
 
-    if (CheckDirectory(Virtual, ent, lvl) == -1) {
-        return Status::NotMapped;
-    } else if (lvl != dlvl) {
-        return Status::InvalidArg;
-    }
+    if (CheckDirectory(Virtual, ent, lvl) == -1) return Status::NotMapped;
+    else if (lvl != dlvl) return Status::InvalidArg;
 
     *ent &= ~PAGE_PRESENT;
     UpdateTLB(Virtual);
@@ -266,16 +212,12 @@ static Status DoUnmap(UIntPtr Virtual, Boolean Huge) {
 Status VirtMem::Unmap(UIntPtr Virtual, UIntPtr Size, Boolean Huge) {
     /* Check for the right alignment, and redirect to Unmap(UIntPtr, Boolean), while iterating over the size. */
 
-    if ((Huge && (Virtual & HUGE_PAGE_MASK)) || (!Huge && (Virtual & PAGE_MASK))) {
-        return Status::InvalidArg;
-    }
+    if ((Huge && (Virtual & HUGE_PAGE_MASK)) || (!Huge && (Virtual & PAGE_MASK))) return Status::InvalidArg;
 
     Status status;
 
     for (UIntPtr i = 0; i < Size; i += Huge ? HUGE_PAGE_SIZE : PAGE_SIZE) {
-        if ((status = DoUnmap(Virtual + i, Huge)) != Status::Success) {
-            return status;
-        }
+        if ((status = DoUnmap(Virtual + i, Huge)) != Status::Success) return status;
     }
 
     return Status::Success;
@@ -298,10 +240,7 @@ Void VirtMem::Initialize(BootInfo &Info) {
 #endif
         UIntPtr *ent, lvl = 1, phys;
 
-        if (CheckDirectory(i, ent, lvl) != -1 || lvl != 1) {
-            continue;
-        }
-
+        if (CheckDirectory(i, ent, lvl) != -1 || lvl != 1) continue;
         ASSERT(PhysMem::ReferenceSingle(0, phys) == Status::Success);
 
         lvl++;

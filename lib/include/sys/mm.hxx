@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 04 of 2021, at 17:19 BRT
- * Last edited on March 05 of 2021 at 13:29 BRT */
+ * Last edited on March 10 of 2021 at 16:55 BRT */
 
 #pragma once
 
@@ -103,7 +103,6 @@ public:
     static inline UIntPtr GetUsage() { return UsedBytes; }
     static inline UIntPtr GetFree() { return MaxBytes - UsedBytes; }
 private:
-    static UIntPtr CountFreePages(UIntPtr, UIntPtr, UIntPtr);
     static Status FindFreePages(UIntPtr, UIntPtr, UIntPtr&, UIntPtr&);
     static Status AllocInt(UIntPtr, UIntPtr&, UIntPtr);
     static Status FreeInt(UIntPtr, UIntPtr);

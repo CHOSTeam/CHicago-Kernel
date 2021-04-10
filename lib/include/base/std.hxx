@@ -1,20 +1,19 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 04 of 2021, at 17:04 BRT
- * Last edited on March 04 of 2021 at 17:07 BRT */
+ * Last edited on March 15 of 2021 at 18:14 BRT */
 
 #pragma once
 
 #include <base/types.hxx>
 
-/* We use this for aligning an allocation (from ::new or ::delete), the type name NEEDS to be align_val_t btw. And yes,
- * this is hackish as hell, I know. Also, we need to put the initializer list on the std namespace.  */
+/* We use this for aligning an allocation (from ::new or ::delete), the type name NEEDS to be align_val_t btw. */
 
 namespace std {
 
 enum class align_val_t : long unsigned int { };
 
-template<typename T> class initializer_list {
+template<class T> class initializer_list {
 public:
     constexpr initializer_list() : Elements(Null), Size(0) { }
 

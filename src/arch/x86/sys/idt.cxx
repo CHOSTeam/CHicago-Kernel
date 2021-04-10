@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 29 of 2020, at 11:24 BRT
- * Last edited on March 06 of 2021, at 21:34 BRT */
+ * Last edited on April 10 of 2021, at 17:07 BRT */
 
 #include <arch/desctables.hxx>
 #include <arch/port.hxx>
@@ -35,20 +35,14 @@ extern "C" force_align_arg_pointer Void IdtDefaultHandler(Registers &Regs) {
 		/* Send the EOI signal to the master PIC (if the interrupt number is between 40-47, we need to send it to the
 		 * slave PIC as well). */
 		
-		if (InterruptHandlers[Regs.IntNum - 32] != Null) {
-			InterruptHandlers[Regs.IntNum - 32](Regs);
-		}
-		
-		if (Regs.IntNum >= 40) {
-			Port::OutByte(0xA0, 0x20);
-		}
-		
+		if (InterruptHandlers[Regs.IntNum - 32] != Null) InterruptHandlers[Regs.IntNum - 32](Regs);
+		if (Regs.IntNum >= 40) Port::OutByte(0xA0, 0x20);
+
 		Port::OutByte(0x20, 0x20);
 	}
 
-	if (Regs.IntNum >= 32 && InterruptHandlers[Regs.IntNum - 32] != Null) {
-		InterruptHandlers[Regs.IntNum - 32](Regs);
-	} else if (Regs.IntNum < 32) {
+	if (Regs.IntNum >= 32 && InterruptHandlers[Regs.IntNum - 32] != Null) InterruptHandlers[Regs.IntNum - 32](Regs);
+	else if (Regs.IntNum < 32) {
 	    StringView name;
 	    UIntPtr cr0, cr2, cr3, cr4, off;
         asm volatile("mov %%cr0, %0; mov %%cr2, %1; mov %%cr3, %2; mov %%cr4, %3" : "=r"(cr0), "=r"(cr2), "=r"(cr3),
@@ -86,19 +80,14 @@ extern "C" force_align_arg_pointer Void IdtDefaultHandler(Registers &Regs) {
                     Regs.Di, Regs.Si, Regs.Bp, Regs.Cs == 0x08 ? Regs.Sp : Regs.Sp2, Regs.Ip, cr0, cr2, cr3, cr4,
                     Regs.Cs, Regs.Ds, Regs.Es, Regs.Fs, Regs.Gs, Regs.Cs == 0x08 ? Regs.Ss : Regs.Ss2);
 
-        if (StackTrace::GetSymbol(Regs.Ip, name, off)) {
-            Debug.Write("at: {} +0x{::16}\n", name, off);
-        }
-
+        if (StackTrace::GetSymbol(Regs.Ip, name, off)) Debug.Write("at: {} +0x{::16}\n", name, off);
 	    StackTrace::Dump();
 	    Arch::Halt(True);
 	}
 }
 
 Void IdtSetHandler(UInt8 Num, InterruptHandlerFunc Func) {
-	if (Num < 224) {
-        InterruptHandlers[Num] = Func;
-	}
+	if (Num < 224) InterruptHandlers[Num] = Func;
 }
 
 no_inline static Void IdtSetGate(UInt8 Num, UIntPtr Base, UInt16 Selector, UInt8 Type) {
@@ -155,9 +144,7 @@ Void IdtInit() {
 	
 	/* Now, register all of the default interrupt handlers (now using a loop! The code is way more readable now!). */
 	
-	for (UIntPtr i = 0; i < 256; i++) {
-		IdtSetGate(i, IdtDefaultHandlers[i], 0x08, 0x8E);
-	}
+	for (UIntPtr i = 0; i < 256; i++) IdtSetGate(i, IdtDefaultHandlers[i], 0x08, 0x8E);
 	
 	/* Now, we just need to fill the IDT pointer, load the new IDT, and re-enable interrupts! */
 	

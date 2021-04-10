@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on March 06 of 2021 at 21:06 BRT */
+ * Last edited on March 15 of 2021 at 17:55 BRT */
 
 #pragma once
 
@@ -78,9 +78,7 @@ public:
     inline Boolean Compare(const StringView &Value) const { return StringView(*this).Compare(Value); }
     inline Boolean StartsWith(const StringView &Value) const { return StringView(*this).StartsWith(Value); }
 
-    inline List<String> Tokenize(const StringView &Delimiters) const {
-        return StringView(*this).Tokenize(Delimiters);
-    }
+    inline List<String> Tokenize(const StringView &Delimiters) const { return StringView(*this).Tokenize(Delimiters); }
 
     Char *GetValue() const;
     inline UIntPtr GetLength() const { return Length; }

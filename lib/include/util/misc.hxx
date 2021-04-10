@@ -1,31 +1,27 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 01 of 2021, at 11:59 BRT
- * Last edited on March 04 of 2021, at 17:28 BRT */
+ * Last edited on March 15 of 2021, at 18:06 BRT */
 
 #pragma once
 
-#include <base/types.hxx>
+#include <base/traits.hxx>
 
 namespace CHicago {
-
-template<class T> struct RemoveReference { using Type = T; };
-template<class T> struct RemoveReference<T&> { using Type = T; };
-template<class T> struct RemoveReference<T&&> { using Type = T; };
 
 /* Forward, Move and Exchange are compiler black magic used for making our life a bit easier when, for example, we want
  * to implement move operators/constructors, or force a value to be moved instead of copied. */
 
-template<class T> static inline constexpr T &&Forward(typename RemoveReference<T>::Type &Value) {
+template<class T> static inline constexpr T &&Forward(RemoveRefT<T> &Value) {
     return static_cast<T&&>(Value);
 }
 
-template<class T> static inline constexpr T &&Forward(typename RemoveReference<T>::Type &&Value) {
+template<class T> static inline constexpr T &&Forward(RemoveRefT<T> &&Value) {
     return static_cast<T&&>(Value);
 }
 
-template<class T> static inline constexpr typename RemoveReference<T>::Type &&Move(T &&Value) {
-    return static_cast<typename RemoveReference<T>::Type&&>(Value);
+template<class T> static inline constexpr auto Move(T &&Value) {
+    return static_cast<RemoveRefT<T>&&>(Value);
 }
 
 template<class T, class U = T> static inline constexpr T Exchange(T &Old, U &&New) {
@@ -40,7 +36,7 @@ template<class T> static inline constexpr Void Swap(T &Left, T &Right) {
 
 /* The reverse iterator/wrapper struct are just so we can easily iterate on reverse (duh). */
 
-template<typename T, typename U> class ReverseIterator {
+template<class T, class U> class ReverseIterator {
 public:
     class Iterator {
     public:
@@ -63,7 +59,7 @@ private:
     U Start, End;
 };
 
-template<typename T, typename U> class ConstReverseIterator {
+template<class T, class U> class ConstReverseIterator {
 public:
     class Iterator {
     public:

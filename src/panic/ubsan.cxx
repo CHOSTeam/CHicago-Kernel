@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 15 of 2021, at 11:36 BRT
- * Last edited on March 05 of 2021, at 13:24 BRT */
+ * Last edited on April 10 of 2021, at 17:14 BRT */
 
 #include <sys/arch.hxx>
 #include <sys/panic.hxx>
@@ -94,15 +94,12 @@ extern "C" no_return Void __ubsan_handle_load_invalid_value(OneArgData &Data, UI
 extern "C" no_return Void __ubsan_handle_type_mismatch_v1(TypeMismatchData &Data, UIntPtr Address) {
     Prologue();
 
-    if (!Address) {
-        Debug.Write("{} {} null pointer\n", TypeMismatchKind[Data.Kind], Data.Type.Name);
-    } else if (Address & (((UIntPtr)1 << Data.Align) - 1)) {
+    if (!Address) Debug.Write("{} {} null pointer\n", TypeMismatchKind[Data.Kind], Data.Type.Name);
+    else if (Address & (((UIntPtr)1 << Data.Align) - 1)) {
         Debug.Write("{} {} misaligned address 0x{:0*:16} (expected {}-byte alignment)\n", TypeMismatchKind[Data.Kind],
                     Data.Type.Name, Address, (UIntPtr)1 << Data.Align);
-    } else {
-        Debug.Write("{} address 0x{:0*:16} without enough space for {}\n", TypeMismatchKind[Data.Kind], Address,
-                    Data.Type.Name);
-    }
+    } else Debug.Write("{} address 0x{:0*:16} without enough space for {}\n", TypeMismatchKind[Data.Kind], Address,
+                                                                              Data.Type.Name);
 
     Epilogue(Data.Location);
 }

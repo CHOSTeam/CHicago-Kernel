@@ -1,12 +1,11 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on March 14 of 2021, at 11:07 BRT */
+ * Last edited on April 10 of 2021, at 17:15 BRT */
 
 #include <sys/arch.hxx>
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
-#include <util/algo.hxx>
 
 using namespace CHicago;
 
@@ -16,14 +15,10 @@ extern "C" Void KernelEntry(BootInfo &Info) {
      * and we should be running on higher-half (probably). Before anything, let's call the _init function, this
      * function runs all the global constructors and things like that. */
 
-    if (Info.Magic != BOOT_INFO_MAGIC) {
-        Arch::Halt(True);
-    }
+    if (Info.Magic != BOOT_INFO_MAGIC) Arch::Halt(True);
 
 #ifdef USE_INIT_ARRAY
-    for (UIntPtr *i = &__init_array_start; i < &__init_array_end; i++) {
-        reinterpret_cast<Void(*)()>(*i)();
-    }
+    for (UIntPtr *i = &__init_array_start; i < &__init_array_end; i++) reinterpret_cast<Void(*)()>(*i)();
 #else
     _init();
 #endif

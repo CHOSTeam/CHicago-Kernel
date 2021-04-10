@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 26 of 2020, at 18:24 BRT
- * Last edited on March 05 of 2021, at 13:22 BRT */
+ * Last edited on April 10 of 2021, at 17:02 BRT */
 
 #pragma once
 
@@ -16,17 +16,9 @@ class Port {
 public:
 	/* First, the functions that allow us to call the out* instructions. */
 
-	static inline Void OutByte(UInt16 Num, UInt8 Data) {
-		asm volatile("outb %1, %0" :: "dN"(Num), "a"(Data));
-	}
-
-	static inline Void OutWord(UInt16 Num, UInt16 Data) {
-		asm volatile("outw %1, %0" :: "dN"(Num), "a"(Data));
-	}
-
-	static inline Void OutDWord(UInt16 Num, UInt32 Data) {
-		asm volatile("outl %1, %0" :: "dN"(Num), "a"(Data));
-	}
+	static inline Void OutByte(UInt16 Num, UInt8 Data) { asm volatile("outb %1, %0" :: "dN"(Num), "a"(Data)); }
+	static inline Void OutWord(UInt16 Num, UInt16 Data) { asm volatile("outw %1, %0" :: "dN"(Num), "a"(Data)); }
+	static inline Void OutDWord(UInt16 Num, UInt32 Data) { asm volatile("outl %1, %0" :: "dN"(Num), "a"(Data)); }
 
 	static inline Void OutBuffer(UInt16 Num, const UInt8 *Data, UIntPtr Length) {
 		asm volatile("rep outsw" : "+S"(Data), "+c"(Length) : "d"(Num));

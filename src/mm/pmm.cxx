@@ -1,18 +1,13 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on March 05 of 2021, at 13:24 BRT */
+ * Last edited on April 10 of 2021, at 17:14 BRT */
 
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
+#include <util/bitop.hxx>
 
 using namespace CHicago;
-
-#ifdef _LP64
-#define GET_FIRST_UNSET_BIT(bm) __builtin_ctzll(~(bm))
-#else
-#define GET_FIRST_UNSET_BIT(bm) __builtin_ctz(~(bm))
-#endif
 
 /* All of the static private variables. */
 
@@ -90,14 +85,11 @@ Void PhysMem::Initialize(BootInfo &Info) {
         Debug.Write("memory map entry no. {}, base = 0x{:0*:16}, size = 0x{:0:16}, type = {}\n", i, ent.Base,
                     ent.Count << 12, ent.Type);
 
-        if (ent.Type == 0x06 && ent.Base) {
-            FreeInt(ent.Base, ent.Count);
-        } else if (ent.Type == 0x06 && ent.Count > 1) {
-            FreeInt(ent.Base + PAGE_SIZE, ent.Count - 1);
-        }
+        if (ent.Type == 0x06 && ent.Base) FreeInt(ent.Base, ent.Count);
+        else if (ent.Type == 0x06 && ent.Count > 1) FreeInt(ent.Base + PAGE_SIZE, ent.Count - 1);
     }
 
-    Debug.Write("0x{:0:16} bytes of physical memory are being used, and 0x{:0:16} is free\n", UsedBytes,
+    Debug.Write("0x{:0:16} bytes of physical memory are being used, and 0x{:0:16} are free\n", UsedBytes,
                 MaxBytes - UsedBytes);
 }
 
@@ -161,11 +153,7 @@ Status PhysMem::FreeNonContig(UIntPtr *Pages, UIntPtr Count) {
 
     Status status;
 
-    for (UIntPtr i = 0; i < Count; i++) {
-        if ((status = FreeSingle(Pages[i])) != Status::Success) {
-            return status;
-        }
-    }
+    for (UIntPtr i = 0; i < Count; i++) if ((status = FreeSingle(Pages[i])) != Status::Success) return status;
 
     return Status::Success;
 }
@@ -176,11 +164,7 @@ Status PhysMem::ReferenceSingle(UIntPtr Page, UIntPtr &Out, UIntPtr Align) {
 
     if (!Page) {
         Status status = AllocSingle(Page, Align);
-        
-        if (status != Status::Success) {
-            return status;
-        }
-        
+        if (status != Status::Success) return status;
         return ReferenceSingle(Page, Out, Align);
     } else if (References == Null || UsedBytes < PAGE_SIZE || (Page & PAGE_MASK) || Page < MinAddress ||
                Page >= MaxAddress) {
@@ -188,9 +172,7 @@ Status PhysMem::ReferenceSingle(UIntPtr Page, UIntPtr &Out, UIntPtr Align) {
         Debug.Write("invalid PhysMem::Reference arguments (page = 0x{:0*:16})\n", Page);
         Debug.RestoreForeground();
         return Status::InvalidArg;
-    } else if (References[(Page - MinAddress) >> PAGE_SHIFT] < 0xFF) {
-        References[(Page - MinAddress) >> PAGE_SHIFT]++;
-    }
+    } else if (References[(Page - MinAddress) >> PAGE_SHIFT] < 0xFF) References[(Page - MinAddress) >> PAGE_SHIFT]++;
 
     Out = Page & ~PAGE_MASK;
 
@@ -204,10 +186,7 @@ Status PhysMem::ReferenceContig(UIntPtr Start, UIntPtr Count, UIntPtr &Out, UInt
     Status status;
 
     if (!Start) {
-        if ((status = AllocContig(Count, Start, Align)) != Status::Success) {
-            return status;
-        }
-
+        if ((status = AllocContig(Count, Start, Align)) != Status::Success) return status;
         return ReferenceContig(Start, Count, Out, Align);
     } else if (References == Null || !Count || UsedBytes < (Count << PAGE_SHIFT) || (Start & PAGE_MASK) ||
                Start < MinAddress || Start + (Count << PAGE_SHIFT) > MaxAddress) {
@@ -263,10 +242,7 @@ Status PhysMem::DereferenceSingle(UIntPtr Page) {
         return Status::InvalidArg;
     }
 
-    if (!(References[(Page - MinAddress) >> PAGE_SHIFT]--)) {
-        return FreeSingle(Page);
-    }
-
+    if (!(References[(Page - MinAddress) >> PAGE_SHIFT]--)) return FreeSingle(Page);
     return Status::Success;
 }
 
@@ -286,9 +262,7 @@ Status PhysMem::DereferenceContig(UIntPtr Start, UIntPtr Count) {
     Status status;
 
     for (UIntPtr i = 0; i < Count; i++) {
-        if ((status = DereferenceSingle(Start + (i << PAGE_SHIFT))) != Status::Success) {
-            return status;
-        }
+        if ((status = DereferenceSingle(Start + (i << PAGE_SHIFT))) != Status::Success) return status;
     }
 
     return Status::Success;
@@ -297,19 +271,14 @@ Status PhysMem::DereferenceContig(UIntPtr Start, UIntPtr Count) {
 Status PhysMem::DereferenceNonContig(UIntPtr *Pages, UIntPtr Count) {
     if (References == Null || !Count || UsedBytes < (Count << PAGE_SHIFT) || Pages == Null) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid non-contig PhysMem::Dereference arguments (pages = 0x{:0*:16}, count = {})\n", Pages, Count);
+        Debug.Write("invalid non-contig PhysMem::Dereference arguments (pages = 0x{:0*:16}, count = {})\n",
+                    Pages, Count);
          Debug.SetForeground(0xFFFFFFF);
         return Status::InvalidArg;
     }
 
     Status status;
-
-    for (UIntPtr i = 0; i < Count; i++) {
-        if ((status = DereferenceSingle(Pages[i])) != Status::Success) {
-            return status;
-        }
-    }
-
+    for (UIntPtr i = 0; i < Count; i++) if ((status = DereferenceSingle(Pages[i])) != Status::Success) return status;
     return Status::Success;
 }
 
@@ -325,25 +294,13 @@ UInt8 PhysMem::GetReferences(UIntPtr Page) {
     return References[(Page - MinAddress) >> PAGE_SHIFT];
 }
 
-UIntPtr PhysMem::CountFreePages(UIntPtr BitMap, UIntPtr Start, UIntPtr End) {
-    /* As each bit of the bitmap is one physical memory page, to count the amount of free pages we just need to count
-     * how many (consecutive) bits are NOT set. */
-
-    UIntPtr ret = 0;
-
-    for (; Start + ret < End && !(BitMap & ((UIntPtr)1 << (Start + ret))); ret++) ;
-
-    return ret;
-}
-
 Status PhysMem::FindFreePages(UIntPtr BitMap, UIntPtr Count, UIntPtr &Out, UIntPtr &Available) {
     /* Each unset bit is one free page, for finding consecutive free pages, we can iterate through the bits of the
      * bitmap and search for free bits. */
 
     for (UIntPtr bc = PHYS_REGION_BITMAP_PSIZE, i = 0; i < bc;) {
-        if (BitMap == UINTPTR_MAX) {
-            return Status::OutOfMemory;
-        } else if (!BitMap) {
+        if (BitMap == UINTPTR_MAX) return Status::OutOfMemory;
+        else if (!BitMap) {
             Out = i;
             Available = bc - i >= Count ? 0 : bc - i;
             return Available ? Status::OutOfMemory : Status::Success;
@@ -352,8 +309,8 @@ Status PhysMem::FindFreePages(UIntPtr BitMap, UIntPtr Count, UIntPtr &Out, UIntP
         /* Well, we need to check how many unset bits we have, first, get the location of the first unset bit here,
          * after that, count how many available bits we have. */
 
-        UIntPtr bit = GET_FIRST_UNSET_BIT(BitMap);
-        UIntPtr aval = CountFreePages(BitMap, bit, bc - i);
+        UIntPtr bit = BitOp::ScanForward(~BitMap);
+        UIntPtr aval = BitOp::ScanForward(BitOp::GetBits(BitMap, bit, bc - i - 1));
 
         if (aval >= Count) {
             Out = i + bit;
@@ -404,18 +361,10 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out, UIntPtr Align) {
      * pages that we were asked for. */
 
     for (UIntPtr i = 0; i < RegionCount; i++) {
-        if (!Regions[i].Free) {
-            /* We can skip regions without any free bits. */
-
-            continue;
-        }
+        if (!Regions[i].Free) continue;
 
         for (UIntPtr j = 0; j < PHYS_REGION_BITMAP_LEN; j++) {
-            if (Regions[i].Pages[j] == UINTPTR_MAX) {
-                /* And bitmaps without any free bit. */
-
-                continue;
-            }
+            if (Regions[i].Pages[j] == UINTPTR_MAX) continue;
 
             UIntPtr bit = 0, aval = 0;
 
@@ -423,11 +372,11 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out, UIntPtr Align) {
                 !((Out = MinAddress + (i << PHYS_REGION_SHIFT) + (j << PHYS_REGION_PAGE_SHIFT) + (bit << PAGE_SHIFT))
                        & Align)) {
                 /* Oh, we actually found enough free pages! we need to set all the bits that we're going to use,
-                 * increase the used bytes variable, and calculate the return value. */
+                 * increase the used bytes variable, and calculate the return value.
+                 * INFO: We can't use SetRange/UnsetRange as they take references (and we can't pass references to
+                 * packed fields to it). */
 
-                for (UIntPtr k = bit; k < bit + Count; k++) {
-                    Regions[i].Pages[j] |= (UIntPtr)1 << k;
-                }
+                Regions[i].Pages[j] |= BitOp::GetMask(bit, bit + Count - 1);
 
                 Regions[i].Free -= Count;
                 Regions[i].Used += Count;
@@ -445,10 +394,7 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out, UIntPtr Align) {
                     UIntPtr cbit = 0, caval = 0;
                 
                     if (++cj >= PHYS_REGION_BITMAP_LEN) {
-                        if (++ci >= RegionCount) {
-                            break;
-                        }
-
+                        if (++ci >= RegionCount) break;
                         cj = 0;
                     }
 
@@ -469,21 +415,8 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out, UIntPtr Align) {
                     Regions[ci].Free -= Count - cur;
                     Regions[ci].Used += Count - cur;
 
-                    if (aval == PHYS_REGION_BITMAP_PSIZE) {
-                        Regions[i].Pages[j] = UINTPTR_MAX;
-                    } else {
-                        for (UIntPtr k = bit; k < bit + aval; k++) {
-                            Regions[i].Pages[j] |= (UIntPtr)1 << k;
-                        }
-                    }
-
-                    if (Count - cur == PHYS_REGION_BITMAP_PSIZE) {
-                        Regions[ci].Pages[cj] = UINTPTR_MAX;
-                    } else {
-                        for (UIntPtr k = cbit; k < cbit + Count - cur; k++) {
-                            Regions[ci].Pages[cj] |= (UIntPtr)1 << k;
-                        }
-                    }
+                    Regions[i].Pages[j] |= BitOp::GetMask(bit, bit + aval - 1);
+                    Regions[ci].Pages[cj] |= BitOp::GetMask(cbit, cbit + Count - cur - 1);
 
                     /* Now fill the remaining/middle regions (first for the first and last i values, and then for the
                      * middle ones, which we will be able to set to all used). */
@@ -555,16 +488,18 @@ Status PhysMem::FreeInt(UIntPtr Start, UIntPtr Count) {
             continue;
         }
 
-        /* If none of the above, first do error checking, and then free a single page. */
+        /* If none of the above, first do error checking, and free as many pages using a single operation.. */
 
         ASSERT(Regions[i].Used);
 
-        Regions[i].Pages[j] &= ~((UIntPtr)1 << k);
-        Regions[i].Free++;
-        Regions[i].Used--;
-        UsedBytes -= PAGE_SIZE;
-        Start += PAGE_SIZE;
-        Count--;
+        UIntPtr end = Count >= 64 - k ? 63 : k + Count - 1, cnt = end - k + 1;
+
+        Regions[i].Pages[j] &= ~BitOp::GetMask(k, end);
+        Regions[i].Free += cnt;
+        Regions[i].Used -= cnt;
+        UsedBytes -= PAGE_SIZE * cnt;
+        Start += PAGE_SIZE * cnt;
+        Count -= cnt;
     }
 
     return Status::Success;

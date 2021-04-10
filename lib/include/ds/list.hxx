@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 11:51 BRT
- * Last edited on March 14 of 2021 at 11:30 BRT */
+ * Last edited on March 15 of 2021 at 17:58 BRT */
 
 #pragma once
 
@@ -13,11 +13,8 @@
     Status status; \
     \
     if (Index + (Index > Length) >= Capacity && \
-        (status = Reserve(!Capacity ? 2 : Capacity * 2)) != Status::Success) { \
-        return status; \
-    } else if (Index < Length) { \
-        MoveMemory(&Elements[Index + 1], &Elements[Index], sizeof(T) * (Length - Index)); \
-    } \
+        (status = Reserve(!Capacity ? 2 : Capacity * 2)) != Status::Success) return status; \
+    else if (Index < Length) MoveMemory(&Elements[Index + 1], &Elements[Index], sizeof(T) * (Length - Index)); \
     \
     Elements[Index] = T(x); \
     Length = (Index > Length ? Index : Length) + 1; \
@@ -43,10 +40,7 @@ public:
          * fail). */
 
         Reserve(Source.GetLength());
-
-        for (const T &data : Source) {
-            Add(data);
-        }
+        for (const T &data : Source) Add(data);
     }
 
     List(const ConstReverseIterator<T, const T*> &Source) : List() {
@@ -54,10 +48,7 @@ public:
          * returns a reverse iterator, not the whole list actually reversed). */
 
         Reserve(Source.begin().GetIterator() - Source.end().GetIterator());
-
-        for (const T &data : Source) {
-            Add(data);
-        }
+        for (const T &data : Source) Add(data);
     }
 
     List(ReverseIterator<T, T*> Source, Boolean ShouldMove = False) : List() {
@@ -65,15 +56,8 @@ public:
 
         Reserve(Source.begin().GetIterator() - Source.end().GetIterator());
 
-        if (ShouldMove) {
-            for (T &data : Source) {
-                Add(Move(data));
-            }
-        } else {
-            for (T &data : Source) {
-                Add(data);
-            }
-        }
+        if (ShouldMove) for (T &data : Source) Add(Move(data));
+        else for (T &data : Source) Add(data);
     }
 
     ~List() { if (Elements != Null) { Clear(); Fit(); } }
@@ -112,11 +96,8 @@ public:
          * memory without calling the destructors again (that is, without causing UB), so let's use the Heap::Allocate
          * function (which is our malloc function). */
 
-        if (Size <= Capacity) {
-            return Status::InvalidArg;
-        } else if ((buf = static_cast<T*>(Heap::Allocate(sizeof(T) * Size))) == Null) {
-            return Status::OutOfMemory;
-        }
+        if (Size <= Capacity) return Status::InvalidArg;
+        else if ((buf = static_cast<T*>(Heap::Allocate(sizeof(T) * Size))) == Null) return Status::OutOfMemory;
 
         /* Don't do the same mistake I did when I first wrote this function. Remember to check if this isn't the first
          * allocation we're doing, if that's the case, we don't need to copy the old elements nor deallocate them. */
@@ -137,14 +118,11 @@ public:
          * capacity=length. If the length is 0 (for example, we were called on the destructor), we just need to free the
          * buffer. */
 
-        if (Elements == Null || Capacity == Length) {
-            return Status::Success;
-        } else if (!Length) {
+        if (Elements == Null || Capacity == Length) return Status::Success;
+        else if (!Length) {
             Heap::Deallocate(Elements);
             return Elements = Null, Capacity = 0, Status::Success;
-        } else if ((buf = static_cast<T*>(Heap::Allocate(sizeof(T) * Length))) == Null) {
-            return Status::OutOfMemory;
-        }
+        } else if ((buf = static_cast<T*>(Heap::Allocate(sizeof(T) * Length))) == Null) return Status::OutOfMemory;
 
         CopyMemory(buf, Elements, Length * sizeof(T));
         Heap::Deallocate(Elements);
@@ -163,9 +141,7 @@ public:
         Status status;
 
         for (const T &data : Source) {
-            if ((status = Add(data, Index++)) != Status::Success) {
-                return status;
-            }
+            if ((status = Add(data, Index++)) != Status::Success) return status;
         }
 
         return Status::Success;
@@ -178,9 +154,7 @@ public:
         Status status;
 
         for (const T &data : Source) {
-            if ((status = Add(Move(data), Index++)) != Status::Success) {
-                return status;
-            }
+            if ((status = Add(Move(data), Index++)) != Status::Success) return status;
         }
 
         Source.Length = 0;
@@ -213,18 +187,14 @@ public:
          * the memory), but we DO need to call T's destructor, and move the items like we do on Add, but we need to move
          * the items backwards one slot this time, instead of forward one slot. */
 
-        if (Index >= Length) {
-            return Status::InvalidArg;
-        }
+        if (Index >= Length) return Status::InvalidArg;
 
         Elements[Index].~T();
 
         if (Index < --Length) {
             MoveMemory(&Elements[Index], &Elements[Index + 1], sizeof(T) * (Length - Index));
             SetMemory(&Elements[Length], 0, sizeof(T));
-        } else {
-            SetMemory(&Elements[Index], 0, sizeof(T));
-        }
+        } else SetMemory(&Elements[Index], 0, sizeof(T));
 
         return Status::Success;
     }
@@ -250,9 +220,7 @@ public:
          * 0->Capacity-1 range (accessing things outside this range is UB, and you're probably just going to page fault
          * the kernel). */
 
-        if (Index < Capacity && Index >= Length) {
-            Length = Index + 1;
-        }
+        if (Index < Capacity && Index >= Length) Length = Index + 1;
 
         return Elements[Index];
     }

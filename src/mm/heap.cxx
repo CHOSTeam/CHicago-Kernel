@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 14 of 2021, at 23:45 BRT
- * Last edited on March 05 of 2021, at 13:23 BRT */
+ * Last edited on March 10 of 2021, at 17:11 BRT */
 
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
@@ -26,11 +26,8 @@ Status Heap::Increment(UIntPtr Amount) {
 	/* We need to check for two things: First, if the Amount is even valid (if it isn't, return InvalidArg), second, if
 	 * we aren't trying to expand beyond the heap limit. */
 
-    if (!Initialized || !Amount) {
-        return Status::InvalidArg;
-    } else if ((Current + Amount) < Current || (Current + Amount) >= End) {
-        return Status::OutOfMemory;
-    }
+    if (!Initialized || !Amount) return Status::InvalidArg;
+    else if ((Current + Amount) < Current || (Current + Amount) >= End) return Status::OutOfMemory;
 
 	/* Now, we need to expand the heap, but this is not just a matter of increasing the Heap::Current variable, as we
 	 * need to make sure that the space we're expanding into is going to be mapped into the memory. */
@@ -39,9 +36,8 @@ Status Heap::Increment(UIntPtr Amount) {
 	Status status;
 
 	for (; CurrentAligned < nw; CurrentAligned += PAGE_SIZE) {
-		if ((status = PhysMem::ReferenceSingle(0, phys)) != Status::Success) {
-			return status;
-		} else if ((status = VirtMem::Map(CurrentAligned, phys, PAGE_SIZE, MAP_RW)) != Status::Success) {
+		if ((status = PhysMem::ReferenceSingle(0, phys)) != Status::Success) return status;
+		else if ((status = VirtMem::Map(CurrentAligned, phys, PAGE_SIZE, MAP_RW)) != Status::Success) {
 			PhysMem::DereferenceSingle(phys);
 			return status;
 		}
@@ -51,28 +47,20 @@ Status Heap::Increment(UIntPtr Amount) {
 }
 
 Void Heap::Decrement(UIntPtr Amount) {
-    if (Initialized && (Current - Amount) < Current && (Current - Amount) >= Start) {
-        Current -= Amount;
-    }
+    if (Initialized && (Current - Amount) < Current && (Current - Amount) >= Start) Current -= Amount;
 }
 
 Void Heap::ReturnPhysical() {
     /* This function actually returns all the allocated PHYSICAL memory to the system (the system may call us if it is
      * running out of memory, or regularly to not let the waste accumulate). */
 
-    if (!Initialized) {
-        return;
-    }
+    if (!Initialized) return;
 
     for (; CurrentAligned - PAGE_SIZE >= Current;) {
         UIntPtr phys;
         UInt32 flags;
-
         CurrentAligned -= PAGE_SIZE;
-
-        if (VirtMem::Query(CurrentAligned, phys, flags) == Status::Success) {
-            PhysMem::DereferenceSingle(phys);
-        }
+        if (VirtMem::Query(CurrentAligned, phys, flags) == Status::Success) PhysMem::DereferenceSingle(phys);
     }
 }
 
@@ -88,18 +76,12 @@ Void Heap::AddFree(AllocBlock *Block) {
 
     AllocBlock *cur = Base;
 
-    while (cur != Null && cur->Start > Block->Start) {
-        cur = cur->Next;
-    }
+    while (cur != Null && cur->Start > Block->Start) cur = cur->Next;
 
     if (cur != Null) {
         Block->Next = cur;
-
-        if (cur->Prev != Null) {
-            cur->Prev->Next = Block;
-        } else {
-            Base = Block;
-        }
+        if (cur->Prev != Null) cur->Prev->Next = Block;
+        else Base = Block;
     } else {
         Tail->Next = Block;
         Block->Prev = Tail;
@@ -111,21 +93,15 @@ Void Heap::RemoveFree(AllocBlock *Block) {
     /* And here we do the inverse, remove the entry from the free list (nothing to do afterwards, as there is no other
      * list). */
 
-    if (Block->Next != Null) {
-        Block->Next->Prev = Block->Prev;
-    } else {
+    if (Block->Next != Null) Block->Next->Prev = Block->Prev;
+    else {
         Tail = Block->Prev;
-
-        if (Tail != Null) {
-            Tail->Next = Null;
-        } else {
-            Base = Null;
-        }
+        if (Tail != Null) Tail->Next = Null;
+        else Base = Null;
     }
 
-    if (Block->Prev != Null) {
-        Block->Prev->Next = Block->Next;
-    } else if (Block->Next != Null) {
+    if (Block->Prev != Null) Block->Prev->Next = Block->Next;
+    else if (Block->Next != Null) {
         Block->Next->Prev = Null;
         Base = Block->Next;
     }
@@ -138,9 +114,7 @@ Void Heap::SplitBlock(AllocBlock *Block, UIntPtr Size) {
      * private functions) is ourselves, but let's do it anyways. We also need to check if the block is big enough to be
      * split, it needs at least the size of the new block we want to create + the size of the alloc header. */
 
-    if (Block == Null || !Size || Block->Size <= Size + sizeof(AllocBlock)) {
-        return;
-    }
+    if (Block == Null || !Size || Block->Size <= Size + sizeof(AllocBlock)) return;
 
     /* Let's split the block so the current block have exactly the same that the caller asked for, and the new block is
      * the remainder (which will be set as free). */
@@ -165,9 +139,8 @@ AllocBlock *Heap::FuseBlock(AllocBlock *Block) {
         Block->Size += sizeof(AllocBlock) + Block->Next->Size;
         Block->Next = Block->Next->Next;
 
-        if (Block->Next != Null) {
-            Block->Next->Prev = Block;
-        } else {
+        if (Block->Next != Null) Block->Next->Prev = Block;
+        else {
             Tail->Prev->Next = Block;
             Tail = Block;
         }
@@ -182,17 +155,12 @@ AllocBlock *Heap::FindBlock(UIntPtr Size) {
     /* The block list always ends (or starts, if there are no blocks yet) on a Null pointer, so we can always just keep
      * on following the ->Next chain until we find a Null pointer. */
 
-    if (!Size) {
-        return Null;
-    }
+    if (!Size) return Null;
 
     AllocBlock *cur = Base, *best = Null;
 
     while (cur != Null) {
-        if (cur->Size >= Size && (best == Null || cur->Size < best->Size)) {
-            best = cur;
-        }
-
+        if (cur->Size >= Size && (best == Null || cur->Size < best->Size)) best = cur;
         cur = cur->Next;
     }
 
@@ -203,9 +171,7 @@ AllocBlock *Heap::CreateBlock(UIntPtr Size) {
     /* The "Last" pointer is not required (for example, this may be the first time we're allocating memory, and this may
      * be the first allocation), but we do need to check if the Size is valid. */
 
-    if (!Size) {
-        return Null;
-    }
+    if (!Size) return Null;
 
     /* Here on the kernel, we can just increment the heap pointer (actually we also need to alloc and map, but the
      * Increment function takes care of that), a bit different from heap function of other OSes, we need to first get
@@ -214,9 +180,7 @@ AllocBlock *Heap::CreateBlock(UIntPtr Size) {
 
     auto blk = reinterpret_cast<AllocBlock*>(Current);
 
-    if (Increment(Size + sizeof(AllocBlock)) != Status::Success) {
-        return Null;
-    }
+    if (Increment(Size + sizeof(AllocBlock)) != Status::Success) return Null;
 
     SetMemory(blk, 0, sizeof(AllocBlock));
 
@@ -238,10 +202,7 @@ Void *Heap::Allocate(UIntPtr Size) {
     if (blk != Null) {
         /* Let's not waste space, and split the block that we found in case it is too big. */
 
-        if (blk->Size > Size + sizeof(AllocBlock)) {
-            SplitBlock(blk, Size);
-        }
-
+        if (blk->Size > Size + sizeof(AllocBlock)) SplitBlock(blk, Size);
         RemoveFree(blk);
     } else {
         blk = CreateBlock(Size);
@@ -266,11 +227,8 @@ Void *Heap::Allocate(UIntPtr Size, UIntPtr Align) {
      * the Align value is valid (it needs to be a power of 2). Also, ::Allocate already guarantees 16-byte alignment, so
      * for Align values lesser or equal to that, we don't need anything special. */
 
-    if (!Size || !Align || (Align & (Align - 1))) {
-        return Null;
-    } else if (Align <= 16) {
-        return Allocate(Size);
-    }
+    if (!Size || !Align || (Align & (Align - 1))) return Null;
+    else if (Align <= 16) return Allocate(Size);
 
     /* Let's over-alloc the space we need, so we can save that this is an aligned allocation, and the address of the
      * block header. */
@@ -278,9 +236,7 @@ Void *Heap::Allocate(UIntPtr Size, UIntPtr Align) {
     UIntPtr tsz = Size + 2 * sizeof(UIntPtr) + (Align - 1);
     Void *p0 = Allocate(tsz);
 
-    if (p0 == Null) {
-        return Null;
-    }
+    if (p0 == Null) return Null;
 
     /* Now, we just need to get the actual aligned start (the part that we're going to return). We can access it like it
      * was a pointer, to save what we need. */
@@ -304,10 +260,8 @@ Void Heap::Deallocate(Void *Address) {
 
     if (addr - 2 * sizeof(UIntPtr) >= Start + sizeof(AllocBlock) &&
         (reinterpret_cast<UIntPtr*>(Address))[-1] == ALLOC_BLOCK_MAGIC) {
-        blk = reinterpret_cast<AllocBlock*>((reinterpret_cast<UIntPtr*>(Address))[-2]);
-    } else {
-        blk = reinterpret_cast<AllocBlock*>(addr - sizeof(AllocBlock));
-    }
+        blk = reinterpret_cast<AllocBlock *>((reinterpret_cast<UIntPtr *>(Address))[-2]);
+    } else blk = reinterpret_cast<AllocBlock*>(addr - sizeof(AllocBlock));
 
     /* Now, we need to check if this is a valid block, and if we haven't called Deallocate on it before (double
      * free). */
@@ -319,10 +273,7 @@ Void Heap::Deallocate(Void *Address) {
 
     AddFree(blk);
 
-    while ((fblk = FuseBlock(blk->Prev)) != Null) {
-        blk = fblk;
-    }
-
+    while ((fblk = FuseBlock(blk->Prev)) != Null) blk = fblk;
     while (FuseBlock(blk) != Null) ;
 
     /* If this is the end of the block list, AND the block is just at the end of the heap, let's free some space on the
@@ -332,10 +283,7 @@ Void Heap::Deallocate(Void *Address) {
         if (blk->Prev != Null) {
             Tail = blk->Prev;
             Tail->Next = Null;
-        } else {
-            Base = Tail = Null;
-        }
-
+        } else Base = Tail = Null;
         Decrement(blk->Size + sizeof(AllocBlock));
     }
 }

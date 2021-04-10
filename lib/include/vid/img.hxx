@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:37 BRT
- * Last edited on March 04 of 2021 at 17:17 BRT */
+ * Last edited on March 15 of 2021 at 18:00 BRT */
 
 #pragma once
 
@@ -69,10 +69,7 @@ public:
 
         EXTRACT_ARGB(Background, a, r1, g1, b1);
         EXTRACT_ARGB(Foreground, a, r2, g2, b2);
-
-        if (UseForeAlpha) {
-            Alpha = static_cast<Float>(a) / 255;
-        }
+        if (UseForeAlpha) Alpha = static_cast<Float>(a) / 255;
 
         return MAKE_ARGB(0xFF, static_cast<UInt8>(Round((Alpha * r2) + ((1. - Alpha) * r1))),
                                static_cast<UInt8>(Round((Alpha * g2) + ((1. - Alpha) * g1))),
@@ -88,9 +85,7 @@ public:
 	 * if we weren't depending on the compiler for doing the optimization), so we can just call it. */
 
     inline Void Clear(UInt32 Color) {
-        if (Buffer != Null) {
-            DrawRectangle(0, 0, Width, Height, Color, True);
-        }
+        if (Buffer != Null) DrawRectangle(0, 0, Width, Height, Color, True);
     }
 
     inline Void Scroll(UInt32 Height, UInt32 Color) {
@@ -148,21 +143,10 @@ public:
 private:
     /* Some math functions that we're going to put here for now (later we should re-add the math.hxx header). */
 
-    static inline IntPtr Round(Float Value) {
-        return static_cast<IntPtr>(Value < 0 ? Value - 0.5 : Value + 0.5);
-    }
-
-    static inline IntPtr Abs(IntPtr Value) {
-        return Value < 0 ? -Value : Value;
-    }
-
-    static inline UInt16 Min(UInt16 Left, UInt16 Right) {
-        return Left < Right ? Left : Right;
-    }
-
-    static inline UInt16 Max(UInt16 Left, UInt16 Right) {
-        return Left > Right ? Left : Right;
-    }
+    static inline IntPtr Round(Float Value) { return static_cast<IntPtr>(Value < 0 ? Value - 0.5 : Value + 0.5); }
+    static inline IntPtr Abs(IntPtr Value) { return Value < 0 ? -Value : Value; }
+    static inline UInt16 Min(UInt16 Left, UInt16 Right) { return Left < Right ? Left : Right; }
+    static inline UInt16 Max(UInt16 Left, UInt16 Right) { return Left > Right ? Left : Right; }
 
     Void Cleanup();
 

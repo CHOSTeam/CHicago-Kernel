@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 15:57 BRT
- * Last edited on March 06 of 2021 at 21:34 BRT */
+ * Last edited on April 10 of 2021, at 17:08 BRT */
 
 #pragma once
 
@@ -36,15 +36,10 @@ public:
         /* While we wouldn't page fault accidentally if didn't handle the frame pointer here, we do have to make sure
          * we handle the null Addresses pointer (and the Max size has to be at least 1). */
 
-        if (Frame == Null || Addresses == Null || !Max) {
-            return 0;
-        }
+        if (Frame == Null || Addresses == Null || !Max) return 0;
 
         UIntPtr i = 0;
-
-        for (; Frame != Null && i < Max; Frame = Frame->Parent) {
-            Addresses[i++] = Frame->Address;
-        }
+        for (; Frame != Null && i < Max; Frame = Frame->Parent) Addresses[i++] = Frame->Address;
 
         return i;
     }
@@ -71,11 +66,8 @@ public:
 
             StringView name;
 
-            if (GetSymbol(addr[i], name, off)) {
-                Debug.Write("    0x{:0*:16}: {} +0x{:0:16}\n", addr[i], name, off);
-            } else {
-                Debug.Write("    0x{:0*:16}: <no symbol information available>\n", addr[i]);
-            }
+            if (GetSymbol(addr[i], name, off)) Debug.Write("    0x{:0*:16}: {} +0x{:0:16}\n", addr[i], name, off);
+            else Debug.Write("    0x{:0*:16}: <no symbol information available>\n", addr[i]);
         }
     }
 private:

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 18 of 2021, at 10:33 BRT
- * Last edited on March 04 of 2021 at 17:06 BRT */
+ * Last edited on March 15 of 2021 at 18:04 BRT */
 
 #pragma once
 
@@ -45,13 +45,13 @@ typedef Float Floatx4 vector_size(32), Floatx4U vector_size(32) aligned(1);
 
 class SIMD {
 public:
-    template<typename T, typename S> disable_ubsan  static inline always_inline
+    template<class T, class S> disable_ubsan  static inline always_inline
     T Convert(S Vector) { return __builtin_convertvector(Vector, T); }
 
-    template<typename T, typename M> disable_ubsan static inline always_inline
+    template<class T, class M> disable_ubsan static inline always_inline
     T Shuffle(T Vector, M Mask) { return __builtin_shuffle(Vector, Mask); }
 
-    template<typename T, typename M> disable_ubsan static inline always_inline
+    template<class T, class M> disable_ubsan static inline always_inline
     T Shuffle(T Vector1, T Vector2, M Mask) { return __builtin_shuffle(Vector1, Vector2, Mask); }
 
     disable_ubsan static inline always_inline

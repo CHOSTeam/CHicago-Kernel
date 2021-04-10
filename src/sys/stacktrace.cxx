@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 09 of 2021, at 12:54 BRT
- * Last edited on March 05 of 2021, at 13:58 BRT */
+ * Last edited on April 10 of 2021, at 17:20 BRT */
 
 #include <util/stacktrace.hxx>
 
@@ -36,9 +36,8 @@ Boolean StackTrace::GetSymbol(UIntPtr Address, StringView &Name, UIntPtr &Offset
      * and offset (the offset is of the address compared to the start of the symbol). */
 
     for (UIntPtr i = 0; i < SymbolCount; i++) {
-        if (Symbols[i].Start > Address) {
-            break;
-        } else if (Symbols[i].Start <= Address && Symbols[i].End >= Address) {
+        if (Symbols[i].Start > Address) break;
+        else if (Symbols[i].Start <= Address && Symbols[i].End >= Address) {
             Name = Symbols[i].Name;
             Offset = Address - Symbols[i].Start;
             return True;

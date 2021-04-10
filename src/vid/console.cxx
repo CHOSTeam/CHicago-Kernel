@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 00:14 BRT
- * Last edited on February 28 of 2021 at 13:25 BRT */
+ * Last edited on April 10 of 2021, at 17:21 BRT */
 
 #include <vid/console.hxx>
 
@@ -16,9 +16,7 @@ TextConsole::TextConsole(BootInfo &Info, UInt32 Background, UInt32 Foreground)
     : Back(reinterpret_cast<UInt32*>(Info.FrameBuffer.BackBuffer), Info.FrameBuffer.Width, Info.FrameBuffer.Height),
       Front(reinterpret_cast<UInt32*>(Info.FrameBuffer.FrontBuffer), Info.FrameBuffer.Width, Info.FrameBuffer.Height),
       X(0), BackY(0), FrontY(0), Background(Background), Foreground(Foreground), BackgroundSP(0), ForegroundSP(0),
-      BackgroundStack(), ForegroundStack(){
-    Clear();
-}
+      BackgroundStack(), ForegroundStack() { Clear(); }
 
 Void TextConsole::Clear() {
     Back.Clear(Background);
@@ -30,45 +28,31 @@ Void TextConsole::SetBackground(UInt32 Color) {
     /* We have to push the current background color to our internal stack, so later the RestoreBackground function can
      * properly restore it. */
 
-    if (BackgroundSP < sizeof(BackgroundStack) / sizeof(UInt32)) {
-        BackgroundStack[BackgroundSP++] = Background;
-    }
-
+    if (BackgroundSP < sizeof(BackgroundStack) / sizeof(UInt32)) BackgroundStack[BackgroundSP++] = Background;
     Background = Color;
-
     Clear();
 }
 
 Void TextConsole::SetForeground(UInt32 Color) {
-    if (ForegroundSP < sizeof(ForegroundStack) / sizeof(UInt32)) {
-        ForegroundStack[ForegroundSP++] = Foreground;
-    }
-
+    if (ForegroundSP < sizeof(ForegroundStack) / sizeof(UInt32)) ForegroundStack[ForegroundSP++] = Foreground;
     Foreground = Color;
 }
 
 Void TextConsole::RestoreBackground() {
     /* Let's just not do anything (instead of setting to some default value) if the stack is empty. */
 
-    if (BackgroundSP > 0) {
-        Background = BackgroundStack[--BackgroundSP];
-    }
-
+    if (BackgroundSP > 0) Background = BackgroundStack[--BackgroundSP];
     Clear();
 }
 
 Void TextConsole::RestoreForeground() {
-    if (ForegroundSP > 0) {
-        Foreground = ForegroundStack[--ForegroundSP];
-    }
+    if (ForegroundSP > 0) Foreground = ForegroundStack[--ForegroundSP];
 }
 
 Boolean TextConsole::WriteInt(Char Data) {
     /* Handle both overflow on the X axis (move into the next line) and overflow on the Y axis (scroll the screen). */
 
-    if (!Data) {
-        return Front.GetBuffer() != Null;
-    }
+    if (!Data) return Front.GetBuffer() != Null;
 
     if (X + DefaultFont.GlyphInfo[(UInt8)Data].Advance > Back.GetWidth()) {
         FrontY += DefaultFont.Height;
@@ -83,9 +67,7 @@ Boolean TextConsole::WriteInt(Char Data) {
          * it may start in the middle of the buffer, and end at the start, and for that we need two different
          * CopyMemory() calls). */
 
-        if (FrontY + DefaultFont.Height > Back.GetHeight()) {
-            FrontY = 0;
-        }
+        if (FrontY + DefaultFont.Height > Back.GetHeight()) FrontY = 0;
 
         UIntPtr size = Back.GetHeight() / DefaultFont.Height;
 
@@ -105,10 +87,7 @@ Boolean TextConsole::WriteInt(Char Data) {
     case '\n': BackY += DefaultFont.Height; FrontY += DefaultFont.Height;
     case '\r': X = 0; return True;
     default: {
-        if (!Front.DrawCharacter(X, FrontY, Data, Foreground)) {
-            return False;
-        }
-
+        if (!Front.DrawCharacter(X, FrontY, Data, Foreground)) return False;
         break;
     }
     }
