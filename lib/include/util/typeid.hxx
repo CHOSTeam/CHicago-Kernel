@@ -13,7 +13,7 @@ namespace CHicago {
 class Type {
 public:
     constexpr Type(const StringView &Name) : Name(Name), ID(ConstHash(Name.GetValue() + Name.GetViewStart(),
-                                                                      Name.GetViewEnd() - Name.GetViewStart())) { }
+                                                                      Name.GetViewLength())) { }
 
     inline constexpr Boolean operator ==(const Type &Value) const { return ID == Value.ID; }
     inline constexpr Boolean operator !=(const Type &Value) const { return ID == Value.ID; }

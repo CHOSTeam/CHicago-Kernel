@@ -57,6 +57,7 @@ public:
     Status Create(const StringView&, UInt8) const;
     Status Control(UIntPtr, const Void*, Void*) const;
     Status Unmount() const;
+    Void Close() const;
     Void Close();
 
     inline const String &GetName() const { return Name; }

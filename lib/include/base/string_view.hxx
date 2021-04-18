@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 05 of 2021, at 16:09 BRT
- * Last edited on March 15 of 2021 at 17:56 BRT */
+ * Last edited on April 18 of 2021 at 11:03 BRT */
 
 #pragma once
 
@@ -71,6 +71,7 @@ public:
     List<String> Tokenize(const StringView&) const;
 
     inline constexpr UIntPtr GetLength() const { return Length; }
+    inline constexpr UIntPtr GetViewLength() const { return ViewEnd - ViewStart; }
     inline constexpr const Char *GetValue() const { return Value; }
     inline constexpr UIntPtr GetViewStart() const { return ViewStart; }
     inline constexpr UIntPtr GetViewEnd() const { return ViewEnd; }

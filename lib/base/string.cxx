@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 05 of 2021, at 10:21 BRT
- * Last edited on April 10 of 2021 at 17:22 BRT */
+ * Last edited on April 18 of 2021 at 11:07 BRT */
 
 #include <base/string.hxx>
 
@@ -14,8 +14,10 @@ String::String(UIntPtr Length) : String() {
     if (Length > 16) if ((Value = new Char[Length + 1]) != Null) Capacity = Length + 1;
 }
 
-#define CONSTRUCT(l, val) \
-    do { UIntPtr len = l; \
+#define CONSTRUCT(l, val, r) \
+    do { if (val == Null) return r; \
+         \
+         UIntPtr len = l; \
          \
          if (len > 16 && (this->Value = new Char[len + 1]) != Null) { \
              Capacity = len + 1; \
@@ -27,22 +29,22 @@ String::String(UIntPtr Length) : String() {
          } } while (False)
 
 String::String(const Char *Value) : String() {
-    CONSTRUCT(StringView::CalculateLength(Value), Value);
+    CONSTRUCT(StringView::CalculateLength(Value), Value,);
 }
 
 String::String(const String &Source) : String() {
-    CONSTRUCT(Source.ViewEnd - Source.ViewStart, Source.Value + Source.ViewStart);
+    CONSTRUCT(Source.GetViewLength(), (Source.Capacity ? Source.Value : Source.Small) + Source.ViewStart,);
 }
 
 String::String(String &&Source)
     : Small {}, Capacity { Exchange(Source.Capacity, 0) }, Length { Exchange(Source.Length, 0) },
       ViewStart { Exchange(Source.ViewStart, 0) }, ViewEnd { Exchange(Source.ViewEnd, 0) } {
     if (Capacity) Value = Exchange(Source.Value, Null);
-    else CopyMemory(Small, Source.Small, Source.Length + 1);
+    else if (Length) CopyMemory(Small, Source.Small, Length + 1);
 }
 
 String::String(const StringView &Source) : String() {
-    CONSTRUCT(Source.ViewEnd - Source.ViewStart, Source.Value + Source.ViewStart);
+    CONSTRUCT(Source.GetViewLength(), Source.Value + Source.ViewStart,);
 }
 
 String::String(ReverseIterator<Char, Char*> Source)
@@ -55,7 +57,8 @@ String::String(const ConstReverseIterator<Char, const Char*> &Source) : String()
 
     UIntPtr len = Source.begin().GetIterator() - Source.end().GetIterator(), i = 0;
 
-    if (len > 16 && (Value = new Char[len + 1]) != Null) {
+    if (!len) return;
+    else if (len > 16 && (Value = new Char[len + 1]) != Null) {
         for (Char ch : Source) Value[i++] = ch;
         Value[i] = 0;
         Capacity = len + 1;
@@ -86,7 +89,7 @@ String &String::operator =(String &&Source) {
         Clear();
 
         if (Source.Capacity) Value = Exchange(Source.Value, Null);
-        else CopyMemory(Small, Source.Small, Source.Length + 1);
+        else if (Source.Length) CopyMemory(Small, Source.Small, Source.Length + 1);
 
         Capacity = Exchange(Source.Capacity, 0);
         Length = Exchange(Source.Length, 0);
@@ -101,7 +104,7 @@ String &String::operator =(const Char *Value) {
     /* And this is the copy constructor, but again, we need to manually do everything. */
 
     Clear();
-    CONSTRUCT(StringView::CalculateLength(Value), Value);
+    CONSTRUCT(StringView::CalculateLength(Value), Value, *this);
 
     return *this;
 }
@@ -109,7 +112,7 @@ String &String::operator =(const Char *Value) {
 String &String::operator =(const String &Source) {
     if (this != &Source) {
         Clear();
-        CONSTRUCT(Source.ViewEnd - Source.ViewStart, Source.Value + Source.ViewStart);
+        CONSTRUCT(Source.GetViewLength(), (Source.Capacity ? Source.Value : Source.Small) + Source.ViewStart, *this);
     }
 
     return *this;
@@ -117,7 +120,7 @@ String &String::operator =(const String &Source) {
 
 String &String::operator =(const StringView &Source) {
     Clear();
-    CONSTRUCT(Source.ViewEnd - Source.ViewStart, Source.Value + Source.ViewStart);
+    CONSTRUCT(Source.GetViewLength(), Source.Value + Source.ViewStart, *this);
     return *this;
 }
 
@@ -172,8 +175,7 @@ Status String::Append(Char Value) {
 }
 
 Char *String::GetValue() const {
-    UIntPtr len = ViewEnd - ViewStart;
-    Char *str = len ? new Char[len + 1] : Null;
-    if (str != Null) CopyMemory(str, (Capacity ? Value : Small) + ViewStart, len + 1);
+    Char *str = GetViewLength() ? new Char[GetViewLength() + 1] : Null;
+    if (str != Null) CopyMemory(str, (Capacity ? Value : Small) + ViewStart, GetViewLength() + 1);
     return str;
 }

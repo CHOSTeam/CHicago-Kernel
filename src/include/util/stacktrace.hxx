@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 15:57 BRT
- * Last edited on April 10 of 2021, at 17:08 BRT */
+ * Last edited on April 14 of 2021, at 17:50 BRT */
 
 #pragma once
 
@@ -30,15 +30,15 @@ public:
     static Void Initialize(BootInfo&);
 
     static Boolean GetSymbol(UIntPtr, StringView&, UIntPtr&);
-    static UIntPtr Trace(UIntPtr *Addresses, UIntPtr Max) { return Trace(GetStackFrame(), Addresses, Max); }
+    static UIntPtr Trace(UIntPtr *Addresses, UInt8 Max) { return Trace(GetStackFrame(), Addresses, Max); }
 
-    static inline always_inline UIntPtr Trace(StackFrame *Frame, UIntPtr *Addresses, UIntPtr Max) {
+    static inline always_inline UInt8 Trace(StackFrame *Frame, UIntPtr *Addresses, UInt8 Max) {
         /* While we wouldn't page fault accidentally if didn't handle the frame pointer here, we do have to make sure
          * we handle the null Addresses pointer (and the Max size has to be at least 1). */
 
         if (Frame == Null || Addresses == Null || !Max) return 0;
 
-        UIntPtr i = 0;
+        UInt8 i = 0;
         for (; Frame != Null && i < Max; Frame = Frame->Parent) Addresses[i++] = Frame->Address;
 
         return i;
@@ -56,11 +56,12 @@ public:
             return;
         }
 
-        UIntPtr count = Trace(Frame->Parent, addr, sizeof(addr) / sizeof(UIntPtr));
+        UIntPtr off;
+        UInt8 count = Trace(Frame->Parent, addr, sizeof(addr) / sizeof(UIntPtr));
 
         Debug.Write("backtrace:\n");
 
-        for (UIntPtr off, i = 0; i < count; i++) {
+        for (UInt8 i = 0; i < count; i++) {
             /* If possible let's print the symbol information (may not be possible if it's some left over of the
              * bootloader, or if the symbol table hasn't been initialized). */
 

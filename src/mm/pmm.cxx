@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on April 10 of 2021, at 17:14 BRT */
+ * Last edited on April 14 of 2021, at 18:05 BRT */
 
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
@@ -338,8 +338,7 @@ Status PhysMem::AllocInt(UIntPtr Count, UIntPtr &Out, UIntPtr Align) {
 
     if (!Count || !Align) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid PhysMem::AllocInt arguments (count = {}, align = {})\n",
-                    Count, Align);
+        Debug.Write("invalid PhysMem::AllocInt arguments (count = {}, align = {})\n", Count, Align);
         Debug.RestoreForeground();
         return Status::InvalidArg;
     } else if (Regions == Null || UsedBytes + (Count << PAGE_SHIFT) > MaxBytes) {
@@ -492,7 +491,8 @@ Status PhysMem::FreeInt(UIntPtr Start, UIntPtr Count) {
 
         ASSERT(Regions[i].Used);
 
-        UIntPtr end = Count >= 64 - k ? 63 : k + Count - 1, cnt = end - k + 1;
+        UIntPtr end = Count >= PHYS_REGION_BITMAP_PSIZE - k ? (PHYS_REGION_BITMAP_PSIZE - 1)
+                                                            : k + Count - 1, cnt = end - k + 1;
 
         Regions[i].Pages[j] &= ~BitOp::GetMask(k, end);
         Regions[i].Free += cnt;

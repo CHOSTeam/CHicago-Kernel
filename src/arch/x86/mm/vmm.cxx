@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 12 of 2021, at 14:54 BRT
- * Last edited on April 10 of 2021, at 17:06 BRT */
+ * Last edited on April 14 of 2021, at 17:48 BRT */
 
 #include <arch/mm.hxx>
 #include <sys/mm.hxx>
@@ -15,18 +15,22 @@ using namespace CHicago;
 #define L1_ADDRESS 0xFFFFF000
 #define L2_ADDRESS 0xFFC00000
 #define HEAP_END L2_ADDRESS
+#define DEST_LEVEL(x) (x) ? 1 : 2
+#define USER_FLAG (Virtual >= 0xC0000000 ? 0 : PAGE_USER)
 
-#define GET_INDEXES() UIntPtr l1e = (Address >> 22) & 0x3FF, l2e = (Address >> 12) & 0xFFFFF
+#define GET_INDEXES() UInt16 l1e = (Address >> 22) & 0x3FF, l2e = (Address >> 12) & 0xFFFFF
 #else
 #define L1_ADDRESS 0xFFFFFFFFFFFFF000
 #define L2_ADDRESS 0xFFFFFFFFFFE00000
 #define L3_ADDRESS 0xFFFFFFFFC0000000
 #define L4_ADDRESS 0xFFFFFF8000000000
 #define HEAP_END L4_ADDRESS
+#define DEST_LEVEL(x) (x) ? 3 : 4
+#define USER_FLAG (Virtual >= 0xFFFF800000000000 ? 0 : PAGE_USER)
 
 #define GET_INDEXES() \
-    UIntPtr l1e = (Address >> 39) & 0x1FF, l2e = (Address >> 30) & 0x3FFFF, l3e = (Address >> 21) & 0x7FFFFFF, \
-            l4e = (Address >> 12) & 0xFFFFFFFFF
+    UInt64 l1e = (Address >> 39) & 0x1FF, l2e = (Address >> 30) & 0x3FFFF, l3e = (Address >> 21) & 0x7FFFFFF, \
+           l4e = (Address >> 12) & 0xFFFFFFFFF
 #endif
 
 /* The FULL_CHECK/LAST_CHECK macros are just so that we don't have as much repetition on the CheckDirectory function. */
@@ -36,7 +40,7 @@ using namespace CHicago;
 
 static inline Void UpdateTLB(UIntPtr Address) { asm volatile("invlpg (%0)" :: "r"(Address) : "memory"); }
 
-static inline UIntPtr GetOffset(UIntPtr Address, UIntPtr Level) {
+static inline UIntPtr GetOffset(UIntPtr Address, UInt8 Level) {
 #ifdef __i386__
     return Address & (Level == 2 ? PAGE_MASK : HUGE_PAGE_MASK);
 #else
@@ -85,7 +89,7 @@ static inline UInt32 FromFlags(UInt32 Flags) {
     return ret;
 }
 
-static IntPtr CheckLevel(UIntPtr Address, UIntPtr Index, UIntPtr *&Entry, Boolean Clean) {
+static Int8 CheckLevel(UIntPtr Address, UIntPtr Index, UIntPtr *&Entry, Boolean Clean) {
     /* If asked for, clean the table entry. Also, we don't need to update the TLB here (we actually only need to flush/
      * update it if we unmap something). */
 
@@ -100,11 +104,11 @@ static IntPtr CheckLevel(UIntPtr Address, UIntPtr Index, UIntPtr *&Entry, Boolea
                                                                 ((*Entry & PAGE_HUGE) ? -2 : 0);
 }
 
-static IntPtr CheckDirectory(UIntPtr Address, UIntPtr *&Entry, UIntPtr &Level, Boolean Clean = False) {
+static Int8 CheckDirectory(UIntPtr Address, UIntPtr *&Entry, UInt8 &Level, Boolean Clean = False) {
     /* We need to check each level of the directory here, remembering that while amd64 has 4 levels (and supports 5),
      * x86 only has 2. */
 
-    IntPtr ret = 0;
+    Int8 ret = 0;
 
     GET_INDEXES();
 
@@ -127,7 +131,8 @@ Status VirtMem::Query(UIntPtr Virtual, UIntPtr &Physical, UInt32 &Flags) {
     /* Use CheckDirectory (stopping at the first unallocated/huge entry, or going until the last level). Extract both
      * the physical address and the flags (at the same time). */
 
-    UIntPtr *ent, lvl = 1;
+    UIntPtr *ent;
+    UInt8 lvl = 1;
     if (CheckDirectory(Virtual, ent, lvl) == -1) return Status::NotMapped;
     return Physical = (*ent & ~PAGE_MASK) | GetOffset(Virtual, lvl), Flags = ToFlags(*ent), Status::Success;
 }
@@ -137,14 +142,10 @@ static Status DoMap(UIntPtr Virtual, UIntPtr Physical, UInt32 Flags) {
      * flags, so we don't have to do those things here.
      * Let's just recursively allocate all levels, until we reach the last level (or the huge level). */
 
-    IntPtr res;
+    Int8 res;
     Status status;
-    UIntPtr *ent = Null, phys, lvl = 1,
-#ifdef __i386__
-            dlvl = (Flags & PAGE_HUGE) ? 1 : 2;
-#else
-            dlvl = (Flags & PAGE_HUGE) ? 3 : 4;
-#endif
+    UIntPtr *ent = Null, phys;
+    UInt8 lvl = 1, dlvl = DEST_LEVEL(Flags & PAGE_HUGE);
 
     while ((res = CheckDirectory(Virtual, ent, lvl)) == -1) {
         /* The entry doesn't exist, and so we need to allocate this level (alloc a physical address, set it up, and
@@ -154,12 +155,7 @@ static Status DoMap(UIntPtr Virtual, UIntPtr Physical, UInt32 Flags) {
         else if ((status = PhysMem::ReferenceSingle(0, phys)) != Status::Success) return status;
 
         lvl++;
-        *ent = phys | PAGE_PRESENT | PAGE_WRITE |
-#ifdef __i386__
-               (Virtual < 0xC0000000 ? PAGE_USER : 0);
-#else
-               (Virtual < 0xFFFF800000000000 ? PAGE_USER : 0);
-#endif
+        *ent = phys | PAGE_PRESENT | PAGE_WRITE | USER_FLAG;
 
         CheckDirectory(Virtual, ent, lvl, True);
     }
@@ -193,12 +189,8 @@ static Status DoUnmap(UIntPtr Virtual, Boolean Huge) {
     /* Just go though the directory levels, searching for what we want to unmap (no need to check for alignment, as
      * the caller should have done it). */
 
-    UIntPtr *ent, lvl = 1,
-#ifdef __i386__
-            dlvl = Huge ? 1 : 2;
-#else
-            dlvl = Huge ? 3 : 4;
-#endif
+    UIntPtr *ent;
+    UInt8 lvl = 1, dlvl = DEST_LEVEL(Huge);
 
     if (CheckDirectory(Virtual, ent, lvl) == -1) return Status::NotMapped;
     else if (lvl != dlvl) return Status::InvalidArg;
@@ -238,7 +230,8 @@ Void VirtMem::Initialize(BootInfo &Info) {
 #else
     for (UIntPtr i = start & ~0x7FFFFFFFFF; i < HEAP_END; i += 0x8000000000) {
 #endif
-        UIntPtr *ent, lvl = 1, phys;
+        UInt8 lvl = 1;
+        UIntPtr *ent, phys;
 
         if (CheckDirectory(i, ent, lvl) != -1 || lvl != 1) continue;
         ASSERT(PhysMem::ReferenceSingle(0, phys) == Status::Success);

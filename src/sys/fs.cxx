@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 14:02 BRT
- * Last edited on April 10 of 2021, at 17:20 BRT */
+ * Last edited on April 18 of 2021, at 11:22 BRT */
 
 #include <sys/fs.hxx>
 
@@ -44,6 +44,12 @@ Void File::Close() {
     Length = INode = 0;
     Priv = References = Null;
     SetMemory(&Fs, 0, sizeof(FsImpl));
+}
+
+Void File::Close() const {
+    /* Same as above, but we can't actually modify anything, so we just call Fs.Close(). */
+
+    if (Fs.Close != Null) Fs.Close(Priv, INode);
 }
 
 File &File::operator =(File &&Source) {
@@ -112,7 +118,7 @@ Status File::Search(const StringView &Name, UInt8 Flags, File &Out) const {
 
     Status status = (!(this->Flags & OPEN_DIR) || !(this->Flags & OPEN_READ) || Fs.Search == Null)
                     ? Status::Unsupported : Fs.Search(Priv, INode, Name.GetValue() + Name.GetViewStart(),
-                                                      Name.GetViewEnd() - Name.GetViewStart(), &priv, &inode, &len);
+                                                      Name.GetViewLength(), &priv, &inode, &len);
 
     if (status != Status::Success) return status;
     else if (Fs.Open != Null && (status = Fs.Open(priv, inode, Flags)) != Status::Success) {
@@ -126,7 +132,7 @@ Status File::Search(const StringView &Name, UInt8 Flags, File &Out) const {
 Status File::Create(const StringView &Name, UInt8 Flags) const {
     return (!(this->Flags & OPEN_DIR) || !(this->Flags & OPEN_WRITE) || Fs.Create == Null)
            ? Status::Unsupported : Fs.Create(Priv, INode, Name.GetValue() + Name.GetViewStart(),
-                                             Name.GetViewEnd() - Name.GetViewStart(), Flags);
+                                             Name.GetViewLength(), Flags);
 }
 
 Status File::Control(UIntPtr Function, const Void *InBuffer, Void *OutBuffer) const {
@@ -227,8 +233,8 @@ Status FileSys::Register(const FsImpl &Info) {
 }
 
 static StringView FixView(const StringView &Path) {
-    UIntPtr i = Path.GetViewEnd() - Path.GetViewStart();
-    for (; Path[i - 1] == '/'; i--) ;
+    UIntPtr i = Path.GetViewLength();
+    for (; i > 1 && Path[i - 1] == '/'; i--) ;
     return { Path.GetValue() + Path.GetViewStart(), 0, i };
 }
 
@@ -412,14 +418,14 @@ const MountPoint &FileSys::GetMountPoint(const StringView &Path, String &Remain)
 
     if (!MountPoints.GetLength()) return EmptyMp;
 
-    UIntPtr len = Path.GetViewEnd() - Path.GetViewStart(), end = len, start = 0;
-    for (; end && Path[end - 1] == '/'; end--) ;
+    UIntPtr len = 0, start = Path.GetViewLength(), end = start;
+    for (; end > 1 && Path[end - 1] == '/'; end--) ;
 
-    for (StringView path { Path.GetValue() + Path.GetViewStart(), 0, end-- }; path.GetLength(); path.SetView(0, end--),
-                                                                                                start++, len--) {
+    for (StringView path { Path.GetValue() + Path.GetViewStart(), 0, end-- }; path.GetViewLength();
+                                                                              path.SetView(0, end--), start--, len++) {
         for (const MountPoint &mp : MountPoints) {
             if (mp.GetPath().Compare(path)) {
-                for (UIntPtr i = 1; i < len; i++) {
+                for (UIntPtr i = 0; i < len; i++) {
                     if (Remain.Append(Path[start + i]) != Status::Success) {
                         Remain.Clear();
                         return EmptyMp;

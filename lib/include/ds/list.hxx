@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 11:51 BRT
- * Last edited on March 15 of 2021 at 17:58 BRT */
+ * Last edited on March 18 of 2021 at 10:31 BRT */
 
 #pragma once
 
@@ -12,8 +12,9 @@
 #define DO_ADD(x) \
     Status status; \
     \
-    if (Index + (Index > Length) >= Capacity && \
-        (status = Reserve(!Capacity ? 2 : Capacity * 2)) != Status::Success) return status; \
+    if (Index + (Index > Length) >= Capacity && (status = Reserve(!Capacity ? 2 : (Index + 1 > Capacity * 2 ? \
+                                                                                   Index + 1 : Capacity * 2))) \
+                                                                                   != Status::Success) return status; \
     else if (Index < Length) MoveMemory(&Elements[Index + 1], &Elements[Index], sizeof(T) * (Length - Index)); \
     \
     Elements[Index] = T(x); \
@@ -133,9 +134,9 @@ public:
     inline Void Clear() { while (Length) { Elements[--Length].~T(); } }
 
     inline Status Add(const List &Source) { return Add(Source, Length); }
-    inline Status Add(List &&Source) { return Add(Source, Length); }
+    inline Status Add(List &&Source) { return Add(Move(Source), Length); }
     inline Status Add(const T &Data) { return Add(Data, Length); }
-    inline Status Add(T &&Data) { return Add(Data, Length); }
+    inline Status Add(T &&Data) { return Add(Move(Data), Length); }
 
     Status Add(const List &Source, UIntPtr Index) {
         Status status;

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on March 15 of 2021 at 17:55 BRT */
+ * Last edited on April 18 of 2021 at 11:07 BRT */
 
 #pragma once
 
@@ -82,6 +82,7 @@ public:
 
     Char *GetValue() const;
     inline UIntPtr GetLength() const { return Length; }
+    inline UIntPtr GetViewLength() const { return ViewEnd - ViewStart; }
     inline UIntPtr GetViewStart() const { return ViewStart; }
     inline UIntPtr GetViewEnd() const { return ViewEnd; }
 

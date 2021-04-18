@@ -1,7 +1,7 @@
-    /* File author is Ítalo Lima Marconato Matias
+/* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 15:57 BRT
- * Last edited on April 10 of 2021 at 17:26 BRT */
+ * Last edited on April 18 of 2021 at 11:11 BRT */
 
 #include <base/string.hxx>
 
@@ -47,16 +47,18 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
 
     /* Let's parse the format string, most of it will probably just be raw text. */
 
-    while (pos < Format.GetViewEnd() - Format.GetViewStart() && Format[pos]) {
+    while (pos < Format.GetViewLength() && Format[pos]) {
         /* Let's already get the easiest one of the way: If the character isn't the format start character, just print
          * it normally (also get where the first format character would be, so that we can print all text before it at
          * the same time). */
 
         if (Format[pos] != '{') {
-            const Char *end = FindFirst(Format.GetValue() + pos, '{', Format.GetLength() - pos);
-            UIntPtr size = end != Null ? end - Format.GetValue() - pos : Format.GetLength() - pos;
+            const Char *end = FindFirst(Format.GetValue() + Format.GetViewStart() + pos, '{',
+                                        Format.GetViewLength() - pos);
+            UIntPtr size = end != Null ? end - Format.GetValue() - Format.GetViewStart() - pos :
+                                         Format.GetViewLength() - pos;
 
-            if (!WriteString(Format.GetValue() + pos, size, Function, Context)) break;
+            if (!WriteString(Format.GetValue() + Format.GetViewStart() + pos, size, Function, Context)) break;
 
             pos += size;
             written += size;
@@ -232,12 +234,11 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
                                     (type == ArgumentType::CHStringView ? *val.CHStringViewValue :
                                     (type == ArgumentType::Boolean ? (val.BooleanValue ? "True" : "False") :
                                                                      StringView::FromStatus(val.StatusValue))));
-            UIntPtr len = str.GetViewEnd() - str.GetViewStart();
-
+            UIntPtr len = str.GetViewLength();
             if (pset && len > prec) len = prec;
 
             PAD(width > len ? width - len : 0, ' ');
-            WRITE_STRING(str.GetValue(), len);
+            WRITE_STRING(str.GetValue() + str.GetViewStart(), len);
 
             break;
         }

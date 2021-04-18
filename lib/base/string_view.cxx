@@ -1,14 +1,14 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 05 of 2021, at 16:12 BRT
- * Last edited on March 15 of 2021 at 17:51 BRT */
+ * Last edited on April 18 of 2021 at 11:06 BRT */
 
 #include <base/string.hxx>
 
 using namespace CHicago;
 
 StringView::StringView(const String &Source)
-        : Value(Source.Capacity ? Source.Small : Source.Value), Length(Source.Length), ViewStart(Source.ViewStart),
+        : Value(Source.Capacity ? Source.Value : Source.Small), Length(Source.Length), ViewStart(Source.ViewStart),
           ViewEnd(Source.ViewEnd) { }
 
 StringView StringView::FromStatus(Status Code) {
@@ -185,12 +185,12 @@ Int64 StringView::ToInt(UIntPtr &Position) const {
     /* ToInt doesn't need to handle different bases (only base 10), so we can just parse everything while we encounter
      * characters from '0' to '9'. */
 
-    if (Position >= Length) return 0;
+    if (Position >= GetViewLength()) return 0;
 
     UInt64 ret;
     Boolean neg = False;
 
-    if (Position < Length && Value[Position] == '-') Position++, neg = True;
+    if (Position < GetViewLength() && Value[Position] == '-') Position++, neg = True;
 
     return ret = ToUInt(Position, True), neg ? -ret : ret;
 }
@@ -206,25 +206,25 @@ Float StringView::ToFloat(UIntPtr &Position) const {
      * the same as ToInt, but once we enter the actual float/double world, we gonna store the precision (as we add more
      * digits), and at the end divide by 10^prec. */
 
-    if (Position >= Length) return 0;
+    if (Position >= GetViewLength()) return 0;
 
     Float ret;
     Boolean neg = False, nege = False;
     UInt64 main, dec = 0, exp = 0, prec = 1, base = 10;
 
-    if (Position < Length && Value[Position] == '-') Position++, neg = True;
+    if (Position < GetViewLength() && Value[Position] == '-') Position++, neg = True;
 
-    if (Position + 1 < Length && Value[Position] == '0' && Value[Position + 1] == 'x') {
+    if (Position + 1 < GetViewLength() && Value[Position] == '0' && Value[Position + 1] == 'x') {
         /* Base 16/hex float, for the main and dec values we use hexadecimal (handle them in the same way that we do
          * any hex int in ToUInt). */
 
         base = 2;
         main = ToUInt(Position);
 
-        if (Position < Length && Value[Position] == '.') {
+        if (Position < GetViewLength() && Value[Position] == '.') {
             /* Just as we're going to do in the base 10 case, manually handle the dec part. */
 
-            for (Position++; Position < Length && IsHex(Value[Position]); Position++, prec *= 16) {
+            for (Position++; Position < GetViewLength() && IsHex(Value[Position]); Position++, prec *= 16) {
                 dec = (dec * 16) + (IsDigit(Value[Position]) ? Value[Position] - '0' :
                                     ((Value[Position] >= 'a' && Value[Position] <= 'f' ? Value[Position] - 'a' :
                                       Value[Position] - 'A') + 10));
@@ -233,10 +233,10 @@ Float StringView::ToFloat(UIntPtr &Position) const {
     } else {
         main = ToUInt(Position);
 
-        if (Position < Length && Value[Position] == '.') {
+        if (Position < GetViewLength() && Value[Position] == '.') {
             /* Manually handle the dec part, as we also have to increase the precision at each step. */
 
-            for (Position++; Position < Length && IsDigit(Value[Position]); Position++, prec *= 10) {
+            for (Position++; Position < GetViewLength() && IsDigit(Value[Position]); Position++, prec *= 10) {
                 dec = (dec * 10) + (Value[Position] - '0');
             }
         }
@@ -245,9 +245,9 @@ Float StringView::ToFloat(UIntPtr &Position) const {
     /* And for exponents, we expect pZ/p-Z or eZ/e-Z. eZ/e-Z is for normal base 10 floats (Z is a power of 10), pZ/p-Z
      * is for hex floats (Z is a power of 2). */
 
-    if (Position < Length && ((base == 2 && (Value[Position] == 'p' || Value[Position] == 'P')) ||
-                              (base == 10 && (Value[Position] == 'e' || Value[Position] == 'E')))) {
-        if (Position + 1 < Length && Value[Position + 1] == '-') Position++, nege = True;
+    if (Position < GetViewLength() && ((base == 2 && (Value[Position] == 'p' || Value[Position] == 'P')) ||
+                                       (base == 10 && (Value[Position] == 'e' || Value[Position] == 'E')))) {
+        if (Position + 1 < GetViewLength() && Value[Position + 1] == '-') Position++, nege = True;
         Position++;
         exp = ToUInt(Position, True);
     }
@@ -260,22 +260,24 @@ UInt64 StringView::ToUInt(UIntPtr &Position, Boolean OnlyDec) const {
     /* ToUInt does need to handle other bases, and for that we take the first two characters, for different bases, they
      * should always be 0<n> where <n> is 'b' for binary, 'o' for octal and 'x' for hexadecimal. */
 
-    if (Position >= Length) return 0;
+    if (Position >= GetViewLength()) return 0;
 
     UInt64 ret = 0;
-    Boolean canb = !OnlyDec && Position + 1 < Length && Value[Position] == '0';
+    Boolean canb = !OnlyDec && Position + 1 < GetViewLength() && Value[Position] == '0';
 
     if (canb && Value[Position + 1] == 'b') {
-        for (Position += 2; Position < Length && (Value[Position] == '0' || Value[Position] == '1'); Position++) {
+        for (Position += 2; Position < GetViewLength() && (Value[Position] == '0' || Value[Position] == '1');
+             Position++) {
             ret = (ret * 2) + (Value[Position] - '0');
         }
     } else if (canb && Value[Position + 1] == 'o') {
-        for (Position += 2; Position < Length && Value[Position] >= '0' && Value[Position] <= '7'; Position++) {
+        for (Position += 2; Position < GetViewLength() && Value[Position] >= '0' && Value[Position] <= '7';
+             Position++) {
             ret = (ret * 8) + (Value[Position] - '0');
         }
-    } else if (canb && Value[Position + 1] == 'x') Position += 2, ret = ToHexUInt(Value, Length, Position);
+    } else if (canb && Value[Position + 1] == 'x') Position += 2, ret = ToHexUInt(Value, GetViewLength(), Position);
     else {
-        for (; Position < Length && IsDigit(Value[Position]); Position++) {
+        for (; Position < GetViewLength() && IsDigit(Value[Position]); Position++) {
             ret = (ret * 10) + (Value[Position] - '0');
         }
     }
@@ -287,9 +289,9 @@ Boolean StringView::Compare(const StringView &Value) const {
     /* Very basic compare function, it just returns if both strings are equal (same length and contents). */
 
     if (this->Value == Value.Value) return True;
-    else if (this->Value == Null || Value.Value == Null || Length != Value.Length) return False;
+    else if (this->Value == Null || Value.Value == Null || GetViewLength() != Value.GetViewLength()) return False;
 
-    return CompareMemory(this->Value, Value.Value, Length);
+    return CompareMemory(this->Value + ViewStart, Value.Value + Value.ViewStart, GetViewLength());
 }
 
 Boolean StringView::StartsWith(const StringView &Value) const {
@@ -297,9 +299,9 @@ Boolean StringView::StartsWith(const StringView &Value) const {
      * length/active view only needs to be at least the same as the Value's one, not exactly the same). */
 
     if (this->Value == Value.Value) return True;
-    else if (this->Value == Null || Value.Value == Null || Length < Value.Length) return False;
+    else if (this->Value == Null || Value.Value == Null || GetViewLength() < Value.GetViewLength()) return False;
 
-    return CompareMemory(this->Value, Value.Value, Value.Length);
+    return CompareMemory(this->Value + ViewStart, Value.Value + Value.ViewStart, Value.GetViewLength());
 }
 
 static Boolean IsDelimiter(const StringView &Delimiters, Char Value) {
@@ -314,12 +316,12 @@ List<String> StringView::Tokenize(const StringView &Delimiters) const {
     /* Start by checking if the delimiters string have at least one delimiter, creating the output list, and creating
      * one "global" string pointer, we're going to initialize it to Null, and only alloc it if we need. */
 
-    if (Value == Null || !Delimiters.Length) return {};
+    if (Value == Null || !Delimiters.GetViewLength()) return {};
 
     String str;
     List<String> ret;
 
-    for (UIntPtr i = 0; i < Length; i++) {
+    for (UIntPtr i = 0; i < GetViewLength(); i++) {
         if (IsDelimiter(Delimiters, Value[i])) {
             /* If this is one of the delimiters, we can add the string we have been creating to the list. If the string
              * is still empty, we can just skip and go to the next character. */
