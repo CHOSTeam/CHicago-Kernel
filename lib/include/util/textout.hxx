@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 26 of 2020, at 13:16 BRT
- * Last edited on March 05 of 2021 at 12:55 BRT */
+ * Last edited on July 06 of 2021 at 19:48 BRT */
 
 #pragma once
 
@@ -20,9 +20,7 @@ public:
         /* Here we can call WriteInt one time (passing 0 as an arg) to make sure the write is even possible. Other than
          * that, it's the same processes as the String and Image formatted text output functions. */
 
-        if (!WriteInt(0)) {
-            return 0;
-        }
+        if (!WriteInt(0)) return 0;
 
         UIntPtr ret = VariadicFormat([](Char Data, Void *Context) -> Boolean {
             return static_cast<TextOutput*>(Context)->WriteInt(Data);

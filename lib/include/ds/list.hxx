@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 11:51 BRT
- * Last edited on March 18 of 2021 at 10:31 BRT */
+ * Last edited on July 06 of 2021 at 19:47 BRT */
 
 #pragma once
 
@@ -12,9 +12,9 @@
 #define DO_ADD(x) \
     Status status; \
     \
-    if (Index + (Index > Length) >= Capacity && (status = Reserve(!Capacity ? 2 : (Index + 1 > Capacity * 2 ? \
-                                                                                   Index + 1 : Capacity * 2))) \
-                                                                                   != Status::Success) return status; \
+    if (Index + (Index > Length) >= Capacity && \
+        (status = Reserve(!Capacity ? 2 : (Index + 1 > Capacity * 2 ? Index + 1 : Capacity * 2))) \
+                          != Status::Success) return status; \
     else if (Index < Length) MoveMemory(&Elements[Index + 1], &Elements[Index], sizeof(T) * (Length - Index)); \
     \
     Elements[Index] = T(x); \
@@ -140,11 +140,7 @@ public:
 
     Status Add(const List &Source, UIntPtr Index) {
         Status status;
-
-        for (const T &data : Source) {
-            if ((status = Add(data, Index++)) != Status::Success) return status;
-        }
-
+        for (const T &data : Source) if ((status = Add(data, Index++)) != Status::Success) return status;
         return Status::Success;
     }
 
@@ -154,9 +150,7 @@ public:
 
         Status status;
 
-        for (const T &data : Source) {
-            if ((status = Add(Move(data), Index++)) != Status::Success) return status;
-        }
+        for (const T &data : Source) if ((status = Add(Move(data), Index++)) != Status::Success) return status;
 
         Source.Length = 0;
         Source.Fit();

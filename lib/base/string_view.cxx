@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 05 of 2021, at 16:12 BRT
- * Last edited on April 18 of 2021 at 11:06 BRT */
+ * Last edited on July 06 of 2021 at 19:45 BRT */
 
 #include <base/string.hxx>
 
@@ -45,9 +45,8 @@ static UIntPtr CountDigits(UInt64 Value, UInt8 Base) {
 }
 
 static Void FromUInt(Char *Buffer, UInt64 Value, UInt8 Base, IntPtr &Current, IntPtr End) {
-    for (; Current >= End && Value; Current--, Value /= Base) {
+    for (; Current >= End && Value; Current--, Value /= Base)
         Buffer[Current] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Value % Base];
-    }
 }
 
 StringView StringView::FromInt(Char *Buffer, Int64 Value, UIntPtr Size) {
@@ -97,7 +96,6 @@ static Boolean IsInfinite(Float Value) {
      * bits are 0, and then we can just check the sign bit to know if it is -inf or +inf. */
 
     union { Float FloatValue; UInt64 IntValue; } val { .FloatValue = Value };
-
     return !(val.IntValue & 0xFFFFFFFFFFFFF) && (val.IntValue & 0x7FF0000000000000) == 0x7FF0000000000000;
 }
 
@@ -105,7 +103,6 @@ static Boolean IsNaN(Float Value) {
     /* And for checking NaNs, it's similar, but the fraction has to be anything except all zeroes. */
 
     union { Float FloatValue; UInt64 IntValue; } val { .FloatValue = Value };
-
     return (val.IntValue & 0xFFFFFFFFFFFFF) && (val.IntValue & 0x7FF0000000000000) == 0x7FF0000000000000;
 }
 
@@ -123,9 +120,8 @@ StringView StringView::FromFloat(Char *Buffer, Float Value, UIntPtr Size, UIntPt
     Int64 sign = Value < 0 ? -1 : 1;
     Value *= sign;
 
-    if (Buffer == Null || Size < CountDigits(Value, 10) + (sign < 1 ? 1 : 0) + (Precision ? Precision + 1 : 0) + 1) {
+    if (Buffer == Null || Size < CountDigits(Value, 10) + (sign < 1 ? 1 : 0) + (Precision ? Precision + 1 : 0) + 1)
         return {};
-    }
 
     /* Add pow10(-prec), to make sure we will, for example, print 1 instead of 0.999999... */
 
@@ -166,8 +162,8 @@ Void StringView::SetView(UIntPtr Start, UIntPtr End) {
 }
 
 static inline Boolean IsDigit(Char Value) { return Value >= '0' && Value <= '9'; }
-static inline Boolean IsHex(Char Value) { return IsDigit(Value) || (Value >= 'a' && Value <= 'f')
-                                                 || (Value >= 'A' && Value <= 'F'); }
+static inline Boolean IsHex(Char Value) { return IsDigit(Value) || (Value >= 'a' && Value <= 'f') ||
+                                                 (Value >= 'A' && Value <= 'F'); }
 
 static inline UInt64 ToHexUInt(const Char *Value, UIntPtr Length, UIntPtr &Position) {
     UInt64 ret = 0;
@@ -224,11 +220,10 @@ Float StringView::ToFloat(UIntPtr &Position) const {
         if (Position < GetViewLength() && Value[Position] == '.') {
             /* Just as we're going to do in the base 10 case, manually handle the dec part. */
 
-            for (Position++; Position < GetViewLength() && IsHex(Value[Position]); Position++, prec *= 16) {
+            for (Position++; Position < GetViewLength() && IsHex(Value[Position]); Position++, prec *= 16)
                 dec = (dec * 16) + (IsDigit(Value[Position]) ? Value[Position] - '0' :
                                     ((Value[Position] >= 'a' && Value[Position] <= 'f' ? Value[Position] - 'a' :
                                       Value[Position] - 'A') + 10));
-            }
         }
     } else {
         main = ToUInt(Position);
@@ -236,9 +231,8 @@ Float StringView::ToFloat(UIntPtr &Position) const {
         if (Position < GetViewLength() && Value[Position] == '.') {
             /* Manually handle the dec part, as we also have to increase the precision at each step. */
 
-            for (Position++; Position < GetViewLength() && IsDigit(Value[Position]); Position++, prec *= 10) {
+            for (Position++; Position < GetViewLength() && IsDigit(Value[Position]); Position++, prec *= 10)
                 dec = (dec * 10) + (Value[Position] - '0');
-            }
         }
     }
 
@@ -253,7 +247,7 @@ Float StringView::ToFloat(UIntPtr &Position) const {
     }
 
     return ret = main + (dec ? static_cast<Float>(dec) / prec : 0),
-            ret = exp ? (nege ? ret / Pow(base, exp) : ret * Pow(base, exp)) : ret, neg ? -ret : ret;
+           ret = exp ? (nege ? ret / Pow(base, exp) : ret * Pow(base, exp)) : ret, neg ? -ret : ret;
 }
 
 UInt64 StringView::ToUInt(UIntPtr &Position, Boolean OnlyDec) const {
@@ -265,22 +259,15 @@ UInt64 StringView::ToUInt(UIntPtr &Position, Boolean OnlyDec) const {
     UInt64 ret = 0;
     Boolean canb = !OnlyDec && Position + 1 < GetViewLength() && Value[Position] == '0';
 
-    if (canb && Value[Position + 1] == 'b') {
+    if (canb && Value[Position + 1] == 'b')
         for (Position += 2; Position < GetViewLength() && (Value[Position] == '0' || Value[Position] == '1');
-             Position++) {
-            ret = (ret * 2) + (Value[Position] - '0');
-        }
-    } else if (canb && Value[Position + 1] == 'o') {
+             Position++) ret = (ret * 2) + (Value[Position] - '0');
+    else if (canb && Value[Position + 1] == 'o')
         for (Position += 2; Position < GetViewLength() && Value[Position] >= '0' && Value[Position] <= '7';
-             Position++) {
-            ret = (ret * 8) + (Value[Position] - '0');
-        }
-    } else if (canb && Value[Position + 1] == 'x') Position += 2, ret = ToHexUInt(Value, GetViewLength(), Position);
-    else {
-        for (; Position < GetViewLength() && IsDigit(Value[Position]); Position++) {
-            ret = (ret * 10) + (Value[Position] - '0');
-        }
-    }
+             Position++) ret = (ret * 8) + (Value[Position] - '0');
+    else if (canb && Value[Position + 1] == 'x') Position += 2, ret = ToHexUInt(Value, GetViewLength(), Position);
+    else for (; Position < GetViewLength() && IsDigit(Value[Position]); Position++)
+        ret = (ret * 10) + (Value[Position] - '0');
 
     return ret;
 }
@@ -305,10 +292,7 @@ Boolean StringView::StartsWith(const StringView &Value) const {
 }
 
 static Boolean IsDelimiter(const StringView &Delimiters, Char Value) {
-    for (Char ch : Delimiters) {
-        if (ch == Value) return True;
-    }
-
+    for (Char ch : Delimiters) if (ch == Value) return True;
     return False;
 }
 

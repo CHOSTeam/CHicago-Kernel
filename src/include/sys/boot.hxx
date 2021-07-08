@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 05 of 2021, at 20:33 BRT
- * Last edited on March 14 of 2021 at 11:11 BRT */
+ * Last edited on July 06 of 2021 at 21:07 BRT */
 
 #pragma once
 
@@ -17,14 +17,14 @@ struct packed BootInfoSymbol {
 };
 
 struct packed BootInfoMemMap {
-    UIntPtr Base, Count;
+    UInt64 Base, Count;
     UInt8 Type;
 };
 
 struct packed BootInfo {
     UInt32 Magic;
-    UIntPtr KernelStart, RegionsStart, KernelEnd, EfiTempAddress,
-            MinPhysicalAddress, MaxPhysicalAddress, PhysicalMemorySize;
+    UIntPtr KernelStart, PhysMgrStart, KernelEnd;
+    UInt64 EfiTempAddress, MinPhysicalAddress, MaxPhysicalAddress, PhysicalMemorySize;
     Void *Directory;
 
     struct packed {
@@ -40,7 +40,7 @@ struct packed BootInfo {
 
     struct packed {
         UIntPtr Count;
-        BootInfoMemMap *Entries;
+        BootInfoMemMap Entries[256];
     } MemoryMap;
 
     struct packed {

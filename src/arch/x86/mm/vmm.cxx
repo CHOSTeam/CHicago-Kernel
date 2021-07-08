@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 12 of 2021, at 14:54 BRT
- * Last edited on April 14 of 2021, at 17:48 BRT */
+ * Last edited on July 06 of 2021, at 20:58 BRT */
 
 #include <arch/mm.hxx>
 #include <sys/mm.hxx>
@@ -16,9 +16,9 @@ using namespace CHicago;
 #define L2_ADDRESS 0xFFC00000
 #define HEAP_END L2_ADDRESS
 #define DEST_LEVEL(x) (x) ? 1 : 2
-#define USER_FLAG (Virtual >= 0xC0000000 ? 0 : PAGE_USER)
+#define USER_FLAG (Virtual >= 0x80000000 ? 0 : PAGE_USER)
 
-#define GET_INDEXES() UInt16 l1e = (Address >> 22) & 0x3FF, l2e = (Address >> 12) & 0xFFFFF
+#define GET_INDEXES() UInt32 l1e = (Address >> 22) & 0x3FF, l2e = (Address >> 12) & 0xFFFFF
 #else
 #define L1_ADDRESS 0xFFFFFFFFFFFFF000
 #define L2_ADDRESS 0xFFFFFFFFFFE00000
@@ -143,8 +143,9 @@ static Status DoMap(UIntPtr Virtual, UIntPtr Physical, UInt32 Flags) {
      * Let's just recursively allocate all levels, until we reach the last level (or the huge level). */
 
     Int8 res;
+    UInt64 phys;
     Status status;
-    UIntPtr *ent = Null, phys;
+    UIntPtr *ent = Null;
     UInt8 lvl = 1, dlvl = DEST_LEVEL(Flags & PAGE_HUGE);
 
     while ((res = CheckDirectory(Virtual, ent, lvl)) == -1) {
@@ -230,8 +231,9 @@ Void VirtMem::Initialize(BootInfo &Info) {
 #else
     for (UIntPtr i = start & ~0x7FFFFFFFFF; i < HEAP_END; i += 0x8000000000) {
 #endif
+        UInt64 phys;
+        UIntPtr *ent;
         UInt8 lvl = 1;
-        UIntPtr *ent, phys;
 
         if (CheckDirectory(i, ent, lvl) != -1 || lvl != 1) continue;
         ASSERT(PhysMem::ReferenceSingle(0, phys) == Status::Success);

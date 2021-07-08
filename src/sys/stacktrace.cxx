@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 09 of 2021, at 12:54 BRT
- * Last edited on April 10 of 2021, at 17:20 BRT */
+ * Last edited on July 06 of 2021, at 20:03 BRT */
 
 #include <util/stacktrace.hxx>
 
@@ -20,15 +20,12 @@ Void StackTrace::Initialize(BootInfo &Info) {
         SymbolCount = Info.Symbols.Count;
         Debug.Write("initialized the kernel symbol table, starting at 0x{:0*:16}, and there are {} symbols\n", Symbols,
                     SymbolCount);
-    } else {
+    } else
         Debug.Write("the kernel symbols are unavailable, and name resolving on backtrace will be also unavailable\n");
-    }
 }
 
 Boolean StackTrace::GetSymbol(UIntPtr Address, StringView &Name, UIntPtr &Offset) {
-    if (!Initialized) {
-        return False;
-    }
+    if (!Initialized) return False;
 
     /* Some symbols will not be included (0-length symbols, like __init_array_start), but we should have most symbols,
      * and of course the backtrace will normally only include the functions/virtual tables.

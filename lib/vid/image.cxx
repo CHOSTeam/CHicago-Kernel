@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 21:14 BRT
- * Last edited on March 15 of 2021 at 18:04 BRT */
+ * Last edited on July 06 of 2021 at 19:53 BRT */
 
 #include <vid/img.hxx>
 
@@ -19,7 +19,7 @@ Image::Image(Image &&Source)
 
 Image::Image(const Image &Source)
     : Buffer(Source.Buffer), Allocated(Source.Allocated), References(Source.References), Width(Source.Width),
-    Height(Source.Height) { if (References != Null) (*References)++; }
+      Height(Source.Height) { if (References != Null) (*References)++; }
 
 Image::Image(UInt16 Width, UInt16 Height)
         : Buffer(new UInt32[Width * Height]), Allocated(True), References(new UIntPtr), Width(Width), Height(Height) {

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 14 of 2021, at 23:45 BRT
- * Last edited on March 10 of 2021, at 17:11 BRT */
+ * Last edited on July 08 of 2021, at 09:13 BRT */
 
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
@@ -31,9 +31,10 @@ Status Heap::Increment(UIntPtr Amount) {
 
 	/* Now, we need to expand the heap, but this is not just a matter of increasing the Heap::Current variable, as we
 	 * need to make sure that the space we're expanding into is going to be mapped into the memory. */
-	
-	UIntPtr nw = Current + Amount, phys;
+
+	UIntPtr nw = Current + Amount;
 	Status status;
+    UInt64 phys;
 
 	for (; CurrentAligned < nw; CurrentAligned += PAGE_SIZE) {
 		if ((status = PhysMem::ReferenceSingle(0, phys)) != Status::Success) return status;
@@ -56,7 +57,7 @@ Void Heap::ReturnPhysical() {
 
     if (!Initialized) return;
 
-    for (; CurrentAligned - PAGE_SIZE >= Current;) {
+    while (CurrentAligned - PAGE_SIZE >= Current) {
         UIntPtr phys;
         UInt32 flags;
         CurrentAligned -= PAGE_SIZE;
@@ -82,11 +83,7 @@ Void Heap::AddFree(AllocBlock *Block) {
         Block->Next = cur;
         if (cur->Prev != Null) cur->Prev->Next = Block;
         else Base = Block;
-    } else {
-        Tail->Next = Block;
-        Block->Prev = Tail;
-        Tail = Block;
-    }
+    } else Tail->Next = Block, Block->Prev = Tail, Tail = Block;
 }
 
 Void Heap::RemoveFree(AllocBlock *Block) {
@@ -101,10 +98,7 @@ Void Heap::RemoveFree(AllocBlock *Block) {
     }
 
     if (Block->Prev != Null) Block->Prev->Next = Block->Next;
-    else if (Block->Next != Null) {
-        Block->Next->Prev = Null;
-        Base = Block->Next;
-    }
+    else if (Block->Next != Null) Block->Next->Prev = Null, Base = Block->Next;
 
     Block->Next = Block->Prev = Null;
 }
@@ -140,10 +134,7 @@ AllocBlock *Heap::FuseBlock(AllocBlock *Block) {
         Block->Next = Block->Next->Next;
 
         if (Block->Next != Null) Block->Next->Prev = Block;
-        else {
-            Tail->Prev->Next = Block;
-            Tail = Block;
-        }
+        else Tail->Prev->Next = Block, Tail = Block;
 
         return Block;
     }
@@ -230,38 +221,74 @@ Void *Heap::Allocate(UIntPtr Size, UIntPtr Align) {
     if (!Size || !Align || (Align & (Align - 1))) return Null;
     else if (Align <= 16) return Allocate(Size);
 
-    /* Let's over-alloc the space we need, so we can save that this is an aligned allocation, and the address of the
-     * block header. */
+    /* First, try finding a block with the right/enough alignment OR a block that has enough space for us to split it
+     * into one aligned and one unaligned block (and do this manually, instead of using FindBlock, so that we can do
+     * it all without repeating the search). */
 
-    UIntPtr tsz = Size + 2 * sizeof(UIntPtr) + (Align - 1);
-    Void *p0 = Allocate(tsz);
+    AllocBlock *blk = Base, *best = Null;
 
-    if (p0 == Null) return Null;
+    while (blk != Null) {
+        if (blk->Size >= Size && (best == Null || blk->Size < best->Size) &&
+            (!(blk->Start & (Align - 1)) || (Align - (blk->Start & (Align - 1)) >= sizeof(AllocBlock) &&
+             blk->Size >= (Align - (blk->Start & (Align - 1))) + Size))) best = blk;
+        blk = blk->Next;
+    }
 
-    /* Now, we just need to get the actual aligned start (the part that we're going to return). We can access it like it
-     * was a pointer, to save what we need. */
+    if (best == Null && Align - ((Current + sizeof(AllocBlock)) & (Align - 1)) < sizeof(AllocBlock)) {
+        /* We wouldn't have enough space for the alloc block, so just overshoot and alloc more memory than in the case
+         * below. */
 
-    auto p0i = reinterpret_cast<UIntPtr>(p0);
-    auto p1 = reinterpret_cast<UIntPtr*>((p0i + tsz) & -Align);
+        ASSERT(False);
+    } else if (best == Null) {
+        /* Need to alloc new block, and split said block in a way the we will have one unaligned block (with
+         * some "random" size), and one block with an aligned ->Start (and no need to worry about the unaligned block
+         * not having enough space for the header, we already handled that). */
 
-    return p1[-1] = ALLOC_BLOCK_MAGIC, p1[-2] = p0i - sizeof(AllocBlock), p1;
+        best = CreateBlock(Size + (Align - ((Current + sizeof(AllocBlock)) & (Align - 1))) - sizeof(AllocBlock));
+        if (best == Null) return Null;
+
+        AddFree(best);
+    }
+
+    if (!(best->Start & (Align - 1))) {
+        /* Suitable block, already aligned. */
+
+        if (best->Size > Size + sizeof(AllocBlock)) SplitBlock(best, Size);
+
+        RemoveFree(best);
+        blk = best;
+    } else {
+        /* Unsuitable block, but there is enough space to transform it into an aligned one. Manually do the same thing
+         * we do on SplitBlock (but this time the block that we're going to add to the free list is the first/original
+         * one). */
+
+        blk = reinterpret_cast<AllocBlock*>(best->Start + (Align - (best->Start & (Align - 1))) - sizeof(AllocBlock));
+
+        SetMemory(blk, 0, sizeof(AllocBlock));
+
+        blk->Magic = ALLOC_BLOCK_MAGIC;
+        blk->Start = best->Start + (Align - (best->Start & (Align - 1)));
+        blk->Size = Size;
+        best->Size = Align - (best->Start & (Align - 1)) - sizeof(AllocBlock);
+    }
+
+    /* If everything went well, we can clean the memory in the region. */
+
+    if (blk != Null) {
+        auto ret = reinterpret_cast<Void*>(blk->Start);
+        return SetMemory(ret, 0, Size), ret;
+    }
+
+    return Null;
 }
 
 Void Heap::Deallocate(Void *Address) {
     /* We need to check if the specified address is valid, and is inside of the kernel heap (from the start until the
-     * current highest allocated address), after that, we need to check if this is an aligned allocation, if it is, we
-     * need to convert the address into an UIntPtr pointer, and access ptr[-2] to get the header location, else, we just
-     * subtract the size of the header from the address. */
+     * current highest allocated address). */
 
-    AllocBlock *blk, *fblk;
     auto addr = reinterpret_cast<UIntPtr>(Address);
-
     ASSERT(Address != Null && addr >= Start + sizeof(AllocBlock) && Start <= Current);
-
-    if (addr - 2 * sizeof(UIntPtr) >= Start + sizeof(AllocBlock) &&
-        (reinterpret_cast<UIntPtr*>(Address))[-1] == ALLOC_BLOCK_MAGIC) {
-        blk = reinterpret_cast<AllocBlock *>((reinterpret_cast<UIntPtr *>(Address))[-2]);
-    } else blk = reinterpret_cast<AllocBlock*>(addr - sizeof(AllocBlock));
+    AllocBlock *blk = reinterpret_cast<AllocBlock*>(addr - sizeof(AllocBlock)), *fblk;
 
     /* Now, we need to check if this is a valid block, and if we haven't called Deallocate on it before (double
      * free). */

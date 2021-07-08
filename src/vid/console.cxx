@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 00:14 BRT
- * Last edited on April 10 of 2021, at 17:21 BRT */
+ * Last edited on July 06 of 2021, at 20:03 BRT */
 
 #include <vid/console.hxx>
 
@@ -54,11 +54,8 @@ Boolean TextConsole::WriteInt(Char Data) {
 
     if (!Data) return Front.GetBuffer() != Null;
 
-    if (X + DefaultFont.GlyphInfo[(UInt8)Data].Advance > Back.GetWidth()) {
-        FrontY += DefaultFont.Height;
-        BackY += DefaultFont.Height;
-        X = 0;
-    }
+    if (X + DefaultFont.GlyphInfo[(UInt8)Data].Advance > Back.GetWidth())
+        FrontY += DefaultFont.Height, BackY += DefaultFont.Height, X = 0;
 
     if (BackY + DefaultFont.Height > Back.GetHeight()) {
         /* FrontY controls our scrolling, as it contains the current position that this function can write to (before
@@ -86,10 +83,9 @@ Boolean TextConsole::WriteInt(Char Data) {
     switch (Data) {
     case '\n': BackY += DefaultFont.Height; FrontY += DefaultFont.Height;
     case '\r': X = 0; return True;
-    default: {
+    default:
         if (!Front.DrawCharacter(X, FrontY, Data, Foreground)) return False;
         break;
-    }
     }
 
     /* Copy the data from the double buffer into the main framebuffer (this is so that we don't need to read the video
@@ -100,9 +96,8 @@ Boolean TextConsole::WriteInt(Char Data) {
 
     X += DefaultFont.GlyphInfo[(UInt8)Data].Advance;
 
-    for (UInt16 i = 0; i < DefaultFont.Height; i++, bpos += Back.GetWidth(), fpos += Back.GetWidth()) {
+    for (UInt16 i = 0; i < DefaultFont.Height; i++, bpos += Back.GetWidth(), fpos += Back.GetWidth())
         CopyMemory(bpos, fpos, DefaultFont.GlyphInfo[(UInt8)Data].Advance * 4);
-    }
 
     return True;
 }

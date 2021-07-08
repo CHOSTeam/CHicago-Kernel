@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 22 of 2021, at 15:27 BRT
- * Last edited on March 05 of 2021 at 14:12 BRT */
+ * Last edited on July 06 of 2021 at 19:40 BRT */
 
 #pragma once
 
@@ -84,10 +84,15 @@ private:
 
 UIntPtr VariadicFormatInt(Boolean (*)(Char, Void*), Void*, const StringView&, const ArgumentList&);
 
-template<typename... T> static inline UIntPtr VariadicFormat(Boolean (*Function)(Char, Void*), Void *Context,
-                                                             const StringView &Format, T... Args) {
-    Argument list[] { Args... };
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-value"
+
+template<typename... T> static inline UIntPtr VariadicFormat(Boolean (*Function)(Char, Void*), Void *Context, const StringView &Format,
+                                            T... Args) {
+    Argument list[] = { Args... };
     return VariadicFormatInt(Function, Context, Format, ArgumentList(sizeof...(Args), list));
 }
+
+#pragma GCC diagnostic pop
 
 }

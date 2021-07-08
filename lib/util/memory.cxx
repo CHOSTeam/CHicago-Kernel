@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:45 BRT
- * Last edited on March 15 of 2021 at 18:02 BRT */
+ * Last edited on July 06 of 2021 at 19:51 BRT */
 
 #include <base/simd.hxx>
 
@@ -193,15 +193,9 @@ disable_ubsan Void MoveMemory(Void *Buffer, const Void *Source, UIntPtr Length) 
 
 disable_ubsan Boolean CompareMemory(const Void *const Left, const Void *const Right, UIntPtr Length) {
     if (Left == Null || Right == Null || Left == Right || !Length) return False;
-
     auto m1 = static_cast<const UInt8*>(Left), m2 = static_cast<const UInt8*>(Right);
-
     if (m1 + Length < m1 || m2 + Length < m2) return False;
-
-    for (; Length--;) {
-        if (*m1++ != *m2++) return False;
-    }
-
+    for (; Length--;) if (*m1++ != *m2++) return False;
     return True;
 }
 

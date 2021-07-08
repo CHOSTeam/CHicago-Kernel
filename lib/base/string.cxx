@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 05 of 2021, at 10:21 BRT
- * Last edited on April 18 of 2021 at 11:07 BRT */
+ * Last edited on July 06 of 2021 at 19:43 BRT */
 
 #include <base/string.hxx>
 
@@ -11,7 +11,7 @@ String::String(UIntPtr Length) : String() {
     /* We only need to alloc memory if the length is higher than 16 (as anything less or equal to that we can store in
      * the String class itself). */
 
-    if (Length > 16) if ((Value = new Char[Length + 1]) != Null) Capacity = Length + 1;
+    if (Length > 16 && (Value = new Char[Length + 1]) != Null) Capacity = Length + 1;
 }
 
 #define CONSTRUCT(l, val, r) \

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on April 10 of 2021, at 12:41 BRT
- * Last edited on April 10 of 2021, at 13:10 BRT */
+ * Last edited on July 07 of 2021, at 12:41 BRT */
 
 #pragma once
 
@@ -65,7 +65,11 @@ public:
     /* Utility functions. */
 
     static inline constexpr UIntPtr GetBit(UInt8 Bit) { return (UIntPtr)1 << Bit; }
-    static inline constexpr UIntPtr GetMask(UInt8 To) { return ((UIntPtr)2 << To) - 1; }
+
+    static inline constexpr UIntPtr GetMask(UInt8 To) {
+        return To < sizeof(UIntPtr) * 8 - 1 ? ((UIntPtr)2 << To) - 1 : UINTPTR_MAX;
+    }
+
     static inline constexpr UIntPtr GetMask(UInt8 From, UInt8 To) { return GetMask(To - From) << From; }
     static inline constexpr Int32 Count(UIntPtr State) { return POPCNT(State); }
     static inline constexpr UIntPtr Swap(UIntPtr State) { return BSWP(State); }

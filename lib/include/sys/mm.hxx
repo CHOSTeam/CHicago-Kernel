@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 04 of 2021, at 17:19 BRT
- * Last edited on March 10 of 2021 at 16:55 BRT */
+ * Last edited on July 08 of 2021 at 08:36 BRT */
 
 #pragma once
 
@@ -26,21 +26,6 @@
 #define PAGE_MASK (PAGE_SIZE - 1)
 #define HUGE_PAGE_MASK (HUGE_PAGE_SIZE - 1)
 
-#define PHYS_REGION_SHIFT 22
-#ifdef _LP64
-#define PHYS_REGION_PAGE_SHIFT 18
-#else
-#define PHYS_REGION_PAGE_SHIFT 17
-#endif
-
-#define PHYS_REGION_BITMAP_LEN ((1 << PHYS_REGION_SHIFT) / (1 << PHYS_REGION_PAGE_SHIFT))
-#define PHYS_REGION_BITMAP_PSIZE (sizeof(UIntPtr) * 8)
-#define PHYS_REGION_BITMAP_BSIZE (PAGE_SIZE * PHYS_REGION_BITMAP_PSIZE)
-
-#define PHYS_REGION_PSIZE (PHYS_REGION_BITMAP_LEN * PHYS_REGION_BITMAP_PSIZE)
-#define PHYS_REGION_BSIZE (PAGE_SIZE * PHYS_REGION_PSIZE)
-#define PHYS_REGION_MASK (PHYS_REGION_BSIZE - 1)
-
 #define MAP_USER 0x01
 #define MAP_KERNEL 0x02
 #define MAP_READ 0x04
@@ -63,10 +48,6 @@ namespace CHicago {
 class PhysMem {
 public:
 #ifdef KERNEL
-    struct packed Region {
-        UIntPtr Free, Used, Pages[PHYS_REGION_BITMAP_LEN];
-    };
-
     static Void Initialize(BootInfo&);
 #endif
 
@@ -74,47 +55,53 @@ public:
      * for doing said operation on a single page, one for multiple, contiguous, pages, and one for multiple, but
      * non-contiguous, pages. */
 
-    static Status AllocSingle(UIntPtr&, UIntPtr = PAGE_SIZE);
-    static Status AllocContig(UIntPtr, UIntPtr&, UIntPtr = PAGE_SIZE);
-    static Status AllocNonContig(UIntPtr, UIntPtr*, UIntPtr = PAGE_SIZE);
+    static Status AllocSingle(UInt64&, UInt64 = PAGE_SIZE);
+    static Status AllocContig(UIntPtr, UInt64&, UInt64 = PAGE_SIZE);
+    static Status AllocNonContig(UIntPtr, UInt64*, UInt64 = PAGE_SIZE);
 
-    static Status FreeSingle(UIntPtr);
-    static Status FreeContig(UIntPtr, UIntPtr);
-    static Status FreeNonContig(UIntPtr*, UIntPtr);
+    static Status FreeSingle(UInt64);
+    static Status FreeContig(UInt64, UIntPtr);
+    static Status FreeNonContig(UInt64*, UIntPtr);
 
-    static Status ReferenceSingle(UIntPtr, UIntPtr&, UIntPtr = PAGE_SIZE);
-    static Status ReferenceContig(UIntPtr, UIntPtr, UIntPtr&, UIntPtr = PAGE_SIZE);
-    static Status ReferenceNonContig(UIntPtr*, UIntPtr, UIntPtr*, UIntPtr = PAGE_SIZE);
+    static Status ReferenceSingle(UInt64, UInt64&, UInt64 = PAGE_SIZE);
+    static Status ReferenceContig(UInt64, UIntPtr, UInt64&, UInt64 = PAGE_SIZE);
+    static Status ReferenceNonContig(UInt64*, UIntPtr, UInt64*, UInt64 = PAGE_SIZE);
 
-    static Status DereferenceSingle(UIntPtr);
-    static Status DereferenceContig(UIntPtr, UIntPtr);
-    static Status DereferenceNonContig(UIntPtr*, UIntPtr);
+    static Status DereferenceSingle(UInt64);
+    static Status DereferenceContig(UInt64, UIntPtr);
+    static Status DereferenceNonContig(UInt64*, UIntPtr);
 
     /* Now we also need some helper functions for getting reference count of one page, to get the kernel (physical)
      * start/end, to get the amount of memory the system has, how much has been used, and how much is free. */
 
-    static UInt8 GetReferences(UIntPtr);
+    static UIntPtr GetReferences(UInt64);
 #ifdef KERNEL
+    static Void FreeWaitingPages(Void);
+
     static inline UIntPtr GetKernelStart() { return KernelStart; }
     static inline UIntPtr GetKernelEnd() { return KernelEnd; }
-    static inline UIntPtr GetMinAddress() { return MinAddress; }
-    static inline UIntPtr GetMaxAddress() { return MaxAddress; }
-    static inline UIntPtr GetSize() { return MaxBytes; }
-    static inline UIntPtr GetUsage() { return UsedBytes; }
-    static inline UIntPtr GetFree() { return MaxBytes - UsedBytes; }
+    static inline UInt64 GetMinAddress() { return MinAddress; }
+    static inline UInt64 GetMaxAddress() { return MaxAddress; }
+    static inline UInt64 GetSize() { return MaxBytes; }
+    static inline UInt64 GetUsage() { return UsedBytes; }
+    static inline UInt64 GetFree() { return MaxBytes - UsedBytes; }
 private:
-    static Status FindFreePages(UIntPtr, UIntPtr, UIntPtr&, UIntPtr&);
-    static Status AllocInt(UIntPtr, UIntPtr&, UIntPtr);
-    static Status FreeInt(UIntPtr, UIntPtr);
+    struct packed Page {
+        UIntPtr Size, References;
+        Page *NextSingle, *NextGroup, *LastSingle;
+    };
 
-    static UIntPtr KernelStart, KernelEnd, RegionCount, MinAddress, MaxAddress, MaxBytes, UsedBytes;
-    static Region *Regions;
-    static UInt8 *References;
+    static UInt64 Reverse(Page *Node);
+    static Status AllocInt(UIntPtr, UInt64&, UInt64);
+
+    static UInt64 MinAddress, MaxAddress, MaxBytes, UsedBytes;
+    static UIntPtr PageCount, KernelStart, KernelEnd;
+    static Page *Pages, *FreeList, *WaitingList;
     static Boolean Initialized;
 #else
-    static UIntPtr GetSize();
-    static UIntPtr GetUsage();
-    static UIntPtr GetFree();
+    static UInt64 GetSize();
+    static UInt64 GetUsage();
+    static UInt64 GetFree();
 #endif
 };
 

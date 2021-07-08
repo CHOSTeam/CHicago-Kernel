@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:37 BRT
- * Last edited on March 15 of 2021 at 18:00 BRT */
+ * Last edited on July 06 of 2021 at 19:49 BRT */
 
 #pragma once
 
@@ -11,11 +11,7 @@
 
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 #define EXTRACT_ARGB(c, a, r, g, b) \
-    (a) = ((c) >> 24) & 0xFF; \
-    (r) = ((c) >> 16) & 0xFF; \
-    (g) = ((c) >> 8) & 0xFF; \
-    (b) = (c) & 0xFF
-
+    (a) = ((c) >> 24) & 0xFF, (r) = ((c) >> 16) & 0xFF, (g) = ((c) >> 8) & 0xFF, (b) = (c) & 0xFF
 #define MAKE_ARGB(a, r, g, b) ((((a) & 0xFF) << 24) | (((r) & 0xFF) << 16) | (((g) & 0xFF) << 8) | ((b) & 0xFF))
 #define FIX_ARGB(c) (c)
 #else
@@ -103,9 +99,7 @@ public:
     Boolean DrawCharacter(UInt16, UInt16, Char, UInt32);
 
     template<typename... T> inline UIntPtr DrawString(UInt16 X, UInt16 Y, UInt32 Color, const StringView &Format, T... Args) {
-        if (Buffer == Null || X >= Width || Y >= Height) {
-            return 0;
-        }
+        if (Buffer == Null || X >= Width || Y >= Height) return 0;
 
         /* As we can't use a lambda that captures local variables as a function pointer, we need to save and pass the
          * X/Y values in another way... */
@@ -121,15 +115,10 @@ public:
             switch (Data) {
                 case '\n': ctx[2] += DefaultFont.Height;
                 case '\r': ctx[1] = 0; return True;
-                default: {
-                    if (!reinterpret_cast<Image*>(ctx[0])->DrawCharacter(ctx[1], ctx[2], Data, ctx[3])) {
-                        return False;
-                    }
-
+                default:
+                    if (!reinterpret_cast<Image*>(ctx[0])->DrawCharacter(ctx[1], ctx[2], Data, ctx[3])) return False;
                     ctx[1] += DefaultFont.GlyphInfo[(UInt8)Data].Advance;
-
                     return True;
-                }
             }
         }, static_cast<Void*>(ctx), Format, Args...);
     }

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 15:57 BRT
- * Last edited on April 18 of 2021 at 11:11 BRT */
+ * Last edited on July 06 of 2021 at 19:53 BRT */
 
 #include <base/string.hxx>
 
@@ -115,21 +115,16 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
             /* Well, and also there is the case where we have an '*' instead of the width/precision. */
 
             if (Format[pos] != '.' && Format[pos] != ':' && Format[pos] != '}') {
-                if (Format[pos] == '*') {
-                    wset = True;
-                    pos++;
-                } else {
+                if (Format[pos] == '*') wset = True, pos++;
+                else {
                     if (!IsDigit(Format[pos])) return written;
                     width = Format.ToUInt(pos, True);
                 }
             }
 
             if (Format[pos] != '.' && Format[pos] != ':' && Format[pos] != '}') return written;
-            else if (Format[pos] == '.' && Format[pos + 1] == '*') {
-                prec = sizeof(UIntPtr) * 2;
-                pset = 2;
-                pos += 2;
-            } else if (Format[pos] == '.') {
+            else if (Format[pos] == '.' && Format[pos + 1] == '*') prec = sizeof(UIntPtr) * 2, pset = 2, pos += 2;
+            else if (Format[pos] == '.') {
                 if (!IsDigit(Format[++pos])) return written;
                 prec = Format.ToUInt(pos, True);
                 pset = 1;
@@ -193,7 +188,7 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
             UInt64 ival = type == ArgumentType::ULong ? val.ULongValue :
                           (type == ArgumentType::UInt32 ? val.UInt32Value :
                           (type == ArgumentType::UInt64 ? val.UInt64Value :
-                                                          reinterpret_cast<UIntPtr>(val.PointerValue)));
+                          reinterpret_cast<UIntPtr>(val.PointerValue)));
             StringView str = StringView::FromUInt(buf, ival, 65, base);
             UIntPtr len = str.GetLength(),
                     spaces = !zero && width > len && width > prec ? width - prec - (prec ? 0 : len) : 0,
@@ -242,14 +237,13 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
 
             break;
         }
-        case ArgumentType::Char: {
+        case ArgumentType::Char:
             /* Finally, for characters, well, we just need to handle the padding. */
 
             PAD(width > 1 ? width - 1 : 0, ' ');
             WRITE_CHAR(val.CharValue);
 
             break;
-        }
         }
     }
 

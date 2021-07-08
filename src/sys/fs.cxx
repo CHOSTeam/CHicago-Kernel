@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 14:02 BRT
- * Last edited on April 18 of 2021, at 11:22 BRT */
+ * Last edited on July 06 of 2021, at 20:02 BRT */
 
 #include <sys/fs.hxx>
 
@@ -90,21 +90,20 @@ File &File::operator =(const File &Source) {
 
 Status File::Read(UInt64 Offset, UInt64 Length, Void *Buffer, UInt64 &Count) const {
     if (Buffer == Null || !Length) return Status::InvalidArg;
-    return Count = 0, ((Flags & OPEN_DIR) || !(Flags & OPEN_READ) || Fs.Read == Null)
-                      ? Status::Unsupported : Fs.Read(Priv, INode, Offset, Length, Buffer, &Count);
+    return Count = 0, ((Flags & OPEN_DIR) || !(Flags & OPEN_READ) || Fs.Read == Null) ? Status::Unsupported :
+           Fs.Read(Priv, INode, Offset, Length, Buffer, &Count);
 }
 
 Status File::Write(UInt64 Offset, UInt64 Length, const Void *Buffer, UInt64 &Count) const {
     if (Buffer == Null || !Length) return Status::InvalidArg;
-    return Count = 0, ((Flags & OPEN_DIR) || !(Flags & OPEN_WRITE) || Fs.Write == Null)
-                      ? Status::Unsupported : Fs.Write(Priv, INode, Offset, Length, Buffer, &Count);
+    return Count = 0, ((Flags & OPEN_DIR) || !(Flags & OPEN_WRITE) || Fs.Write == Null) ? Status::Unsupported :
+           Fs.Write(Priv, INode, Offset, Length, Buffer, &Count);
 }
 
 Status File::ReadDirectory(UIntPtr Index, String &Name) const {
     Char *out = Null;
-    Status status = (!(Flags & OPEN_DIR) || !(Flags & OPEN_READ) || Fs.ReadDirectory == Null)
-                    ? Status::Unsupported : Fs.ReadDirectory(Priv, INode, Index, &out);
-
+    Status status = (!(Flags & OPEN_DIR) || !(Flags & OPEN_READ) || Fs.ReadDirectory == Null) ? Status::Unsupported :
+                    Fs.ReadDirectory(Priv, INode, Index, &out);
     if (status != Status::Success) return status;
     return Name = out, delete out, !Name.GetLength() ? Status::OutOfMemory : Status::Success;
 }
@@ -116,9 +115,9 @@ Status File::Search(const StringView &Name, UInt8 Flags, File &Out) const {
     Void *priv;
     UInt64 inode, len;
 
-    Status status = (!(this->Flags & OPEN_DIR) || !(this->Flags & OPEN_READ) || Fs.Search == Null)
-                    ? Status::Unsupported : Fs.Search(Priv, INode, Name.GetValue() + Name.GetViewStart(),
-                                                      Name.GetViewLength(), &priv, &inode, &len);
+    Status status = (!(this->Flags & OPEN_DIR) || !(this->Flags & OPEN_READ) || Fs.Search == Null) ?
+                    Status::Unsupported : Fs.Search(Priv, INode, Name.GetValue() + Name.GetViewStart(),
+                                                    Name.GetViewLength(), &priv, &inode, &len);
 
     if (status != Status::Success) return status;
     else if (Fs.Open != Null && (status = Fs.Open(priv, inode, Flags)) != Status::Success) {
@@ -130,39 +129,30 @@ Status File::Search(const StringView &Name, UInt8 Flags, File &Out) const {
 }
 
 Status File::Create(const StringView &Name, UInt8 Flags) const {
-    return (!(this->Flags & OPEN_DIR) || !(this->Flags & OPEN_WRITE) || Fs.Create == Null)
-           ? Status::Unsupported : Fs.Create(Priv, INode, Name.GetValue() + Name.GetViewStart(),
-                                             Name.GetViewLength(), Flags);
+    return (!(this->Flags & OPEN_DIR) || !(this->Flags & OPEN_WRITE) || Fs.Create == Null) ? Status::Unsupported :
+           Fs.Create(Priv, INode, Name.GetValue() + Name.GetViewStart(), Name.GetViewLength(), Flags);
 }
 
 Status File::Control(UIntPtr Function, const Void *InBuffer, Void *OutBuffer) const {
-    return ((Flags & OPEN_DIR) || !(Flags & OPEN_READ) || Fs.Control == Null)
-           ? Status::Unsupported : Fs.Control(Priv, INode, Function, InBuffer, OutBuffer);
+    return ((Flags & OPEN_DIR) || !(Flags & OPEN_READ) || Fs.Control == Null) ? Status::Unsupported :
+           Fs.Control(Priv, INode, Function, InBuffer, OutBuffer);
 }
 
 Status File::Unmount() const {
     /* Only the FileSys::Unmount function should call us, we don't have any way to be sure that we aren't being called
      * by something else, but let's at least try to check the name, and if this is a directory. */
 
-    return (!Name.Compare("/") || !(Flags & OPEN_DIR) || Fs.Unmount == Null) ? Status::Unsupported
-                                                                             : Fs.Unmount(Priv, INode);
+    return (!Name.Compare("/") || !(Flags & OPEN_DIR) || Fs.Unmount == Null) ? Status::Unsupported :
+                                                                               Fs.Unmount(Priv, INode);
 }
 
 MountPoint &MountPoint::operator =(MountPoint &&Source) {
-    if (this != &Source) {
-        Root = Move(Source.Root);
-        Path = Move(Source.Path);
-    }
-
+    if (this != &Source) Root = Move(Source.Root), Path = Move(Source.Path);
     return *this;
 }
 
 MountPoint &MountPoint::operator =(const MountPoint &Source) {
-    if (this != &Source) {
-        Root = Source.Root;
-        Path = Source.Path;
-    }
-
+    if (this != &Source) Root = Source.Root, Path = Source.Path;
     return *this;
 }
 
@@ -260,9 +250,8 @@ Status FileSys::CreateMountPoint(const StringView &Path, const File &Root) {
     /* We need to export this to be visible so the user can mount the boot directory, the root directory, the
      * /Devices folder etc. */
 
-    if (Path[0] != '/' || (Root.GetFlags() & (OPEN_READ | OPEN_DIR)) != (OPEN_READ | OPEN_DIR)) {
+    if (Path[0] != '/' || (Root.GetFlags() & (OPEN_READ | OPEN_DIR)) != (OPEN_READ | OPEN_DIR))
         return Status::InvalidArg;
-    }
 
     StringView path = FixView(Path);
 
@@ -316,10 +305,9 @@ Status FileSys::Open(const StringView &Path, UInt8 Flags, File &Out) {
 
         parts.Remove(0);
 
-        if ((status = dir.Search(name, fdir, cur)) != Status::Success) {
+        if ((status = dir.Search(name, fdir, cur)) != Status::Success)
             if (status != Status::DoesntExist || !(Flags & OPEN_RECUR_CREATE) ||
                 (status = dir.Create(name, fdir)) != Status::Success) return status;
-        }
 
         dir = Move(cur);
     }
@@ -354,16 +342,14 @@ Status FileSys::Mount(const StringView &Dest, const StringView &Source, UInt8 Fl
     UInt64 inode;
     Void *priv;
 
-    if (Open(Dest, OPEN_READ, dst) == Status::Success || Open(Dest, OPEN_DIR | OPEN_READ, dst) == Status::Success) {
+    if (Open(Dest, OPEN_READ, dst) == Status::Success || Open(Dest, OPEN_DIR | OPEN_READ, dst) == Status::Success)
         return Status::AlreadyMounted;
-    } else if ((status = Open(Source, Flags, src)) != Status::Success) return status;
+    else if ((status = Open(Source, Flags, src)) != Status::Success) return status;
 
     for (const FsImpl &fs : FileSystems) {
         if ((status = fs.Mount((Void*)&src, &priv, &inode)) == Status::Success) {
-            if ((status = CreateMountPoint(Dest, File("/", OPEN_DIR | Flags, fs, 0, priv, inode))) != Status::Success) {
+            if ((status = CreateMountPoint(Dest, File("/", OPEN_DIR | Flags, fs, 0, priv, inode))) != Status::Success)
                 fs.Unmount(priv, inode);
-            }
-
             return status;
         } else if (status == Status::OutOfMemory) {
             /* I think that it is a good idea to fail in the case the FS driver returns that the kernel is out of
