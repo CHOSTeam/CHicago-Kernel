@@ -1,11 +1,12 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 04 of 2021, at 17:19 BRT
- * Last edited on July 08 of 2021 at 08:36 BRT */
+ * Last edited on July 09 of 2021 at 13:41 BRT */
 
 #pragma once
 
 #include <base/status.hxx>
+#include <base/traits.hxx>
 
 #ifdef KERNEL
 #include <sys/arch.hxx>
@@ -48,6 +49,12 @@ namespace CHicago {
 class PhysMem {
 public:
 #ifdef KERNEL
+    struct packed Page {
+        UIntPtr Count;
+        UInt8 References;
+        Page *NextSingle, *NextGroup, *LastSingle;
+    };
+
     static Void Initialize(BootInfo&);
 #endif
 
@@ -55,21 +62,17 @@ public:
      * for doing said operation on a single page, one for multiple, contiguous, pages, and one for multiple, but
      * non-contiguous, pages. */
 
-    static Status AllocSingle(UInt64&, UInt64 = PAGE_SIZE);
-    static Status AllocContig(UIntPtr, UInt64&, UInt64 = PAGE_SIZE);
-    static Status AllocNonContig(UIntPtr, UInt64*, UInt64 = PAGE_SIZE);
+    static Status Allocate(UIntPtr, UInt64&, UInt64 = PAGE_SIZE);
+    static Status Allocate(UIntPtr, UInt64*, UInt64 = PAGE_SIZE);
 
-    static Status FreeSingle(UInt64);
-    static Status FreeContig(UInt64, UIntPtr);
-    static Status FreeNonContig(UInt64*, UIntPtr);
+    static Status Free(UInt64, UIntPtr = 1);
+    static Status Free(UInt64*, UIntPtr = 1);
 
-    static Status ReferenceSingle(UInt64, UInt64&, UInt64 = PAGE_SIZE);
-    static Status ReferenceContig(UInt64, UIntPtr, UInt64&, UInt64 = PAGE_SIZE);
-    static Status ReferenceNonContig(UInt64*, UIntPtr, UInt64*, UInt64 = PAGE_SIZE);
+    static Status Reference(UInt64, UIntPtr, UInt64&, UInt64 = PAGE_SIZE);
+    static Status Reference(UInt64*, UIntPtr, UInt64*, UInt64 = PAGE_SIZE);
 
-    static Status DereferenceSingle(UInt64);
-    static Status DereferenceContig(UInt64, UIntPtr);
-    static Status DereferenceNonContig(UInt64*, UIntPtr);
+    static Status Dereference(UInt64, UIntPtr = 1);
+    static Status Dereference(UInt64*, UIntPtr = 1);
 
     /* Now we also need some helper functions for getting reference count of one page, to get the kernel (physical)
      * start/end, to get the amount of memory the system has, how much has been used, and how much is free. */
@@ -86,13 +89,7 @@ public:
     static inline UInt64 GetUsage() { return UsedBytes; }
     static inline UInt64 GetFree() { return MaxBytes - UsedBytes; }
 private:
-    struct packed Page {
-        UIntPtr Size, References;
-        Page *NextSingle, *NextGroup, *LastSingle;
-    };
-
     static UInt64 Reverse(Page *Node);
-    static Status AllocInt(UIntPtr, UInt64&, UInt64);
 
     static UInt64 MinAddress, MaxAddress, MaxBytes, UsedBytes;
     static UIntPtr PageCount, KernelStart, KernelEnd;
@@ -171,5 +168,132 @@ private:
     static UIntPtr GetFree();
 #endif
 };
+
+#ifdef KERNEL
+template<class T, class U> static inline UIntPtr FreeWaitingPages(T *&FreeList, T *&WaitingList, U &Reverse) {
+    UIntPtr count = 0;
+
+    while (WaitingList != Null) {
+        /* Easiest case to handle is when this is a whole new entry (doesn't continue any other), as we just need
+         * to add it to the right place. Other than that, we might need to increase the size of one region, and
+         * merge multiple regions after increasing the size. */
+
+        T *cur = FreeList, *prev = Null, *next = WaitingList->NextSingle;
+
+        for (; cur != Null && Reverse(cur) < Reverse(WaitingList) &&
+               Reverse(WaitingList) != Reverse(cur) + (cur->Count << PAGE_SHIFT) &&
+               Reverse(WaitingList) + PAGE_SIZE != Reverse(cur); prev = cur, cur = cur->NextGroup) ;
+
+        count++;
+        WaitingList->LastSingle = WaitingList;
+
+        if (cur == Null && prev == Null) {
+            WaitingList->NextSingle = Null;
+            FreeList = WaitingList;
+        } else if (cur == Null) {
+            WaitingList->NextSingle = Null;
+            prev->NextGroup = WaitingList;
+        } else if (Reverse(WaitingList) == Reverse(cur) + (cur->Count << PAGE_SHIFT)) {
+            WaitingList->NextSingle = cur->LastSingle->NextSingle;
+            WaitingList->LastSingle = Null;
+            cur->LastSingle->NextSingle = WaitingList;
+            cur->LastSingle = WaitingList;
+            cur->Count++;
+
+            while (cur->NextGroup != Null && Reverse(cur) + (cur->Count << PAGE_SHIFT) == Reverse(cur->NextGroup)) {
+                T *next = cur->NextGroup;
+                cur->Count += next->Count;
+                cur->LastSingle->NextSingle = next;
+                cur->LastSingle = next->LastSingle;
+                cur->NextGroup = next->NextGroup;
+                next->Count = 1;
+                next->NextGroup = next->LastSingle = Null;
+            }
+        } else if (Reverse(WaitingList) + (WaitingList->Count << PAGE_SHIFT) == Reverse(cur)) {
+            (prev != Null ? prev->NextGroup : FreeList) = WaitingList;
+            WaitingList->Count += cur->Count;
+            WaitingList->NextSingle = cur;
+            WaitingList->NextGroup = cur->NextGroup;
+            WaitingList->LastSingle = cur->LastSingle;
+            cur->Count = 1;
+            cur->NextGroup = cur->LastSingle = Null;
+        } else {
+            (prev != Null ? prev->NextGroup : FreeList) = WaitingList;
+            WaitingList->NextSingle = WaitingList->NextGroup = cur;
+        }
+
+        WaitingList = next;
+    }
+
+    return count;
+}
+
+template<class T, class U, class V> static inline
+Status AllocatePages(T *&FreeList, U &Reverse, UIntPtr Count, V &Out, V Align) {
+    T *prev = Null;
+
+    for (T *cur = FreeList; cur != Null; prev = cur, cur = cur->NextGroup) {
+        if (cur->Count < Count) continue;
+        else if (Reverse(cur) & (Align - 1)) {
+            UIntPtr size = cur->Count - 1;
+            T *prev2 = cur, *cur2 = cur->NextSingle;
+            UInt64 end = Reverse(cur) + (cur->Count << PAGE_SHIFT);
+
+            for (; cur2 != Null && Reverse(cur2) < end && size >= Count; prev2 = cur2, cur2 = cur2->NextSingle, size--)
+                if (!(Reverse(cur2) & (Align - 1))) break;
+            if (cur2 == Null || Reverse(cur2) >= end || size < Count) continue;
+
+            /* Two things we might have to do here: Or we need to just decrease the cur->Count, or we need to split the
+             * block in two (which later might be rejoined in the FreeWaitingList func). */
+
+            Out = Reverse(cur2);
+
+            for (UIntPtr i = 0; i < Count; i++) {
+                T *next = cur2->NextSingle;
+                cur2->Count = 0;
+                if constexpr (IsSameV<T, PhysMem::Page>) cur2->References = 1;
+                cur2->NextSingle = Null;
+                cur2 = next;
+            }
+
+            if (Reverse(cur2) >= end) cur->Count -= Count;
+            else {
+                cur2->Count = size - Count;
+                cur2->NextGroup = cur->NextGroup;
+                cur->Count -= size;
+                cur->NextGroup = cur2;
+            }
+
+            return prev2->NextSingle = cur2, Status::Success;
+        }
+
+        /* Taking the pages from the start is already enough (alignment is OK), we just need to move the group start
+         * (or remove the group). */
+
+        Out = Reverse(cur);
+
+        UIntPtr nsize = cur->Count - Count;
+        T *group = cur->NextGroup, *last = cur->LastSingle;
+
+        while (Count--) {
+            T *next = cur->NextSingle;
+            cur->Count = 0;
+            if constexpr (IsSameV<T, PhysMem::Page>) cur->References = 1;
+            cur->NextSingle = cur->NextGroup = cur->LastSingle = Null;
+            cur = next;
+        }
+
+        if (prev == Null) FreeList = cur;
+        else prev->NextSingle = prev->NextGroup = cur;
+
+        if (nsize) cur->NextGroup = group, cur->LastSingle = last, cur->Count = nsize;
+        else if (prev != Null) prev->NextGroup = group;
+
+        return Status::Success;
+    }
+
+    return Status::OutOfMemory;
+}
+#endif
 
 }

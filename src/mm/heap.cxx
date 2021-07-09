@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 14 of 2021, at 23:45 BRT
- * Last edited on July 08 of 2021, at 09:13 BRT */
+ * Last edited on July 09 of 2021, at 10:49 BRT */
 
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
@@ -37,9 +37,9 @@ Status Heap::Increment(UIntPtr Amount) {
     UInt64 phys;
 
 	for (; CurrentAligned < nw; CurrentAligned += PAGE_SIZE) {
-		if ((status = PhysMem::ReferenceSingle(0, phys)) != Status::Success) return status;
+		if ((status = PhysMem::Reference(0, 1, phys)) != Status::Success) return status;
 		else if ((status = VirtMem::Map(CurrentAligned, phys, PAGE_SIZE, MAP_RW)) != Status::Success) {
-			PhysMem::DereferenceSingle(phys);
+			PhysMem::Dereference(phys);
 			return status;
 		}
 	}
@@ -61,7 +61,7 @@ Void Heap::ReturnPhysical() {
         UIntPtr phys;
         UInt32 flags;
         CurrentAligned -= PAGE_SIZE;
-        if (VirtMem::Query(CurrentAligned, phys, flags) == Status::Success) PhysMem::DereferenceSingle(phys);
+        if (VirtMem::Query(CurrentAligned, phys, flags) == Status::Success) PhysMem::Dereference(phys);
     }
 }
 

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 12 of 2021, at 14:54 BRT
- * Last edited on July 06 of 2021, at 20:58 BRT */
+ * Last edited on July 09 of 2021, at 11:00 BRT */
 
 #include <arch/mm.hxx>
 #include <sys/mm.hxx>
@@ -153,7 +153,7 @@ static Status DoMap(UIntPtr Virtual, UIntPtr Physical, UInt32 Flags) {
          * call CheckDirectory again). */
 
         if (lvl >= dlvl) break;
-        else if ((status = PhysMem::ReferenceSingle(0, phys)) != Status::Success) return status;
+        else if ((status = PhysMem::Reference(0, 1, phys)) != Status::Success) return status;
 
         lvl++;
         *ent = phys | PAGE_PRESENT | PAGE_WRITE | USER_FLAG;
@@ -179,9 +179,8 @@ Status VirtMem::Map(UIntPtr Virtual, UIntPtr Physical, UIntPtr Size, UInt32 Flag
 
     Status status;
 
-    for (UIntPtr i = 0; i < Size; i += (Flags & MAP_HUGE) ? HUGE_PAGE_SIZE : PAGE_SIZE) {
+    for (UIntPtr i = 0; i < Size; i += (Flags & MAP_HUGE) ? HUGE_PAGE_SIZE : PAGE_SIZE)
         if ((status = DoMap(Virtual + i, Physical + i, FromFlags(Flags))) != Status::Success) return status;
-    }
 
     return Status::Success;
 }
@@ -209,9 +208,8 @@ Status VirtMem::Unmap(UIntPtr Virtual, UIntPtr Size, Boolean Huge) {
 
     Status status;
 
-    for (UIntPtr i = 0; i < Size; i += Huge ? HUGE_PAGE_SIZE : PAGE_SIZE) {
+    for (UIntPtr i = 0; i < Size; i += Huge ? HUGE_PAGE_SIZE : PAGE_SIZE)
         if ((status = DoUnmap(Virtual + i, Huge)) != Status::Success) return status;
-    }
 
     return Status::Success;
 }
@@ -236,7 +234,7 @@ Void VirtMem::Initialize(BootInfo &Info) {
         UInt8 lvl = 1;
 
         if (CheckDirectory(i, ent, lvl) != -1 || lvl != 1) continue;
-        ASSERT(PhysMem::ReferenceSingle(0, phys) == Status::Success);
+        ASSERT(PhysMem::Reference(0, 1, phys) == Status::Success);
 
         lvl++;
         *ent = phys | PAGE_PRESENT | PAGE_WRITE;
