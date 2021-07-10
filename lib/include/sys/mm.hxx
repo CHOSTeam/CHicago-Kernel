@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 04 of 2021, at 17:19 BRT
- * Last edited on July 09 of 2021 at 13:41 BRT */
+ * Last edited on July 10 of 2021 at 11:10 BRT */
 
 #pragma once
 
@@ -26,6 +26,9 @@
 
 #define PAGE_MASK (PAGE_SIZE - 1)
 #define HUGE_PAGE_MASK (HUGE_PAGE_SIZE - 1)
+
+#define VIRT_GROUP_PAGE_COUNT (PAGE_SIZE / sizeof(VirtMem::Page))
+#define VIRT_GROUP_RANGE (PAGE_SIZE * VIRT_GROUP_PAGE_COUNT)
 
 #define MAP_USER 0x01
 #define MAP_KERNEL 0x02
@@ -105,12 +108,29 @@ private:
 class VirtMem {
 public:
 #ifdef KERNEL
-    static Void Initialize(BootInfo&);
-#endif
+    struct packed Page {
+        UIntPtr Count;
+        Page *NextSingle, *NextGroup, *LastSingle;
+    };
 
-    static Status Query(UIntPtr, UIntPtr&, UInt32&);
+    static Void Initialize(BootInfo&);
+    static Void FreeWaitingPages(Void);
+
+#endif
+    static Status Query(UIntPtr, UInt64&, UInt32&);
     static Status Map(UIntPtr, UIntPtr, UIntPtr, UInt32);
     static Status Unmap(UIntPtr, UIntPtr, Boolean = False);
+
+    static Status Allocate(UIntPtr, UIntPtr&, UIntPtr = PAGE_SIZE);
+    static Status Free(UIntPtr, UIntPtr);
+#ifdef KERNEL
+private:
+    static Status ExpandPool(Void);
+    static UIntPtr Reverse(Page*);
+
+    static UIntPtr Start, End, Current, FreeCount;
+    static Page *FreeList, *WaitingList;
+#endif
 };
 
 struct AllocBlock {
@@ -125,47 +145,34 @@ struct AllocBlock {
 
 class Heap {
 public:
-    /* The VirtMem::Initialize (that may be arch-specific, instead of our generic one) will call the init function, and
-     * pre-map the entries that will be used (on the top level, so that we don't accidentally waste too much
-     * memory). */
-
 #ifdef KERNEL
-    static Void Initialize(UIntPtr, UIntPtr);
-    static Void ReturnPhysical();
+    struct Block {
+        UIntPtr Magic, Size;
+#ifndef _LP64
+        UIntPtr Padding[2];
 #endif
+        union {
+            struct { Block *Next, *Prev; } Free;
+            UInt8 Data[0];
+        };
+    };
 
-    static Status Increment(UIntPtr);
-    static Void Decrement(UIntPtr);
+    static Void ReturnMemory();
+#endif
 
     static Void *Allocate(UIntPtr);
     static Void *Allocate(UIntPtr, UIntPtr);
-    static Void Deallocate(Void*);
+    static Void Free(Void*);
 
 #ifdef KERNEL
-    static inline Void *GetStart() { return reinterpret_cast<Void*>(Start); }
-    static inline Void *GetEnd() { return reinterpret_cast<Void*>(End); }
-    static inline Void *GetCurrent() { return reinterpret_cast<Void*>(Current); }
-    static inline UIntPtr GetSize() { return End - Start; }
-    static inline UIntPtr GetUsage() { return CurrentAligned - Start; }
-    static inline UIntPtr GetFree() { return End - CurrentAligned; }
 private:
-    static Void AddFree(AllocBlock*);
-    static Void RemoveFree(AllocBlock*);
-    static Void SplitBlock(AllocBlock*, UIntPtr);
-    static AllocBlock *FuseBlock(AllocBlock*);
-    static AllocBlock *FindBlock(UIntPtr);
-    static AllocBlock *CreateBlock(UIntPtr);
+    static Block *Split(Block*, UIntPtr, Boolean = True);
+    static Block *CreateBlock(UIntPtr);
+    static Block *FindFree(UIntPtr);
+    static Boolean AddFree(Block*);
+    static Void RemoveFree(Block*);
 
-    static Boolean Initialized;
-    static AllocBlock *Base, *Tail;
-    static UIntPtr Start, End, Current, CurrentAligned;
-#else
-    static Void *GetStart();
-    static Void *GetEnd();
-    static Void *GetCurrent();
-    static UIntPtr GetSize();
-    static UIntPtr GetUsage();
-    static UIntPtr GetFree();
+    static Block *Head, *Tail;
 #endif
 };
 

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 25 of 2020, at 09:22 BRT
- * Last edited on March 05 of 2021, at 14:07 BRT */
+ * Last edited on July 10 of 2021, at 11:04 BRT */
 
 #include <base/std.hxx>
 #include <sys/mm.hxx>
@@ -23,11 +23,11 @@ Void *operator new[](long unsigned int Size, align_val_t Align) { return Heap::A
 
 /* On the ::delete side, we also have 8 operators to implement... */
 
-Void operator delete(Void *Address)  { Heap::Deallocate(Address); }
-Void operator delete[](Void *Address) { Heap::Deallocate(Address); }
-Void operator delete(Void *Address, long unsigned int) { Heap::Deallocate(Address); }
-Void operator delete[](Void *Address, long unsigned int) { Heap::Deallocate(Address); }
-Void operator delete(Void *Address, align_val_t) { Heap::Deallocate(Address); }
-Void operator delete[](Void *Address, align_val_t) { Heap::Deallocate(Address); }
-Void operator delete(Void *Address, long unsigned int, align_val_t) { Heap::Deallocate(Address); }
-Void operator delete[](Void *Address, long unsigned int, align_val_t) { Heap::Deallocate(Address); }
+Void operator delete(Void *Address)  { Heap::Free(Address); }
+Void operator delete[](Void *Address) { Heap::Free(Address); }
+Void operator delete(Void *Address, long unsigned int) { Heap::Free(Address); }
+Void operator delete[](Void *Address, long unsigned int) { Heap::Free(Address); }
+Void operator delete(Void *Address, align_val_t) { Heap::Free(Address); }
+Void operator delete[](Void *Address, align_val_t) { Heap::Free(Address); }
+Void operator delete(Void *Address, long unsigned int, align_val_t) { Heap::Free(Address); }
+Void operator delete[](Void *Address, long unsigned int, align_val_t) { Heap::Free(Address); }

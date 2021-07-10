@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 28 of 2021, at 11:51 BRT
- * Last edited on July 06 of 2021 at 19:47 BRT */
+ * Last edited on July 10 of 2021 at 11:04 BRT */
 
 #pragma once
 
@@ -105,7 +105,7 @@ public:
 
         if (Elements != Null) {
             CopyMemory(buf, Elements, Length * sizeof(T));
-            Heap::Deallocate(Elements);
+            Heap::Free(Elements);
         }
 
         return Elements = buf, Capacity = Size, Status::Success;
@@ -121,12 +121,12 @@ public:
 
         if (Elements == Null || Capacity == Length) return Status::Success;
         else if (!Length) {
-            Heap::Deallocate(Elements);
+            Heap::Free(Elements);
             return Elements = Null, Capacity = 0, Status::Success;
         } else if ((buf = static_cast<T*>(Heap::Allocate(sizeof(T) * Length))) == Null) return Status::OutOfMemory;
 
         CopyMemory(buf, Elements, Length * sizeof(T));
-        Heap::Deallocate(Elements);
+        Heap::Free(Elements);
 
         return Elements = buf, Capacity = Length, Status::Success;
     }

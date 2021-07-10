@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on July 09 of 2021, at 12:20 BRT */
+ * Last edited on July 10 of 2021, at 10:50 BRT */
 
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
@@ -86,7 +86,7 @@ Status PhysMem::Allocate(UIntPtr Count, UInt64 &Out, UInt64 Align) {
     /* We need to check if all of the arguments are valid, and if the physical memory manager have already been
      * initialized. */
 
-    if (!Count || !Align) {
+    if (!Count || !Align || Align & (Align - 1)) {
         Debug.SetForeground(0xFFFF0000);
         Debug.Write("invalid PhysMem::Allocate arguments (count = {}, align = {})\n", Count, Align);
         Debug.RestoreForeground();
@@ -95,7 +95,7 @@ Status PhysMem::Allocate(UIntPtr Count, UInt64 &Out, UInt64 Align) {
         Debug.SetForeground(0xFFFF0000);
         Debug.Write("not enough free memory for PhysMem::Allocate (count = {})\n", Count);
 
-        if (Pages != Null && (Heap::ReturnPhysical(), FreeWaitingPages(),
+        if (Pages != Null && (Heap::ReturnMemory(), FreeWaitingPages(),
             UsedBytes + (Count << PAGE_SHIFT) <= MaxBytes)) {
             Debug.Write("enough memory seems to have been freed, continuing allocation\n");
             Debug.RestoreForeground();
@@ -115,9 +115,10 @@ Status PhysMem::Allocate(UIntPtr Count, UInt64 *Out, UInt64 Align) {
      * return multiple addresses, instead of returning only a single one that points to the start of a bunch of
      * consecutive pages. */
 
-    if (!Count || Out == Null) {
+    if (!Count || Out == Null || !Align || Align & (Align - 1)) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid non-contig PhysMem::Allocate arguments (count = {}, out = 0x{:0*:16})\n", Count, Out);
+        Debug.Write("invalid non-contig PhysMem::Allocate arguments (count = {}, out = 0x{:0*:16}, align = {})\n",
+                    Count, Out, Align);
         Debug.RestoreForeground();
         return Status::InvalidArg;
     }
@@ -195,9 +196,10 @@ Status PhysMem::Reference(UInt64 Start, UIntPtr Count, UInt64 &Out, UInt64 Align
         if ((status = Allocate(Count, Start, Align)) != Status::Success) return status;
         return Reference(Start, Count, Out, Align);
     } else if (Pages == Null || !Count || UsedBytes < (Count << PAGE_SHIFT) || (Start & PAGE_MASK) ||
-               Start < MinAddress || Start + (Count << PAGE_SHIFT) > MaxAddress) {
+               Start < MinAddress || Start + (Count << PAGE_SHIFT) > MaxAddress || !Align || Align & (Align - 1)) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid PhysMem::Reference arguments (start = 0x{:0*:16}, count = {})\n", Start, Count);
+        Debug.Write("invalid PhysMem::Reference arguments (start = 0x{:0*:16}, count = {}, align = {})\n",
+                    Start, Count, Align);
         Debug.RestoreForeground();
         return Status::InvalidArg;
     }
@@ -210,9 +212,10 @@ Status PhysMem::Reference(UInt64 Start, UIntPtr Count, UInt64 &Out, UInt64 Align
 Status PhysMem::Reference(UInt64 *Pages, UIntPtr Count, UInt64 *Out, UInt64 Align) {
     /* For non-contig pages, we just call ReferenceSingle on each of the pages. */
 
-    if (Pages == Null || !Count || UsedBytes < (Count << PAGE_SHIFT) || Pages == Null || Out == Null) {
+    if (Pages == Null || !Count || UsedBytes < (Count << PAGE_SHIFT) || Out == Null || !Align || Align & (Align - 1)) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid non-contig PhysMem::Reference arguments (pages = 0x{:0*:16}, count = {})\n", Pages, Count);
+        Debug.Write("invalid non-contig PhysMem::Reference arguments (pages = 0x{:0*:16}, count = {}, align = {})\n",
+                    Pages, Count, Align);
         Debug.RestoreForeground();
         return Status::InvalidArg;
     }
@@ -249,7 +252,7 @@ Status PhysMem::Dereference(UInt64 Start, UIntPtr Count) {
 }
 
 Status PhysMem::Dereference(UInt64 *Pages, UIntPtr Count) {
-    if (Pages == Null || !Count || UsedBytes < (Count << PAGE_SHIFT) || Pages == Null) {
+    if (Pages == Null || !Count || UsedBytes < (Count << PAGE_SHIFT)) {
         Debug.SetForeground(0xFFFF0000);
         Debug.Write("invalid non-contig PhysMem::DereferenceNonContig arguments (pages = 0x{:0*:16}, count = {})\n",
                     Pages, Count);

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 12 of 2021, at 14:54 BRT
- * Last edited on July 09 of 2021, at 11:00 BRT */
+ * Last edited on July 10 of 2021, at 11:05 BRT */
 
 #include <arch/mm.hxx>
 #include <sys/mm.hxx>
@@ -127,7 +127,7 @@ static Int8 CheckDirectory(UIntPtr Address, UIntPtr *&Entry, UInt8 &Level, Boole
     return ret;
 }
 
-Status VirtMem::Query(UIntPtr Virtual, UIntPtr &Physical, UInt32 &Flags) {
+Status VirtMem::Query(UIntPtr Virtual, UInt64 &Physical, UInt32 &Flags) {
     /* Use CheckDirectory (stopping at the first unallocated/huge entry, or going until the last level). Extract both
      * the physical address and the flags (at the same time). */
 
@@ -241,6 +241,8 @@ Void VirtMem::Initialize(BootInfo &Info) {
         CheckDirectory(i, ent, lvl, True);
     }
 
-    Heap::Initialize(start, HEAP_END);
-    Debug.Write("the kernel heap starts at 0x{:0*:16} and ends at 0x{:0*:16}\n", start, HEAP_END);
+    Start = Current = (start + VIRT_GROUP_RANGE - 1) & ~(VIRT_GROUP_RANGE - 1);
+    End = HEAP_END & ~(VIRT_GROUP_RANGE - 1);
+
+    Debug.Write("the kernel virtual address allocator starts at 0x{:0*:16} and ends at 0x{:0*:16}\n", Start, End);
 }
