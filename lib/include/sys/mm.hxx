@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 04 of 2021, at 17:19 BRT
- * Last edited on July 10 of 2021 at 11:10 BRT */
+ * Last edited on July 10 of 2021 at 11:44 BRT */
 
 #pragma once
 
@@ -123,6 +123,8 @@ public:
 
     static Status Allocate(UIntPtr, UIntPtr&, UIntPtr = PAGE_SIZE);
     static Status Free(UIntPtr, UIntPtr);
+
+    static Status MapIO(UInt64, UIntPtr&, UIntPtr&);
 #ifdef KERNEL
 private:
     static Status ExpandPool(Void);

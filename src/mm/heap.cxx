@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 14 of 2021, at 23:45 BRT
- * Last edited on July 10 of 2021, at 11:06 BRT */
+ * Last edited on July 10 of 2021, at 11:19 BRT */
 
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
@@ -57,17 +57,14 @@ Void *Heap::Allocate(UIntPtr Size, UIntPtr Align) {
     for (; cur != Null; cur = cur->Free.Next) {
         UIntPtr size = Align - (reinterpret_cast<UIntPtr>(cur->Data) & (Align - 1))
                        - sizeof(Block) + sizeof(Block::Free);
+        if (size < 16) size += Align;
         if (!(reinterpret_cast<UIntPtr>(cur->Data) & (Align - 1)) && cur->Size >= Size) break;
-        else if ((best == Null || cur->Size < best->Size) && cur->Size >= size + Size && size >= 16) best = cur;
+        else if ((best == Null || cur->Size < best->Size) && cur->Size >= size + Size) best = cur;
     }
 
     UIntPtr size = Align - ((best == Null ? sizeof(Block::Free) : reinterpret_cast<UIntPtr>(best->Data)) & (Align - 1))
                    - sizeof(Block) + sizeof(Block::Free);
-
-    if (cur == Null && size < 16) {
-        /* We should only reach this case when the align is too low + we need to allocate a new block. */
-        size += Align;
-    }
+    if (cur == Null && size < 16) size += Align;
 
     if (cur != Null) RemoveFree(cur);
     else if (best != Null) cur = Split(best, size, False);

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on July 10 of 2021, at 10:50 BRT */
+ * Last edited on July 10 of 2021, at 11:21 BRT */
 
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
@@ -80,6 +80,10 @@ Void PhysMem::Initialize(BootInfo &Info) {
 
     Debug.Write("0x{:0:16} bytes of physical memory are being used, and 0x{:0:16} are free\n", UsedBytes,
                 MaxBytes - UsedBytes);
+}
+
+Void PhysMem::FreeWaitingPages(Void) {
+    UsedBytes -= ::FreeWaitingPages(FreeList, WaitingList, Reverse) << PAGE_SHIFT;
 }
 
 Status PhysMem::Allocate(UIntPtr Count, UInt64 &Out, UInt64 Align) {
@@ -274,10 +278,6 @@ UIntPtr PhysMem::GetReferences(UInt64 Page) {
     }
 
     return Pages[(Page - MinAddress) >> PAGE_SHIFT].References;
-}
-
-Void PhysMem::FreeWaitingPages(Void) {
-    UsedBytes -= ::FreeWaitingPages(FreeList, WaitingList, Reverse) << PAGE_SHIFT;
 }
 
 UInt64 PhysMem::Reverse(Page *Node) {

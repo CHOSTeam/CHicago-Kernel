@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 05 of 2021, at 20:33 BRT
- * Last edited on July 06 of 2021 at 21:07 BRT */
+ * Last edited on July 10 of 2021 at 12:01 BRT */
 
 #pragma once
 
@@ -30,7 +30,7 @@ struct packed BootInfo {
     struct packed {
         Boolean Extended;
         UInt32 Size;
-        UIntPtr Sdt;
+        UInt64 Sdt;
     } Acpi;
 
     struct packed {
