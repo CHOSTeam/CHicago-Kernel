@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:46 BRT
- * Last edited on July 16 of 2021 at 11:51 BRT */
+ * Last edited on July 16 of 2021 at 16:28 BRT */
 
 #pragma once
 
@@ -9,14 +9,16 @@
 
 namespace CHicago {
 
+enum class TimeUnit { Nanoseconds, Microseconds, Milliseconds, Seconds };
+
 class Arch {
 public:
     static Void Initialize(const BootInfo&);
 
     static no_return Void Halt(Boolean = False);
 
-    static Void Sleep(UInt8, UInt64);
-    static UInt64 GetUpTime(UInt8);
+    static Void Sleep(TimeUnit, UInt64);
+    static UInt64 GetUpTime(TimeUnit);
 };
 
 }

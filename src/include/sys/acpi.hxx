@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 11 of 2021, at 17:50 BRT
- * Last edited on July 16 of 2021 at 10:15 BRT */
+ * Last edited on July 16 of 2021 at 16:08 BRT */
 
 #pragma once
 
@@ -60,8 +60,6 @@ public:
 
     static Void Initialize(const BootInfo&);
     static Void InitializeArch(const SdtHeader*);
-
-#include <arch/acpi.hxx>
 };
 
 }
