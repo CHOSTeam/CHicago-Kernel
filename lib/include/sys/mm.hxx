@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 04 of 2021, at 17:19 BRT
- * Last edited on July 10 of 2021 at 11:44 BRT */
+ * Last edited on July 15 of 2021 at 23:45 BRT */
 
 #pragma once
 
@@ -118,7 +118,7 @@ public:
 
 #endif
     static Status Query(UIntPtr, UInt64&, UInt32&);
-    static Status Map(UIntPtr, UIntPtr, UIntPtr, UInt32);
+    static Status Map(UIntPtr, UInt64, UIntPtr, UInt32);
     static Status Unmap(UIntPtr, UIntPtr, Boolean = False);
 
     static Status Allocate(UIntPtr, UIntPtr&, UIntPtr = PAGE_SIZE);
