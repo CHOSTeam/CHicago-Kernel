@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on July 10 of 2021, at 11:21 BRT */
+ * Last edited on July 16 of 2021, at 11:49 BRT */
 
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
@@ -16,7 +16,7 @@ UIntPtr PhysMem::PageCount = 0, PhysMem::KernelStart = 0, PhysMem::KernelEnd = 0
 PhysMem::Page *PhysMem::Pages = Null, *PhysMem::FreeList = Null, *PhysMem::WaitingList = Null;
 Boolean PhysMem::Initialized = False;
 
-Void PhysMem::Initialize(BootInfo &Info) {
+Void PhysMem::Initialize(const BootInfo &Info) {
     /* This function should only be called once by the kernel entry. It is responsible for initializing the physical
      * memory manager (allocate/deallocate physical memory, and manage how many references the pages have around all
      * the tasks/CPUs/whatever). */
@@ -36,7 +36,7 @@ Void PhysMem::Initialize(BootInfo &Info) {
     Initialized = True;
 
     Debug.Write("the kernel starts at 0x{:0*:16}, and ends at 0x{:0*:16}\n"
-                "minimum physical address is 0x{:0*:16}, and max is 0x{:0*:16}\n"
+                "minimum physical address is 0x{:016:16}, and max is 0x{:016:16}\n"
                 "physical memory size is 0x{:0:16}\n", KernelStart, KernelEnd, MinAddress, MaxAddress, MaxBytes);
 
     SetMemory(Pages = reinterpret_cast<Page*>(Info.PhysMgrStart), 0, PageCount * sizeof(Page));
@@ -48,7 +48,7 @@ Void PhysMem::Initialize(BootInfo &Info) {
     Page *group = Null;
 
     for (UIntPtr i = 0; i < Info.MemoryMap.Count; i++) {
-        BootInfoMemMap &ent = Info.MemoryMap.Entries[i];
+        const BootInfoMemMap &ent = Info.MemoryMap.Entries[i];
         UInt64 start = (ent.Base + (ent.Base ? 0 : PAGE_SIZE)) >> PAGE_SHIFT;
 
         Debug.Write("memory map entry no. {}, base = 0x{:0*:16}, size = 0x{:0:16}, type = {}\n", i, ent.Base,
@@ -121,7 +121,7 @@ Status PhysMem::Allocate(UIntPtr Count, UInt64 *Out, UInt64 Align) {
 
     if (!Count || Out == Null || !Align || Align & (Align - 1)) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid non-contig PhysMem::Allocate arguments (count = {}, out = 0x{:0*:16}, align = {})\n",
+        Debug.Write("invalid non-contig PhysMem::Allocate arguments (count = {}, out = 0x{:016:16}, align = {})\n",
                     Count, Out, Align);
         Debug.RestoreForeground();
         return Status::InvalidArg;
@@ -146,7 +146,7 @@ Status PhysMem::Free(UInt64 Start, UIntPtr Count) {
     if (Pages == Null || UsedBytes < (Count << PAGE_SHIFT) || (Start & PAGE_MASK) || Start < MinAddress ||
         Start + (Count << PAGE_SHIFT) >= MaxAddress) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid PhysMem::Free arguments (start = 0x{:0*:16}, count = {})\n", Start, Count);
+        Debug.Write("invalid PhysMem::Free arguments (start = 0x{:016:16}, count = {})\n", Start, Count);
         Debug.RestoreForeground();
         return Status::InvalidArg;
     }
@@ -156,7 +156,7 @@ Status PhysMem::Free(UInt64 Start, UIntPtr Count) {
 
         if (Pages[idx].Count) {
             Debug.SetForeground(0xFFFF0000);
-            Debug.Write("invalid PhysMem::Free arguments (start = 0x{:0*:16}, count = {})\n", Start, Count);
+            Debug.Write("invalid PhysMem::Free arguments (start = 0x{:016:16}, count = {})\n", Start, Count);
             Debug.RestoreForeground();
             return Status::InvalidArg;
         }
@@ -202,7 +202,7 @@ Status PhysMem::Reference(UInt64 Start, UIntPtr Count, UInt64 &Out, UInt64 Align
     } else if (Pages == Null || !Count || UsedBytes < (Count << PAGE_SHIFT) || (Start & PAGE_MASK) ||
                Start < MinAddress || Start + (Count << PAGE_SHIFT) > MaxAddress || !Align || Align & (Align - 1)) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid PhysMem::Reference arguments (start = 0x{:0*:16}, count = {}, align = {})\n",
+        Debug.Write("invalid PhysMem::Reference arguments (start = 0x{:016:16}, count = {}, align = {})\n",
                     Start, Count, Align);
         Debug.RestoreForeground();
         return Status::InvalidArg;
@@ -244,7 +244,7 @@ Status PhysMem::Dereference(UInt64 Start, UIntPtr Count) {
     if (Pages == Null || !Count || UsedBytes < (Count << PAGE_SHIFT) || !Start || (Start & PAGE_MASK) ||
         Start < MinAddress || Start + (Count << PAGE_SHIFT) > MaxAddress) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("Invalid PhysMem::Dereference arguments (start = 0x{:0*:16}, count = {})\n", Start, Count);
+        Debug.Write("Invalid PhysMem::Dereference arguments (start = 0x{:016:16}, count = {})\n", Start, Count);
         Debug.RestoreForeground();
         return Status::InvalidArg;
     }
@@ -272,7 +272,7 @@ Status PhysMem::Dereference(UInt64 *Pages, UIntPtr Count) {
 UIntPtr PhysMem::GetReferences(UInt64 Page) {
     if (Pages == Null || Page < PAGE_SIZE || (Page & PAGE_MASK) || Page < MinAddress || Page >= MaxAddress) {
         Debug.SetForeground(0xFFFF0000);
-        Debug.Write("Invalid PhysMem::GetReferences arguments (page = 0x{:0*:16})\n", Page);
+        Debug.Write("Invalid PhysMem::GetReferences arguments (page = 0x{:016:16})\n", Page);
         Debug.RestoreForeground();
         return 0;
     }

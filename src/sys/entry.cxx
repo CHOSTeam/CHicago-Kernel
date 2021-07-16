@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on April 10 of 2021, at 17:15 BRT */
+ * Last edited on July 16 of 2021, at 13:25 BRT */
 
 #include <sys/arch.hxx>
 #include <sys/mm.hxx>
@@ -9,7 +9,7 @@
 
 using namespace CHicago;
 
-extern "C" Void KernelEntry(BootInfo &Info) {
+extern "C" Void KernelEntry(const BootInfo &Info) {
     /* Hello, World! The loader just exited the EFI environment, and gave control to the kernel! Right now the MMU
      * should be enabled, with everything we need (boot info struct, framebuffer, boot image file, etc) already mapped,
      * and we should be running on higher-half (probably). Before anything, let's call the _init function, this

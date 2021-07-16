@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 09 of 2021, at 16:14 BRT
- * Last edited on July 10 of 2021, at 11:49 BRT */
+ * Last edited on July 16 of 2021, at 10:31 BRT */
 
 #include <vid/console.hxx>
 
@@ -71,7 +71,7 @@ Status VirtMem::Free(UIntPtr Start, UIntPtr Count) {
     return Status::Success;
 }
 
-Status VirtMem::MapIO(UInt64 Physical, UIntPtr &Size, UIntPtr &Out) {
+Status VirtMem::MapIo(UInt64 Physical, UIntPtr &Size, UIntPtr &Out) {
     /* MMIO addresses are all physical, but we of course always have paging/virtual memory on, so we need to remap
      * them into virtual memory (VirtMem::Allocate makes it very easy to grab a large enough virtual address). */
 
@@ -79,10 +79,10 @@ Status VirtMem::MapIO(UInt64 Physical, UIntPtr &Size, UIntPtr &Out) {
     UIntPtr saves = Size;
     UInt64 savep = Physical;
 
-    if (!Physical || !Size) return Status::InvalidArg;
+    if (!Physical || !Size || (Size & PAGE_MASK)) return Status::InvalidArg;
     else if (Physical & PAGE_MASK) Physical &= ~PAGE_MASK, Size += -Size & PAGE_MASK;
 
-    /* make the size cross into the next page if it would cross a page in the old unaligned values. */
+    /* Make the size cross into the next page if it would cross a page in the old unaligned values. */
 
     if (((savep + saves) & ~PAGE_MASK) > (savep & ~PAGE_MASK)) Size += PAGE_SIZE;
 

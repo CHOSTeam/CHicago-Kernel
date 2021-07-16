@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 15 of 2021, at 23:28 BRT
- * Last edited on July 15 of 2021, at 23:48 BRT */
+ * Last edited on July 16 of 2021, at 09:48 BRT */
 
 static Status MoveInto(UIntPtr Virtual, UIntPtr &CurLevel, UIntPtr DestLevel, Boolean Allocate = False) {
     /* This works in a similar way to MoveInto from the bootloader, but as we expect to use recursive paging, we just
@@ -98,7 +98,7 @@ Status VirtMem::Unmap(UIntPtr Virtual, UIntPtr Size, Boolean Huge) {
     return Status::Success;
 }
 
-Void VirtMem::Initialize(BootInfo &Info) {
+Void VirtMem::Initialize(const BootInfo &Info) {
     /* Generic initialization function: We need to unmap the EFI jump function, and we need pre-alloc the first level
      * of the heap region (and we can't fail, if we do fail, panic, as the rest of the OS depends on us). Also, we
      * expect that adding HUGE_PAGE_MASK will be enough to make sure that we don't collide with some huge mapping from

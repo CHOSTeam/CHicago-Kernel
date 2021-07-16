@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 04 of 2021, at 17:19 BRT
- * Last edited on July 15 of 2021 at 23:45 BRT */
+ * Last edited on July 16 of 2021, at 10:31 BRT */
 
 #pragma once
 
@@ -58,7 +58,7 @@ public:
         Page *NextSingle, *NextGroup, *LastSingle;
     };
 
-    static Void Initialize(BootInfo&);
+    static Void Initialize(const BootInfo&);
 #endif
 
     /* Each one of the functions (allocate/free/reference/dereference) needs three different versions of itself, one
@@ -113,7 +113,7 @@ public:
         Page *NextSingle, *NextGroup, *LastSingle;
     };
 
-    static Void Initialize(BootInfo&);
+    static Void Initialize(const BootInfo&);
     static Void FreeWaitingPages(Void);
 
 #endif
@@ -124,7 +124,7 @@ public:
     static Status Allocate(UIntPtr, UIntPtr&, UIntPtr = PAGE_SIZE);
     static Status Free(UIntPtr, UIntPtr);
 
-    static Status MapIO(UInt64, UIntPtr&, UIntPtr&);
+    static Status MapIo(UInt64, UIntPtr&, UIntPtr&);
 #ifdef KERNEL
 private:
     static Status ExpandPool(Void);

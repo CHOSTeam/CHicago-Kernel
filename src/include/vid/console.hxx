@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 05 of 2021, at 13:26 BRT
- * Last edited on March 05 of 2021 at 13:27 BRT */
+ * Last edited on July 16 of 2021, at 09:47 BRT */
 
 #pragma once
 
@@ -14,7 +14,7 @@ namespace CHicago {
 class TextConsole : public TextOutput {
 public:
     TextConsole();
-    TextConsole(BootInfo&, UInt32 = 0, UInt32 = 0xFFFFFFFF);
+    TextConsole(const BootInfo&, UInt32 = 0, UInt32 = 0xFFFFFFFF);
 
     Void Clear();
 

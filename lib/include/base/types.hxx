@@ -1,13 +1,13 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on May 11 of 2018, at 13:15 BRT
- * Last edited on July 08 of 2021, at 08:49 BRT */
+ * Last edited on July 16 of 2021, at 10:40 BRT */
 
 #pragma once
 
 namespace CHicago {
 
-#define VERSION "next-5"
+#define VERSION "next-6"
 
 using Void = void;
 using Char = char;

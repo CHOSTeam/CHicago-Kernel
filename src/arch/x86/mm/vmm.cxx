@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 12 of 2021, at 14:54 BRT
- * Last edited on July 15 of 2021, at 23:42 BRT */
+ * Last edited on July 16 of 2021, at 09:48 BRT */
 
 #include <arch/mm.hxx>
 #include <sys/mm.hxx>
@@ -54,31 +54,3 @@ using namespace CHicago;
 #endif
 
 #include "../../vmm.cxx"
-
-/*Void VirtMem::Initialize(BootInfo &Info) {
-    UIntPtr start = (Info.KernelEnd + HUGE_PAGE_MASK) & ~HUGE_PAGE_MASK;
-
-    Unmap(Info.EfiTempAddress & ~PAGE_MASK, PAGE_SIZE);
-
-#ifdef __i386__
-    for (UIntPtr i = start & ~HUGE_PAGE_MASK; i < HEAP_END; i += HUGE_PAGE_SIZE) {
-#else
-    for (UIntPtr i = start & ~0x7FFFFFFFFF; i < HEAP_END; i += 0x8000000000) {
-#endif
-        UInt64 phys;
-        UIntPtr *ent;
-        UInt8 lvl = 1;
-
-        if (CheckDirectory(i, ent, lvl) != -1 || lvl != 1) continue;
-        ASSERT(PhysMem::Reference(0, 1, phys) == Status::Success);
-
-        lvl++;
-        *ent = phys | PAGE_PRESENT | PAGE_WRITE;
-        CheckDirectory(i, ent, lvl, True);
-    }
-
-    Start = Current = (start + VIRT_GROUP_RANGE - 1) & ~(VIRT_GROUP_RANGE - 1);
-    End = HEAP_END & ~(VIRT_GROUP_RANGE - 1);
-
-    Debug.Write("the kernel virtual address allocator starts at 0x{:0*:16} and ends at 0x{:0*:16}\n", Start, End);
-}*/

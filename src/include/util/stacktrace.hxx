@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 15:57 BRT
- * Last edited on April 14 of 2021, at 17:50 BRT */
+ * Last edited on July 16 of 2021, at 09:47 BRT */
 
 #pragma once
 
@@ -27,7 +27,7 @@ static unused no_inline StackFrame *GetStackFrame() {
 
 class StackTrace {
 public:
-    static Void Initialize(BootInfo&);
+    static Void Initialize(const BootInfo&);
 
     static Boolean GetSymbol(UIntPtr, StringView&, UIntPtr&);
     static UIntPtr Trace(UIntPtr *Addresses, UInt8 Max) { return Trace(GetStackFrame(), Addresses, Max); }

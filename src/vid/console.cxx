@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 00:14 BRT
- * Last edited on July 06 of 2021, at 20:03 BRT */
+ * Last edited on July 16 of 2021, at 09:48 BRT */
 
 #include <vid/console.hxx>
 
@@ -12,7 +12,7 @@ TextConsole Debug;
 TextConsole::TextConsole() : Back(), Front(), X(0), BackY(0), FrontY(0), Background(0), Foreground(0),
                              BackgroundSP(0), ForegroundSP(0), BackgroundStack(), ForegroundStack() { }
 
-TextConsole::TextConsole(BootInfo &Info, UInt32 Background, UInt32 Foreground)
+TextConsole::TextConsole(const BootInfo &Info, UInt32 Background, UInt32 Foreground)
     : Back(reinterpret_cast<UInt32*>(Info.FrameBuffer.BackBuffer), Info.FrameBuffer.Width, Info.FrameBuffer.Height),
       Front(reinterpret_cast<UInt32*>(Info.FrameBuffer.FrontBuffer), Info.FrameBuffer.Width, Info.FrameBuffer.Height),
       X(0), BackY(0), FrontY(0), Background(Background), Foreground(Foreground), BackgroundSP(0), ForegroundSP(0),
