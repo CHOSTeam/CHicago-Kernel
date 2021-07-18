@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on July 18 of 2021, at 12:23 BRT */
+ * Last edited on July 18 of 2021, at 15:31 BRT */
 
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
@@ -56,7 +56,7 @@ Void PhysMem::Initialize(const BootInfo &Info) {
         Debug.Write("memory map entry no. {}, base = 0x{:0*:16}, size = 0x{:0:16}, type = {}\n", i, ent.Base,
                     ent.Count << PAGE_SHIFT, ent.Type);
 
-        if (ent.Type != 0x05 || ent.Base > UINTPTR_MAX) continue;
+        if (ent.Type != 0x05) continue;
         if (start < 0x100000 >> PAGE_SHIFT) start = 0x100000 >> PAGE_SHIFT, size -= start - (ent.Base >> PAGE_SHIFT);
         if (size <= 0) continue;
 

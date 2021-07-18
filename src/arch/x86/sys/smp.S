@@ -1,20 +1,16 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 16 of 2020, at 18:03 BRT
- * Last edited on July 17 of 2021, at 21:04 BRT */
+ * Last edited on July 18 of 2021, at 18:53 BRT */
 
 #ifdef __i386__
-#define FINISH_ADDRESS $0x8031
-#define IDT_ADDRESS 0x805D
-#define GDT_ADDRESS 0x8063
-#define CR3_ADDRESS 0x8090
-#define CR4_VALUE $0x40650
+#define IDT_ADDRESS 0x806D
+#define GDT_ADDRESS 0x8073
+#define CR3_ADDRESS 0x80A0
 #else
-#define FINISH_ADDRESS $0x8041
 #define IDT_ADDRESS 0x8079
 #define GDT_ADDRESS 0x8083
 #define CR3_ADDRESS 0x80B0
-#define CR4_VALUE $0x40668
 #endif
 
 .code16
@@ -31,22 +27,25 @@
 
 .type SmpTrampoline, %function
 SmpTrampoline:
+    /* Both x86 and amd64 share part of the core init code, but on x86 we need to enable protected mode + PAE and on
+     * amd64 we need to enable long mode. */
+
     cli
     cld
     ljmp $0, $0x8007
     lidtl IDT_ADDRESS
 
-    /* x86: Load CR3, CR4, the GDT and CR0, and long jump to enable protected mode + enable paging.
-     * amd64: Load CR3, CR4, enable long mode in the MSR, load CR0, the GDT and finally long jump to finish enabling
-     * long mode + paging (and yes, the GDT needs to be loaded AFTER changing the MSR). */
-
     mov (CR3_ADDRESS), %eax
     mov %eax, %cr3
-    mov CR4_VALUE, %eax
+    mov $0x40778, %eax
     mov %eax, %cr4
 
 #ifdef __i386__
-    lgdtl 0x807B
+    lgdtl 0x808B
+    mov $0xC0000080, %ecx
+    rdmsr
+    or $0x800, %eax
+    wrmsr
 #else
     mov $0xC0000080, %ecx
     rdmsr
@@ -61,7 +60,7 @@ SmpTrampoline:
     lgdtl 0x809B
 #endif
 
-    ljmp $0x08, FINISH_ADDRESS
+    ljmp $0x08, $0x8041
 
 #ifdef __i386__
 .code32
@@ -77,7 +76,7 @@ SmpTrampoline:
     mov %ax, %ss
 
 #ifdef __i386__
-    mov (0x80A0), %eax
+    mov (0x80B0), %eax
     mov 0x11(%eax), %esp
     add $0x2000, %esp
     and $-16, %esp

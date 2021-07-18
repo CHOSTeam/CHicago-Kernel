@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 15 of 2021, at 23:28 BRT
- * Last edited on July 16 of 2021, at 09:48 BRT */
+ * Last edited on July 18 of 2021, at 18:33 BRT */
 
 static Status MoveInto(UIntPtr Virtual, UIntPtr &CurLevel, UIntPtr DestLevel, Boolean Allocate = False) {
     /* This works in a similar way to MoveInto from the bootloader, but as we expect to use recursive paging, we just
@@ -11,7 +11,10 @@ static Status MoveInto(UIntPtr Virtual, UIntPtr &CurLevel, UIntPtr DestLevel, Bo
     Status status;
 
     for (; CurLevel < DestLevel; CurLevel++) {
+        if (MMU_SKIP_LEVEL(CurLevel)) continue;
+
         auto cur = reinterpret_cast<MMU_TYPE*>(MMU_INDEX(Virtual, CurLevel));
+
         if (!MMU_IS_PRESENT(*cur) && Allocate) {
             if ((status = PhysMem::Reference(0, 1, phys)) != Status::Success) return status;
             *cur = MMU_MAKE_TABLE(Virtual, phys, i);
@@ -111,9 +114,11 @@ Void VirtMem::Initialize(const BootInfo &Info) {
     Start = Current = start;
     End = HEAP_END & ~(VIRT_GROUP_RANGE - 1);
 
-    for (; start < End; start += MMU_ENTRY_SIZE(0)) {
-        UIntPtr lvl = 0;
-        ASSERT(MoveInto(start, lvl, 1, True) == Status::Success);
+    if (!MMU_SKIP_LEVEL(0)) {
+        for (; start < End; start += MMU_ENTRY_SIZE(0)) {
+            UIntPtr lvl = 0;
+            ASSERT(MoveInto(start, lvl, 1, True) == Status::Success);
+        }
     }
 
     Debug.Write("the kernel virtual address allocator starts at 0x{:0*:16} and ends at 0x{:0*:16}\n", Start, End);
