@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 04 of 2021, at 17:19 BRT
- * Last edited on July 17 of 2021, at 18:35 BRT */
+ * Last edited on July 18 of 2021, at 12:19 BRT */
 
 #pragma once
 
@@ -55,7 +55,7 @@ public:
 #ifdef KERNEL
     struct packed Page {
         UIntPtr Count;
-        UInt8 References;
+        volatile UInt8 References;
         Page *NextSingle, *NextGroup, *LastSingle;
     };
 private:

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on July 17 of 2021, at 22:08 BRT */
+ * Last edited on July 18 of 2021, at 12:23 BRT */
 
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
@@ -56,7 +56,7 @@ Void PhysMem::Initialize(const BootInfo &Info) {
         Debug.Write("memory map entry no. {}, base = 0x{:0*:16}, size = 0x{:0:16}, type = {}\n", i, ent.Base,
                     ent.Count << PAGE_SHIFT, ent.Type);
 
-        if (ent.Type != 0x05) continue;
+        if (ent.Type != 0x05 || ent.Base > UINTPTR_MAX) continue;
         if (start < 0x100000 >> PAGE_SHIFT) start = 0x100000 >> PAGE_SHIFT, size -= start - (ent.Base >> PAGE_SHIFT);
         if (size <= 0) continue;
 
@@ -206,8 +206,7 @@ Status PhysMem::Reference(UInt64 Start, UIntPtr Count, UInt64 &Out, UInt64 Align
         return Status::InvalidArg;
     }
 
-    for (UIntPtr i = 0; i < Count; i++)
-        __atomic_add_fetch(&Pages[((Start - MinAddress) >> PAGE_SHIFT) + i].References, 1, __ATOMIC_SEQ_CST);
+    for (UIntPtr i = 0; i < Count; i++) AtomicAddFetch(Pages[((Start - MinAddress) >> PAGE_SHIFT) + i].References, 1);
 
     return Out = Start, Status::Success;
 }
@@ -246,7 +245,7 @@ Status PhysMem::Dereference(UInt64 Start, UIntPtr Count) {
     }
 
     for (UIntPtr i = 0; i < Count; i++)
-        if (!__atomic_sub_fetch(&Pages[((Start - MinAddress) >> PAGE_SHIFT) + i].References, 1, __ATOMIC_SEQ_CST))
+        if (!AtomicSubFetch(Pages[((Start - MinAddress) >> PAGE_SHIFT) + i].References, 1))
             Free(Start + (i << PAGE_SHIFT));
 
     return Status::Success;
@@ -271,7 +270,7 @@ UIntPtr PhysMem::GetReferences(UInt64 Page) {
         return 0;
     }
 
-    return __atomic_load_n(&Pages[(Page - MinAddress) >> PAGE_SHIFT].References, __ATOMIC_SEQ_CST);
+    return AtomicLoad(Pages[(Page - MinAddress) >> PAGE_SHIFT].References);
 }
 
 UInt64 PhysMem::Reverse(Page *Node) {
