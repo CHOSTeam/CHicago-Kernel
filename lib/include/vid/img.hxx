@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:37 BRT
- * Last edited on July 06 of 2021 at 19:49 BRT */
+ * Last edited on July 17 of 2021 at 21:43 BRT */
 
 #pragma once
 
@@ -106,9 +106,11 @@ public:
 
         UIntPtr ctx[4] { reinterpret_cast<UIntPtr>(this), X, Y, Color };
 
-        return VariadicFormat([](Char Data, Void *Context) -> Boolean {
+        return VariadicFormat([](UInt8 Type, UInt32 Data, Void *Context) -> Boolean {
             /* We don't handle here reaching the end of the screen and going into the next line, nor scrolling when we
              * reach the end of the screen. And also we don't handle TAB anywhere (for now). */
+
+            if (Type) return True;
 
             auto ctx = static_cast<UIntPtr*>(Context);
 

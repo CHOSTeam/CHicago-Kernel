@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 29 of 2020, at 11:24 BRT
- * Last edited on April 10 of 2021, at 17:07 BRT */
+ * Last edited on July 17 of 2021, at 22:18 BRT */
 
 #include <arch/desctables.hxx>
 #include <arch/port.hxx>
@@ -48,11 +48,10 @@ extern "C" force_align_arg_pointer Void IdtDefaultHandler(Registers &Regs) {
         asm volatile("mov %%cr0, %0; mov %%cr2, %1; mov %%cr3, %2; mov %%cr4, %3" : "=r"(cr0), "=r"(cr2), "=r"(cr3),
                                                                                     "=r"(cr4));
 
-	    Debug.SetForeground(0xFFFF0000);
-
 	    /* Though most of the registers are the same on both archs, x86_64 has 8 extra register to print (r8-r15). */
 
-	    Debug.Write("panic: {}\n", ExceptionStrings[Regs.IntNum]);
+        Arch::EnterPanicState();
+	    Debug.Write("{}panic: {}\n", SetForeground { 0xFFFF0000 }, ExceptionStrings[Regs.IntNum]);
 
 	    Debug.Write("regs: ax  = 0x{:0*:16} | bx  = 0x{:0*:16} | cx  = 0x{:0*:16}\n"
 #ifdef __i386__
@@ -122,7 +121,11 @@ no_inline static Void IdtSetGate(UInt8 Num, UIntPtr Base, UInt16 Selector, UInt8
 #endif
 }
 
-Void IdtInit() {
+Void IdtReload(Void) {
+    asm volatile("lidt %0" :: "m"(IdtPointer));
+}
+
+Void IdtInit(Void) {
 	/* Before anything else: We don't know the state of the IDT that the bootloader passed to us, it could not even
 	 * exist! We only know that interrupts are, for now, disabled (and that is for our security). So, let's remap the
 	 * PIC, and put it in a known state. */
@@ -139,8 +142,8 @@ Void IdtInit() {
 	Port::OutByte(0x21, 0x01);
 	Port::OutByte(0xA1, 0x01);
 	
-	Port::OutByte(0x21, 0x00);
-	Port::OutByte(0xA1, 0x00);
+	Port::OutByte(0x21, 0xFF);
+	Port::OutByte(0xA1, 0xFF);
 	
 	/* Now, register all of the default interrupt handlers (now using a loop! The code is way more readable now!). */
 	
@@ -151,7 +154,7 @@ Void IdtInit() {
 	IdtPointer.Limit = sizeof(IdtEntries) - 1;
 	IdtPointer.Base = reinterpret_cast<UIntPtr>(IdtEntries);
 	
-	asm volatile("lidt %0; sti" :: "m"(IdtPointer));
+	IdtReload();
 }
 
 }

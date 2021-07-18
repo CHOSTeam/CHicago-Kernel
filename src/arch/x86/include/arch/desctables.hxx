@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 29 of 2020, at 09:47 BRT
- * Last edited on March 05 of 2021, at 13:22 BRT */
+ * Last edited on July 17 of 2021, at 20:41 BRT */
 
 #pragma once
 
@@ -36,13 +36,39 @@ struct packed DescTablePointer {
 	UIntPtr Base;
 };
 
+class Gdt {
+public:
+    Void Initialize(Void);
+    Void Reload(Void) const;
+#ifdef __i386__
+    Void LoadSpecialSegment(Boolean, UIntPtr);
+#endif
+private:
+    Void SetTss(UInt8, UIntPtr);
+    Void SetGate(UInt8, UIntPtr, UIntPtr, UInt8, UInt8);
+
+    TssEntry Tss {};
+    UInt8 Entries[8][8] {};
+    DescTablePointer Pointer {};
+};
+
 typedef Void (*InterruptHandlerFunc)(Registers&);
 
 extern "C" UIntPtr IdtDefaultHandlers[256];
 
-Void GdtInit();
+/* Probably not really the best place to put it, but we do use MSRs (mostly on amd64), and we need some
+ * macros/functions to easily read/write them. */
+
+static inline UInt64 ReadMsr(UInt32 Num) {
+    UInt32 eax, edx; asm volatile("rdmsr" : "=a"(eax), "=d"(edx) : "c"(Num)); return eax | ((UInt64)edx << 32);
+}
+
+static inline Void WriteMsr(UInt32 Num, UInt64 Value) {
+    asm volatile("wrmsr" :: "a"(Value & 0xFFFFFFFF), "c"(Num), "d"(Value >> 32));
+}
 
 Void IdtSetHandler(UInt8, InterruptHandlerFunc);
+Void IdtReload();
 Void IdtInit();
 
 }

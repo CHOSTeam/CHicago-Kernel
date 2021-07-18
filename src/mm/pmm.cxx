@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on July 16 of 2021, at 11:49 BRT */
+ * Last edited on July 17 of 2021, at 22:08 BRT */
 
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
@@ -15,6 +15,7 @@ UInt64 PhysMem::MinAddress = 0, PhysMem::MaxAddress = 0, PhysMem::MaxBytes = 0, 
 UIntPtr PhysMem::PageCount = 0, PhysMem::KernelStart = 0, PhysMem::KernelEnd = 0;
 PhysMem::Page *PhysMem::Pages = Null, *PhysMem::FreeList = Null, *PhysMem::WaitingList = Null;
 Boolean PhysMem::Initialized = False;
+SpinLock PhysMem::Lock {};
 
 Void PhysMem::Initialize(const BootInfo &Info) {
     /* This function should only be called once by the kernel entry. It is responsible for initializing the physical
@@ -49,14 +50,17 @@ Void PhysMem::Initialize(const BootInfo &Info) {
 
     for (UIntPtr i = 0; i < Info.MemoryMap.Count; i++) {
         const BootInfoMemMap &ent = Info.MemoryMap.Entries[i];
-        UInt64 start = (ent.Base + (ent.Base ? 0 : PAGE_SIZE)) >> PAGE_SHIFT;
+        UInt64 start = ent.Base >> PAGE_SHIFT;
+        Int64 size = ent.Count;
 
         Debug.Write("memory map entry no. {}, base = 0x{:0*:16}, size = 0x{:0:16}, type = {}\n", i, ent.Base,
                     ent.Count << PAGE_SHIFT, ent.Type);
 
         if (ent.Type != 0x05) continue;
+        if (start < 0x100000 >> PAGE_SHIFT) start = 0x100000 >> PAGE_SHIFT, size -= start - (ent.Base >> PAGE_SHIFT);
+        if (size <= 0) continue;
 
-        for (UInt64 cur = start; cur < start + ent.Count; cur++) {
+        for (UInt64 cur = start; cur < start + size; cur++) {
             Page *page = &Pages[cur];
 
             /* The first entry is treated as a "group" entry, the ->Count field will tell the size of the whole region,
@@ -75,7 +79,7 @@ Void PhysMem::Initialize(const BootInfo &Info) {
             group->LastSingle = page;
         }
 
-        UsedBytes -= (ent.Count - (ent.Base > 0)) << PAGE_SHIFT;
+        UsedBytes -= size << PAGE_SHIFT;
     }
 
     Debug.Write("0x{:0:16} bytes of physical memory are being used, and 0x{:0:16} are free\n", UsedBytes,
@@ -91,25 +95,23 @@ Status PhysMem::Allocate(UIntPtr Count, UInt64 &Out, UInt64 Align) {
      * initialized. */
 
     if (!Count || !Align || Align & (Align - 1)) {
-        Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid PhysMem::Allocate arguments (count = {}, align = {})\n", Count, Align);
-        Debug.RestoreForeground();
+        Debug.Write("{}invalid PhysMem::Allocate arguments (count = {}, align = {}){}\n", SetForeground { 0xFFFF0000 },
+                    Count, Align, RestoreForeground{});
         return Status::InvalidArg;
     } else if (Pages == Null || UsedBytes + (Count << PAGE_SHIFT) > MaxBytes) {
-        Debug.SetForeground(0xFFFF0000);
-        Debug.Write("not enough free memory for PhysMem::Allocate (count = {})\n", Count);
+        Debug.Write("{}not enough free memory for PhysMem::Allocate (count = {}){}\n",
+                    SetForeground { 0xFFFF0000 }, Count, RestoreForeground{});
 
         if (Pages != Null && (Heap::ReturnMemory(), FreeWaitingPages(),
             UsedBytes + (Count << PAGE_SHIFT) <= MaxBytes)) {
             Debug.Write("enough memory seems to have been freed, continuing allocation\n");
-            Debug.RestoreForeground();
-        } else {
-            Debug.RestoreForeground();
-            return Status::OutOfMemory;
-        }
+        } else return Status::OutOfMemory;
     }
 
+    Lock.Acquire();
     Status status = AllocatePages(FreeList, Reverse, Count, Out, Align);
+    Lock.Release();
+
     if (status == Status::Success) UsedBytes += Count << PAGE_SHIFT;
     return status;
 }
@@ -120,10 +122,8 @@ Status PhysMem::Allocate(UIntPtr Count, UInt64 *Out, UInt64 Align) {
      * consecutive pages. */
 
     if (!Count || Out == Null || !Align || Align & (Align - 1)) {
-        Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid non-contig PhysMem::Allocate arguments (count = {}, out = 0x{:016:16}, align = {})\n",
-                    Count, Out, Align);
-        Debug.RestoreForeground();
+        Debug.Write("invalid non-contig PhysMem::Allocate arguments (count = {}, out = 0x{:016:16}, align = {}){}\n",
+                    SetForeground { 0xFFFF0000 }, Count, Out, Align, RestoreForeground{});
         return Status::InvalidArg;
     }
 
@@ -145,19 +145,20 @@ Status PhysMem::Allocate(UIntPtr Count, UInt64 *Out, UInt64 Align) {
 Status PhysMem::Free(UInt64 Start, UIntPtr Count) {
     if (Pages == Null || UsedBytes < (Count << PAGE_SHIFT) || (Start & PAGE_MASK) || Start < MinAddress ||
         Start + (Count << PAGE_SHIFT) >= MaxAddress) {
-        Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid PhysMem::Free arguments (start = 0x{:016:16}, count = {})\n", Start, Count);
-        Debug.RestoreForeground();
+        Debug.Write("invalid PhysMem::Free arguments (start = 0x{:016:16}, count = {}){}\n",
+                    SetForeground { 0xFFFF0000 }, Start, Count, RestoreForeground{});
         return Status::InvalidArg;
     }
+
+    Lock.Acquire();
 
     for (UInt64 cur = Start; cur < Start + (Count << PAGE_SHIFT); cur += PAGE_SIZE) {
         UInt64 idx = (cur - MinAddress) >> PAGE_SHIFT;
 
         if (Pages[idx].Count) {
-            Debug.SetForeground(0xFFFF0000);
-            Debug.Write("invalid PhysMem::Free arguments (start = 0x{:016:16}, count = {})\n", Start, Count);
-            Debug.RestoreForeground();
+            Lock.Release();
+            Debug.Write("invalid PhysMem::Free arguments (start = 0x{:016:16}, count = {}){}\n",
+                        SetForeground { 0xFFFF0000 }, Start, Count, RestoreForeground{});
             return Status::InvalidArg;
         }
 
@@ -172,14 +173,13 @@ Status PhysMem::Free(UInt64 Start, UIntPtr Count) {
         else WaitingList->LastSingle->NextSingle = &Pages[idx], WaitingList->LastSingle = &Pages[idx];
     }
 
-    return Status::Success;
+    return Lock.Release(), Status::Success;
 }
 
 Status PhysMem::Free(UInt64 *Pages, UIntPtr Count) {
-    if (!Count || Pages == Null) {
-        Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid non-contig PhysMem::Free arguments (pages = 0x{:0*:16}, count = {})\n", Pages, Count);
-        Debug.RestoreForeground();
+    if (!Count || UsedBytes < (Count << PAGE_SHIFT) || Pages == Null) {
+        Debug.Write("invalid non-contig PhysMem::Free arguments (pages = 0x{:0*:16}, count = {}){}\n",
+                    SetForeground { 0xFFFF0000 }, Pages, Count, RestoreForeground{});
         return Status::InvalidArg;
     }
 
@@ -201,14 +201,13 @@ Status PhysMem::Reference(UInt64 Start, UIntPtr Count, UInt64 &Out, UInt64 Align
         return Reference(Start, Count, Out, Align);
     } else if (Pages == Null || !Count || UsedBytes < (Count << PAGE_SHIFT) || (Start & PAGE_MASK) ||
                Start < MinAddress || Start + (Count << PAGE_SHIFT) > MaxAddress || !Align || Align & (Align - 1)) {
-        Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid PhysMem::Reference arguments (start = 0x{:016:16}, count = {}, align = {})\n",
-                    Start, Count, Align);
-        Debug.RestoreForeground();
+        Debug.Write("invalid PhysMem::Reference arguments (start = 0x{:016:16}, count = {}, align = {}){}\n",
+                    SetForeground { 0xFFFF0000 }, Start, Count, Align, RestoreForeground{});
         return Status::InvalidArg;
     }
 
-    for (UIntPtr i = 0; i < Count; i++) Pages[((Start - MinAddress) >> PAGE_SHIFT) + i].References++;
+    for (UIntPtr i = 0; i < Count; i++)
+        __atomic_add_fetch(&Pages[((Start - MinAddress) >> PAGE_SHIFT) + i].References, 1, __ATOMIC_SEQ_CST);
 
     return Out = Start, Status::Success;
 }
@@ -217,10 +216,8 @@ Status PhysMem::Reference(UInt64 *Pages, UIntPtr Count, UInt64 *Out, UInt64 Alig
     /* For non-contig pages, we just call ReferenceSingle on each of the pages. */
 
     if (Pages == Null || !Count || UsedBytes < (Count << PAGE_SHIFT) || Out == Null || !Align || Align & (Align - 1)) {
-        Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid non-contig PhysMem::Reference arguments (pages = 0x{:0*:16}, count = {}, align = {})\n",
-                    Pages, Count, Align);
-        Debug.RestoreForeground();
+        Debug.Write("invalid non-contig PhysMem::Reference arguments (pages = 0x{:0*:16}, count = {}, align = {}){}\n",
+                    SetForeground { 0xFFFF0000 }, Pages, Count, Align, RestoreForeground{});
         return Status::InvalidArg;
     }
 
@@ -243,24 +240,22 @@ Status PhysMem::Reference(UInt64 *Pages, UIntPtr Count, UInt64 *Out, UInt64 Alig
 Status PhysMem::Dereference(UInt64 Start, UIntPtr Count) {
     if (Pages == Null || !Count || UsedBytes < (Count << PAGE_SHIFT) || !Start || (Start & PAGE_MASK) ||
         Start < MinAddress || Start + (Count << PAGE_SHIFT) > MaxAddress) {
-        Debug.SetForeground(0xFFFF0000);
-        Debug.Write("Invalid PhysMem::Dereference arguments (start = 0x{:016:16}, count = {})\n", Start, Count);
-        Debug.RestoreForeground();
+        Debug.Write("Invalid PhysMem::Dereference arguments (start = 0x{:016:16}, count = {}){}\n",
+                    SetForeground { 0xFFFF0000 }, Start, Count, RestoreForeground{});
         return Status::InvalidArg;
     }
 
     for (UIntPtr i = 0; i < Count; i++)
-        if (!--Pages[((Start - MinAddress) >> PAGE_SHIFT) + i].References) Free(Start + (i << PAGE_SHIFT));
+        if (!__atomic_sub_fetch(&Pages[((Start - MinAddress) >> PAGE_SHIFT) + i].References, 1, __ATOMIC_SEQ_CST))
+            Free(Start + (i << PAGE_SHIFT));
 
     return Status::Success;
 }
 
 Status PhysMem::Dereference(UInt64 *Pages, UIntPtr Count) {
     if (Pages == Null || !Count || UsedBytes < (Count << PAGE_SHIFT)) {
-        Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid non-contig PhysMem::DereferenceNonContig arguments (pages = 0x{:0*:16}, count = {})\n",
-                    Pages, Count);
-         Debug.SetForeground(0xFFFFFFF);
+        Debug.Write("invalid non-contig PhysMem::DereferenceNonContig arguments (pages = 0x{:0*:16}, count = {}){}\n",
+                    SetForeground { 0xFFFF0000 }, Pages, Count, RestoreForeground{});
         return Status::InvalidArg;
     }
 
@@ -271,13 +266,12 @@ Status PhysMem::Dereference(UInt64 *Pages, UIntPtr Count) {
 
 UIntPtr PhysMem::GetReferences(UInt64 Page) {
     if (Pages == Null || Page < PAGE_SIZE || (Page & PAGE_MASK) || Page < MinAddress || Page >= MaxAddress) {
-        Debug.SetForeground(0xFFFF0000);
-        Debug.Write("Invalid PhysMem::GetReferences arguments (page = 0x{:016:16})\n", Page);
-        Debug.RestoreForeground();
+        Debug.Write("Invalid PhysMem::GetReferences arguments (page = 0x{:016:16}){}\n", SetForeground { 0xFFFF0000 },
+                    Page, RestoreForeground{});
         return 0;
     }
 
-    return Pages[(Page - MinAddress) >> PAGE_SHIFT].References;
+    return __atomic_load_n(&Pages[(Page - MinAddress) >> PAGE_SHIFT].References, __ATOMIC_SEQ_CST);
 }
 
 UInt64 PhysMem::Reverse(Page *Node) {

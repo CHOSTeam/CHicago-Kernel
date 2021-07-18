@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 14 of 2021, at 23:45 BRT
- * Last edited on July 10 of 2021, at 11:19 BRT */
+ * Last edited on July 17 of 2021, at 18:27 BRT */
 
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
@@ -9,6 +9,7 @@
 using namespace CHicago;
 
 Heap::Block *Heap::Head = Null, *Heap::Tail = Null;
+SpinLock Heap::Lock {};
 
 Void Heap::ReturnMemory(Void) {
     /* Just find any blocks that are free and have the size as a multiple of the page size (and the block header address
@@ -38,10 +39,11 @@ Void Heap::ReturnMemory(Void) {
 }
 
 Void *Heap::Allocate(UIntPtr Size) {
+    Lock.Acquire();
     Block *block = FindFree(Size += -Size & 0x0F);
     if (block != Null) RemoveFree(block);
-    else if ((block = CreateBlock(Size)) == Null) return Null;
-    return Split(block, Size), SetMemory(block->Data, 0, block->Size), block->Data;
+    else if ((block = CreateBlock(Size)) == Null) return Lock.Release(), Null;
+    return Split(block, Size), Lock.Release(), SetMemory(block->Data, 0, block->Size), block->Data;
 }
 
 Void *Heap::Allocate(UIntPtr Size, UIntPtr Align) {
@@ -52,6 +54,8 @@ Void *Heap::Allocate(UIntPtr Size, UIntPtr Align) {
 
     /* There are two different blocks that we can use: With the ->Data field perfectly aligned, and with enough size
      * to split it in a block with at least size 16 and an aligned block with the requested (16-byte aligned) size. */
+
+    Lock.Acquire();
 
     Block *cur = Head, *best = Null;
     for (; cur != Null; cur = cur->Free.Next) {
@@ -68,13 +72,15 @@ Void *Heap::Allocate(UIntPtr Size, UIntPtr Align) {
 
     if (cur != Null) RemoveFree(cur);
     else if (best != Null) cur = Split(best, size, False);
-    else if ((cur = CreateBlock(size + Size)) == Null) return Null;
+    else if ((cur = CreateBlock(size + Size)) == Null) return Lock.Release(), Null;
     else cur = Split(cur, size, False);
 
-    return Split(cur, Size), SetMemory(cur->Data, 0, cur->Size), cur->Data;
+    return Split(cur, size), Lock.Release(), SetMemory(cur->Data, 0, cur->Size), cur->Data;
 }
 
 Void Heap::Free(Void *Data) {
+    Lock.Acquire();
+
     auto addr = reinterpret_cast<UIntPtr>(Data);
     auto blk = reinterpret_cast<Block*>(addr - sizeof(Block) + sizeof(Block::Free));
 
@@ -110,6 +116,8 @@ Void Heap::Free(Void *Data) {
 
         if (!fuse) break;
     }
+
+    Lock.Release();
 }
 
 Heap::Block *Heap::Split(Block *Block, UIntPtr Size, Boolean Free) {
@@ -134,7 +142,7 @@ Heap::Block *Heap::CreateBlock(UIntPtr Size) {
      * address. */
 
     UIntPtr virt;
-    UInt64 phys[(Size = (Size + (-Size & PAGE_MASK)) >> PAGE_SHIFT)];
+    UInt64 phys[(Size += sizeof(Block) - sizeof(Block::Free), (Size = (Size + (-Size & PAGE_MASK)) >> PAGE_SHIFT))];
 
     SetMemory(phys, 0, sizeof(phys));
 
@@ -184,10 +192,12 @@ Boolean Heap::AddFree(Block *Block) {
         if (Head != Null) Head->Free.Prev = Block;
         else Tail = Block;
         Block->Free.Next = Head;
+        Block->Free.Prev = Null;
         Head = Block;
         return True;
     } else if (reinterpret_cast<UIntPtr>(Block) > reinterpret_cast<UIntPtr>(Tail)) {
         Tail->Free.Next = Block;
+        Block->Free.Next = Null;
         Block->Free.Prev = Tail;
         Tail = Block;
         return True;

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 08 of 2021, at 00:14 BRT
- * Last edited on July 16 of 2021, at 09:48 BRT */
+ * Last edited on July 17 of 2021, at 22:11 BRT */
 
 #include <vid/console.hxx>
 
@@ -9,44 +9,17 @@ namespace CHicago {
 
 TextConsole Debug;
 
-TextConsole::TextConsole() : Back(), Front(), X(0), BackY(0), FrontY(0), Background(0), Foreground(0),
-                             BackgroundSP(0), ForegroundSP(0), BackgroundStack(), ForegroundStack() { }
-
 TextConsole::TextConsole(const BootInfo &Info, UInt32 Background, UInt32 Foreground)
     : Back(reinterpret_cast<UInt32*>(Info.FrameBuffer.BackBuffer), Info.FrameBuffer.Width, Info.FrameBuffer.Height),
       Front(reinterpret_cast<UInt32*>(Info.FrameBuffer.FrontBuffer), Info.FrameBuffer.Width, Info.FrameBuffer.Height),
-      X(0), BackY(0), FrontY(0), Background(Background), Foreground(Foreground), BackgroundSP(0), ForegroundSP(0),
-      BackgroundStack(), ForegroundStack() { Clear(); }
+      Background(Background), Foreground(Foreground) { Clear(); }
 
-Void TextConsole::Clear() {
+Void TextConsole::Clear(Void) {
+    Lock.Acquire();
     Back.Clear(Background);
     Front.Clear(Background);
     X = BackY = FrontY = 0;
-}
-
-Void TextConsole::SetBackground(UInt32 Color) {
-    /* We have to push the current background color to our internal stack, so later the RestoreBackground function can
-     * properly restore it. */
-
-    if (BackgroundSP < sizeof(BackgroundStack) / sizeof(UInt32)) BackgroundStack[BackgroundSP++] = Background;
-    Background = Color;
-    Clear();
-}
-
-Void TextConsole::SetForeground(UInt32 Color) {
-    if (ForegroundSP < sizeof(ForegroundStack) / sizeof(UInt32)) ForegroundStack[ForegroundSP++] = Foreground;
-    Foreground = Color;
-}
-
-Void TextConsole::RestoreBackground() {
-    /* Let's just not do anything (instead of setting to some default value) if the stack is empty. */
-
-    if (BackgroundSP > 0) Background = BackgroundStack[--BackgroundSP];
-    Clear();
-}
-
-Void TextConsole::RestoreForeground() {
-    if (ForegroundSP > 0) Foreground = ForegroundStack[--ForegroundSP];
+    Lock.Release();
 }
 
 Boolean TextConsole::WriteInt(Char Data) {
@@ -100,6 +73,26 @@ Boolean TextConsole::WriteInt(Char Data) {
         CopyMemory(bpos, fpos, DefaultFont.GlyphInfo[(UInt8)Data].Advance * 4);
 
     return True;
+}
+
+Void TextConsole::SetBackgroundInt(UInt32 Color) {
+    if (BackgroundSP < sizeof(BackgroundStack) / sizeof(UInt32)) BackgroundStack[BackgroundSP++] = Background;
+    Background = Color;
+    Clear();
+}
+
+Void TextConsole::SetForegroundInt(UInt32 Color) {
+    if (ForegroundSP < sizeof(ForegroundStack) / sizeof(UInt32)) ForegroundStack[ForegroundSP++] = Foreground;
+    Foreground = Color;
+}
+
+Void TextConsole::RestoreBackgroundInt(Void) {
+    if (BackgroundSP > 0) Background = BackgroundStack[--BackgroundSP];
+    Clear();
+}
+
+Void TextConsole::RestoreForegroundInt(Void) {
+    if (ForegroundSP > 0) Foreground = ForegroundStack[--ForegroundSP];
 }
 
 }

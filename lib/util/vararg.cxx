@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 15:57 BRT
- * Last edited on July 06 of 2021 at 19:53 BRT */
+ * Last edited on July 17 of 2021 at 21:48 BRT */
 
 #include <base/string.hxx>
 
@@ -9,7 +9,7 @@ using namespace CHicago;
 
 /* Some macros to make our life a bit easier. */
 
-#define WRITE_CHAR(c) if (!Function(c, Context)) return written; written++
+#define WRITE_CHAR(c) if (!Function(0, c, Context)) return written; written++
 #define WRITE_STRING(str, sz) if (!WriteString(str, sz, Function, Context)) return written; written += sz
 #define PAD(cnt, c) do { for (UIntPtr i = 0; i < (cnt); i++) WRITE_CHAR(c); } while (False)
 
@@ -25,10 +25,11 @@ static const Char *FindFirst(const Char *Data, Char Value, UIntPtr Length) {
     return Null;
 }
 
-static Boolean WriteString(const Char *Data, UIntPtr DataSize, Boolean (*Function)(Char, Void*), Void *Context) {
+static Boolean WriteString(const Char *Data, UIntPtr DataSize, Boolean (*Function)(UInt8, UInt32, Void*),
+                           Void *Context) {
     while (*Data) {
         if (!(DataSize--)) break;
-        else if (!Function(*Data++, Context)) return False;
+        else if (!Function(0, *Data++, Context)) return False;
     }
 
     return True;
@@ -39,7 +40,7 @@ static Boolean IsNormal(Float Value) {
     return !(val.IntValue & 0xFFFFFFFFFFFFF);
 }
 
-UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const StringView &Format,
+UIntPtr VariadicFormatInt(Boolean (*Function)(UInt8, UInt32, Void*), Void *Context, const StringView &Format,
                           const ArgumentList &Arguments) {
     if (Function == Null) return 0;
 
@@ -243,6 +244,15 @@ UIntPtr VariadicFormatInt(Boolean (*Function)(Char, Void*), Void *Context, const
             PAD(width > 1 ? width - 1 : 0, ' ');
             WRITE_CHAR(val.CharValue);
 
+            break;
+        case ArgumentType::SetBackground: case ArgumentType::SetForeground: case ArgumentType::RestoreBackground:
+        case ArgumentType::RestoreForeground:
+            /* SetBackground/Foreground (and RestoreBackground/Foreground) are kind of special, instead of using type 0
+             * (write character/string), they use type 1/2/3/4, which means that we don't even have any padding to do
+             * here. */
+            Function(type == ArgumentType::SetBackground ? 1 :
+                     (type == ArgumentType::SetForeground ? 2 : (type == ArgumentType::RestoreBackground ? 3 : 4)),
+                     val.UInt32Value, Context);
             break;
         }
     }

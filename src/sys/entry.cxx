@@ -1,13 +1,23 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on July 16 of 2021, at 13:25 BRT */
+ * Last edited on July 17 of 2021, at 22:41 BRT */
 
 #include <sys/arch.hxx>
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
 
 using namespace CHicago;
+
+extern "C" Void SmpEntry(Void) {
+    /* The "caller" is probably expecting us to set some kind of arch-specific signal to say that we initialized and
+     * reached this place, so let's call the arch-specific init core/cpu function. */
+
+    Arch::InitializeCore();
+    Debug.Write("{}core {} is alive{}\n", SetForeground { 0xFF00FF00 }, Arch::GetCoreId(), RestoreForeground{});
+
+    Arch::Halt(True);
+}
 
 extern "C" Void KernelEntry(const BootInfo &Info) {
     /* Hello, World! The loader just exited the EFI environment, and gave control to the kernel! Right now the MMU
@@ -26,9 +36,8 @@ extern "C" Void KernelEntry(const BootInfo &Info) {
     /* Initialize the debug interface (change this later to also possibly not use the screen). */
 
     Debug = TextConsole(Info, 0, 0xFFFFFF00);
-    Debug.SetForeground(0xFF00FF00);
-    Debug.Write("initializing the kernel, arch = {}, version = {}\n", ARCH, VERSION);
-    Debug.RestoreForeground();
+    Debug.Write("{}initializing the kernel, arch = {}, version = {}\ncore 0 is alive{}\n",
+                SetForeground { 0xFF00FF00 }, ARCH, VERSION, RestoreForeground{});
 
     /* Initialize the arch-specific bits. */
 
@@ -43,13 +52,5 @@ extern "C" Void KernelEntry(const BootInfo &Info) {
     /* Initialize/map all the ACPI tables that we need for now. */
 
     Acpi::Initialize(Info);
-
-    /* And for now our initialization is finished. */
-
-    Debug.SetForeground(0xFF00FF00);
-    Debug.Write("initialization finished, halting the machine\n");
-    Debug.RestoreForeground();
-
-    *((volatile UIntPtr*)nullptr) = 0;
-    ASSERT(False);
+    Arch::Halt(True);
 }

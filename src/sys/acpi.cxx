@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 11 of 2021, at 18:08 BRT
- * Last edited on July 16 of 2021, at 12:03 BRT */
+ * Last edited on July 17 of 2021, at 15:21 BRT */
 
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
@@ -34,12 +34,12 @@ Void Acpi::Initialize(const BootInfo &Info) {
             if (VirtMem::MapIo(phys, size2, out2) != Status::Success) continue;
         }
 
-        InitializeArch(reinterpret_cast<const SdtHeader*>(out2));
+        InitializeArch(Info, reinterpret_cast<const SdtHeader*>(out2));
         VirtMem::Unmap(out2 & ~PAGE_MASK, size2);
         VirtMem::Free(out2 & ~PAGE_MASK, size2 >> PAGE_SHIFT);
     }
 
-    InitializeArch(Null);
+    InitializeArch(Info, Null);
 }
 
 }

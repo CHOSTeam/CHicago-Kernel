@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 09 of 2021, at 12:54 BRT
- * Last edited on July 16 of 2021, at 09:47 BRT */
+ * Last edited on July 17 of 2021, at 22:08 BRT */
 
 #include <util/stacktrace.hxx>
 
@@ -18,8 +18,8 @@ Void StackTrace::Initialize(const BootInfo &Info) {
         Initialized = True;
         Symbols = Info.Symbols.Start;
         SymbolCount = Info.Symbols.Count;
-        Debug.Write("initialized the kernel symbol table, starting at 0x{:0*:16}, and there are {} symbols\n", Symbols,
-                    SymbolCount);
+        Debug.Write("{}initialized the kernel symbol table, starting at 0x{:0*:16}, and there are {} symbols{}\n",
+                    SetForeground { 0xFF00FF00 }, Symbols, SymbolCount, RestoreForeground{});
     } else
         Debug.Write("the kernel symbols are unavailable, and name resolving on backtrace will be also unavailable\n");
 }

@@ -1,13 +1,23 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 16 of 2021 at 09:52 BRT
- * Last edited on July 16 of 2021 at 16:27 BRT */
+ * Last edited on July 17 of 2021 at 22:54 BRT */
 
 #pragma once
 
+#include <arch/desctables.hxx>
+#include <ds/list.hxx>
 #include <sys/acpi.hxx>
 
 namespace CHicago {
+
+struct packed CoreInfo {
+    CoreInfo *Self;
+    CHicago::Gdt *Gdt;
+    UIntPtr Id, LApicId;
+    volatile Boolean Status;
+    const UInt8 *KernelStack;
+};
 
 class Hpet {
 public:
@@ -23,27 +33,29 @@ public:
 
     static Void Initialize(const Header*);
 
-    [[nodiscard]] static auto &GetMainCounter() { return *reinterpret_cast<volatile UInt64*>(Address + 0xF0); }
+    [[nodiscard]] static UInt64 GetRegister(UIntPtr Off) {
+#ifdef __i386__
+        auto ptr = reinterpret_cast<volatile UInt32*>(Address + Off);
+        return (UInt64)*ptr | ((UInt64)*(ptr + 1) << 32);
+#else
+        return *reinterpret_cast<volatile UInt64*>(Address + Off);
+#endif
+    }
+
+    static Void SetRegister(UIntPtr Off, UInt64 Value) {
+#ifdef __i386__
+        auto ptr = reinterpret_cast<volatile UInt32*>(Address + Off);
+        *ptr = Value;
+        *(ptr + 1) = Value >> 32;
+#else
+        *reinterpret_cast<volatile UInt64*>(Address + Off) = Value;
+#endif
+    }
+
     [[nodiscard]] static UIntPtr GetAddress(Void) { return Address; }
     [[nodiscard]] static UInt64 GetFrequency(Void) { return Frequency; }
     [[nodiscard]] static Boolean IsInitialized(Void) { return Initialized; }
 private:
-    [[nodiscard]] static auto &GetConfig(UInt8 Num) {
-        return *reinterpret_cast<volatile UInt64*>(Address + 0x100 + 0x20 * Num);
-    }
-
-    [[nodiscard]] static auto &GetValue(UInt8 Num) {
-        return *reinterpret_cast<volatile UInt64*>(Address + 0x108 + 0x20 * Num);
-    }
-
-    [[nodiscard]] static auto &GetFSBRoute(UInt8 Num) {
-        return *reinterpret_cast<volatile UInt64*>(Address + 0x110 + 0x20 * Num);
-    }
-
-    [[nodiscard]] static auto &GetGeneralCaps(Void) { return *reinterpret_cast<volatile UInt64*>(Address); }
-    [[nodiscard]] static auto &GetGeneralConfig() { return *reinterpret_cast<volatile UInt64*>(Address + 0x10); }
-    [[nodiscard]] static auto &GetGeneralIntStatus() { return *reinterpret_cast<volatile UInt64*>(Address + 0x20); }
-
     static UIntPtr Address;
     static UInt64 Frequency;
     static Boolean Initialized;
@@ -67,17 +79,36 @@ public:
             UInt64 Address;
     };
 
-    static Void Initialize(const Madt*);
+    static Void Initialize(const BootInfo&, const Madt*);
+    static Void StartupCores(Void);
+    static Void SetupLApic(Void);
 
-    [[nodiscard]] static auto GetLApicIds(Void) { return LApicIds; }
-    [[nodiscard]] static UInt16 GetCoreCount(Void) { return CoreCount; }
+    static Void SendIpi(UInt8, UInt8, UInt16);
+
+    static auto &GetLApicRegister(UIntPtr Off) { return *reinterpret_cast<volatile UInt32*>(LApicAddress + Off); }
+
+    static UInt8 GetLApicId(Void) {
+        if (LApicAddress) return GetLApicRegister(0x20) >> 24;
+        UInt32 bx; asm volatile("cpuid" : "=b"(bx) : "a"(1) : "%ecx", "%edx");
+        return bx >> 24;
+    };
+
+    [[nodiscard]] static CoreInfo &GetCurrentCore(Void) {
+#ifdef __i386__
+        UInt32 res; asm volatile("mov %%gs:0, %0" : "=r"(res));
+#else
+        UInt64 res; asm volatile("mov %%fs:0, %0" : "=r"(res));
+#endif
+        return *reinterpret_cast<CoreInfo*>(res);
+    }
+
+    [[nodiscard]] static auto &GetCoreList(Void) { return CoreList; }
     [[nodiscard]] static Boolean IsInitialized(Void) { return Initialized; }
     [[nodiscard]] static UIntPtr GetLApicAddress(Void) { return LApicAddress; }
     [[nodiscard]] static UIntPtr GetIoApicAddress(Void) { return IoApicAddress; };
 private:
-    static UInt16 CoreCount;
-    static UInt8 LApicIds[256];
     static Boolean Initialized;
+    static List<CoreInfo> CoreList;
     static UIntPtr LApicAddress, IoApicAddress;
 };
 

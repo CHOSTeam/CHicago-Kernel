@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 09 of 2021, at 16:14 BRT
- * Last edited on July 16 of 2021, at 10:31 BRT */
+ * Last edited on July 17 of 2021, at 22:08 BRT */
 
 #include <vid/console.hxx>
 
@@ -9,6 +9,7 @@ using namespace CHicago;
 
 UIntPtr VirtMem::Start = 0, VirtMem::End = 0, VirtMem::Current = 0, VirtMem::FreeCount = 0;
 VirtMem::Page *VirtMem::FreeList = Null, *VirtMem::WaitingList = Null;
+SpinLock VirtMem::Lock {};
 
 Void VirtMem::FreeWaitingPages(Void) {
     FreeCount += ::FreeWaitingPages(FreeList, WaitingList, Reverse);
@@ -18,34 +19,35 @@ Status VirtMem::Allocate(UIntPtr Count, UIntPtr &Out, UIntPtr Align) {
     Status status;
 
     if (!Start || !Count || Count >= PAGE_SIZE / sizeof(Page) || !Align || Align & (Align - 1)) {
-        Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid VirtMem::Allocate arguments (count = {}, align = {})\n", Count, Align);
-        Debug.RestoreForeground();
+        Debug.Write("{}invalid VirtMem::Allocate arguments (count = {}, align = {}){}\n", SetForeground { 0xFFFF0000 },
+                    Count, Align, RestoreForeground{});
         return Status::InvalidArg;
     } else if (FreeCount < Count && WaitingList == Null && Current >= End) {
-        Debug.SetForeground(0xFFFF0000);
-        Debug.Write("not enough free memory for VirtMem::Allocate (count = {})\n", Count);
-        Debug.RestoreForeground();
+        Debug.Write("{}not enough free memory for VirtMem::Allocate (count = {}){}\n", SetForeground { 0xFFFF0000 },
+                    Count, RestoreForeground{});
         return Status::OutOfMemory;
     } else if (FreeCount < Count) {
         if ((WaitingList == Null || (Heap::ReturnMemory(), FreeWaitingPages(), FreeCount < Count)) &&
             (status = ExpandPool()) != Status::Success) return status;
     }
 
+    Lock.Acquire();
+
     if ((status = AllocatePages(FreeList, Reverse, Count, Out, Align)) == Status::Success ||
         ((status = ExpandPool()) == Status::Success &&
          (status = AllocatePages(FreeList, Reverse, Count, Out, Align)) == Status::Success)) FreeCount -= Count;
 
-    return status;
+    return Lock.Release(), status;
 }
 
 Status VirtMem::Free(UIntPtr Start, UIntPtr Count) {
     if (!Start || (Start & PAGE_MASK) || Start < VirtMem::Start || Start + (Count << PAGE_SHIFT) > Current) {
-        Debug.SetForeground(0xFFFF0000);
-        Debug.Write("invalid VirtMem::Free arguments (start = 0x{:0*:16}, count = {})\n", Start, Count);
-        Debug.RestoreForeground();
+        Debug.Write("{}invalid VirtMem::Free arguments (start = 0x{:0*:16}, count = {}){}\n",
+                    SetForeground { 0xFFFF0000 }, Start, Count, RestoreForeground{});
         return Status::InvalidArg;
     }
+
+    Lock.Acquire();
 
     for (UInt64 cur = Start; cur < Start + (Count << PAGE_SHIFT); cur += PAGE_SIZE) {
         /* Calculating the index in the page database is a bit harder here, as we have multiple of them (one for each
@@ -55,9 +57,8 @@ Status VirtMem::Free(UIntPtr Start, UIntPtr Count) {
              page = &group[(cur - reinterpret_cast<UIntPtr>(group)) >> PAGE_SHIFT];
 
         if (page->Count) {
-            Debug.SetForeground(0xFFFF0000);
-            Debug.Write("invalid VirtMem::Free arguments (start = 0x{:0*:16}, count = {})\n", Start, Count);
-            Debug.RestoreForeground();
+            Debug.Write("{}invalid VirtMem::Free arguments (start = 0x{:0*:16}, count = {}){}\n",
+                        SetForeground { 0xFFFF0000 }, Start, Count, RestoreForeground{});
             return Status::InvalidArg;
         }
 
@@ -68,7 +69,7 @@ Status VirtMem::Free(UIntPtr Start, UIntPtr Count) {
         else WaitingList->LastSingle->NextSingle = page, WaitingList->LastSingle = page;
     }
 
-    return Status::Success;
+    return Lock.Release(), Status::Success;
 }
 
 Status VirtMem::MapIo(UInt64 Physical, UIntPtr &Size, UIntPtr &Out) {

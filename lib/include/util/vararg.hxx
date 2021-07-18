@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 22 of 2021, at 15:27 BRT
- * Last edited on July 06 of 2021 at 19:40 BRT */
+ * Last edited on July 17 of 2021 at 21:47 BRT */
 
 #pragma once
 
@@ -14,11 +14,14 @@ class StringView;
 
 /* The Long and ULong types are required for 64-bits support (else, we gonna get some errors to do with ambiguity). */
 
+struct SetBackground { UInt32 Color; };
+struct SetForeground { UInt32 Color; };
+struct RestoreBackground { };
+struct RestoreForeground { };
+
 enum class ArgumentType {
-    Float, Long, Int32, Int64,
-    ULong, UInt32, UInt64,
-    Char, Boolean, Pointer, CString,
-    Status, CHString, CHStringView
+    Float, Long, Int32, Int64, ULong, UInt32, UInt64, Char, Boolean, Pointer, CString, Status, CHString, CHStringView,
+    SetBackground, SetForeground, RestoreBackground, RestoreForeground
 };
 
 union ArgumentValue {
@@ -43,6 +46,8 @@ public:
     /* And yes, we need one constructor for each argument type (and let's already inline everything). Any new valid arg
      * type should also be added here. */
 
+    Argument(RestoreForeground) : Type(ArgumentType::RestoreForeground), Value() { }
+    Argument(RestoreBackground) : Type(ArgumentType::RestoreBackground), Value() { }
     Argument(Char Value) : Type(ArgumentType::Char), Value({ .CharValue = Value }) { }
     Argument(Long Value) : Type(ArgumentType::Long), Value({ .LongValue = Value }) { }
     Argument(Float Value) : Type(ArgumentType::Float), Value({ .FloatValue = Value }) { }
@@ -56,6 +61,8 @@ public:
     Argument(const Void *Value) : Type(ArgumentType::Pointer), Value({ .PointerValue = Value }) { }
     Argument(const Char *Value) : Type(ArgumentType::CString), Value({ .CStringValue = Value }) { }
     Argument(const String &Value) : Type(ArgumentType::CHString), Value({ .CHStringValue = &Value }) { }
+    Argument(SetBackground Value) : Type(ArgumentType::SetBackground), Value({ .UInt32Value = Value.Color }) { }
+    Argument(SetForeground Value) : Type(ArgumentType::SetForeground), Value({ .UInt32Value = Value.Color }) { }
     Argument(const StringView &Value) : Type(ArgumentType::CHStringView), Value({ .CHStringViewValue = &Value }) { }
 
     inline ArgumentType GetType() const { return Type; }
@@ -82,13 +89,13 @@ private:
  * ArgumentList, and one that takes normal varargs, the second one will convert the varargs into an ArgumentList, and
  * redirect (and as it is a template<> function, it needs to be inline). */
 
-UIntPtr VariadicFormatInt(Boolean (*)(Char, Void*), Void*, const StringView&, const ArgumentList&);
+UIntPtr VariadicFormatInt(Boolean (*)(UInt8, UInt32, Void*), Void*, const StringView&, const ArgumentList&);
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-value"
 
-template<typename... T> static inline UIntPtr VariadicFormat(Boolean (*Function)(Char, Void*), Void *Context, const StringView &Format,
-                                            T... Args) {
+template<typename... T> static inline UIntPtr VariadicFormat(Boolean (*Function)(UInt8, UInt32, Void*), Void *Context,
+                                            const StringView &Format, T... Args) {
     Argument list[] = { Args... };
     return VariadicFormatInt(Function, Context, Format, ArgumentList(sizeof...(Args), list));
 }

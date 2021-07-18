@@ -1,14 +1,14 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 26 of 2020, at 18:24 BRT
- * Last edited on April 10 of 2021, at 17:02 BRT */
+ * Last edited on July 17 of 2021, at 20:36 BRT */
 
 #pragma once
 
 #include <base/types.hxx>
 
-/* For accessing most of the devices (that aren't memory mapped), we need to
- * use the in/out instructions, this class let us do this easily. */
+/* For accessing most of the devices (that aren't memory mapped), we need to use the in/out instructions, this class
+ * let us do this easily. */
 
 namespace CHicago {
 

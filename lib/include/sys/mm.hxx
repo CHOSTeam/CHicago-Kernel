@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 04 of 2021, at 17:19 BRT
- * Last edited on July 16 of 2021, at 10:31 BRT */
+ * Last edited on July 17 of 2021, at 18:35 BRT */
 
 #pragma once
 
@@ -10,6 +10,7 @@
 
 #ifdef KERNEL
 #include <sys/arch.hxx>
+#include <util/lock.hxx>
 #endif
 
 #ifndef PAGE_SIZE
@@ -57,7 +58,9 @@ public:
         UInt8 References;
         Page *NextSingle, *NextGroup, *LastSingle;
     };
-
+private:
+    static UInt64 Reverse(Page*);
+public:
     static Void Initialize(const BootInfo&);
 #endif
 
@@ -84,20 +87,25 @@ public:
 #ifdef KERNEL
     static Void FreeWaitingPages(Void);
 
-    static inline UIntPtr GetKernelStart() { return KernelStart; }
-    static inline UIntPtr GetKernelEnd() { return KernelEnd; }
-    static inline UInt64 GetMinAddress() { return MinAddress; }
-    static inline UInt64 GetMaxAddress() { return MaxAddress; }
-    static inline UInt64 GetSize() { return MaxBytes; }
-    static inline UInt64 GetUsage() { return UsedBytes; }
-    static inline UInt64 GetFree() { return MaxBytes - UsedBytes; }
-private:
-    static UInt64 Reverse(Page *Node);
+    static inline UInt64 GetFreeBase(Void) {
+        UInt64 fl = FreeList != Null ? Reverse(FreeList) : 0xFFFFFFFFFFFFFFFF,
+               wl = WaitingList != Null ? Reverse(WaitingList) : 0xFFFFFFFFFFFFFFFF;
+        return fl < wl ? fl : wl;
+    }
 
+    static inline UIntPtr GetKernelStart(Void) { return KernelStart; }
+    static inline UIntPtr GetKernelEnd(Void) { return KernelEnd; }
+    static inline UInt64 GetMinAddress(Void) { return MinAddress; }
+    static inline UInt64 GetMaxAddress(Void) { return MaxAddress; }
+    static inline UInt64 GetSize(Void) { return MaxBytes; }
+    static inline UInt64 GetUsage(Void) { return UsedBytes; }
+    static inline UInt64 GetFree(Void) { return MaxBytes - UsedBytes; }
+private:
     static UInt64 MinAddress, MaxAddress, MaxBytes, UsedBytes;
     static UIntPtr PageCount, KernelStart, KernelEnd;
     static Page *Pages, *FreeList, *WaitingList;
     static Boolean Initialized;
+    static SpinLock Lock;
 #else
     static UInt64 GetSize();
     static UInt64 GetUsage();
@@ -132,6 +140,7 @@ private:
 
     static UIntPtr Start, End, Current, FreeCount;
     static Page *FreeList, *WaitingList;
+    static SpinLock Lock;
 #endif
 };
 
@@ -175,6 +184,7 @@ private:
     static Void RemoveFree(Block*);
 
     static Block *Head, *Tail;
+    static SpinLock Lock;
 #endif
 };
 

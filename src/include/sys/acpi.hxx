@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 11 of 2021, at 17:50 BRT
- * Last edited on July 16 of 2021 at 16:08 BRT */
+ * Last edited on July 17 of 2021 at 15:21 BRT */
 
 #pragma once
 
@@ -59,7 +59,7 @@ public:
     };
 
     static Void Initialize(const BootInfo&);
-    static Void InitializeArch(const SdtHeader*);
+    static Void InitializeArch(const BootInfo&, const SdtHeader*);
 };
 
 }
