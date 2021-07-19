@@ -1,9 +1,9 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 29 of 2020, at 11:24 BRT
- * Last edited on July 17 of 2021, at 22:18 BRT */
+ * Last edited on July 19 of 2021, at 09:16 BRT */
 
-#include <arch/desctables.hxx>
+#include <arch/acpi.hxx>
 #include <arch/port.hxx>
 #include <sys/arch.hxx>
 #include <sys/panic.hxx>
@@ -30,16 +30,6 @@ extern "C" force_align_arg_pointer Void IdtDefaultHandler(Registers &Regs) {
 	 * configured the PIC; 32-255 are device interrupts/OS interrupts (like system calls).
 	 * For interrupts 32-47 need to send the EOI to the PIC, and NOT crash if the handler isn't installed. For 48-255
 	 * we need to crash if the handler isn't installed. */
-	
-	if (Regs.IntNum >= 32 && Regs.IntNum <= 47) {
-		/* Send the EOI signal to the master PIC (if the interrupt number is between 40-47, we need to send it to the
-		 * slave PIC as well). */
-		
-		if (InterruptHandlers[Regs.IntNum - 32] != Null) InterruptHandlers[Regs.IntNum - 32](Regs);
-		if (Regs.IntNum >= 40) Port::OutByte(0xA0, 0x20);
-
-		Port::OutByte(0x20, 0x20);
-	}
 
 	if (Regs.IntNum >= 32 && InterruptHandlers[Regs.IntNum - 32] != Null) InterruptHandlers[Regs.IntNum - 32](Regs);
 	else if (Regs.IntNum < 32) {
@@ -51,7 +41,8 @@ extern "C" force_align_arg_pointer Void IdtDefaultHandler(Registers &Regs) {
 	    /* Though most of the registers are the same on both archs, x86_64 has 8 extra register to print (r8-r15). */
 
         Arch::EnterPanicState();
-	    Debug.Write("{}panic: {}\n", SetForeground { 0xFFFF0000 }, ExceptionStrings[Regs.IntNum]);
+	    Debug.Write("{}panic in core {}: {}\n", SetForeground { 0xFFFF0000 }, Arch::GetCoreId(),
+                    ExceptionStrings[Regs.IntNum]);
 
 	    Debug.Write("regs: ax  = 0x{:0*:16} | bx  = 0x{:0*:16} | cx  = 0x{:0*:16}\n"
 #ifdef __i386__
@@ -83,6 +74,16 @@ extern "C" force_align_arg_pointer Void IdtDefaultHandler(Registers &Regs) {
 	    StackTrace::Dump();
 	    Arch::Halt(True);
 	}
+
+    if (Regs.IntNum >= 32) {
+        /* Send the EOI signal to the master PIC (if the interrupt number is between 40-47, we need to send it to the
+         * slave PIC as well) and, if the LAPIC is already initialized, also send to it (else we're going to stop
+         * receiving interrupts). */
+
+        if (Smp::IsInitialized()) Smp::GetLApicRegister(0xB0) = 0;
+        if (Regs.IntNum >= 40) Port::OutByte(0xA0, 0x20);
+        Port::OutByte(0x20, 0x20);
+    }
 }
 
 Void IdtSetHandler(UInt8 Num, InterruptHandlerFunc Func) {

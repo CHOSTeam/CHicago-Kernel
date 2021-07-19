@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 15 of 2021, at 11:36 BRT
- * Last edited on July 17 of 2021, at 22:18 BRT */
+ * Last edited on July 18 of 2021, at 23:12 BRT */
 
 #include <sys/arch.hxx>
 #include <sys/panic.hxx>
@@ -16,7 +16,7 @@ static const Char *TypeMismatchKind[] = {
 
 static inline always_inline Void Prologue() {
     Arch::EnterPanicState();
-    Debug.Write("{}panic: ubsan: ", SetForeground { 0xFFFF0000 });
+    Debug.Write("{}panic in core {}: ubsan: ", SetForeground { 0xFFFF0000 }, Arch::GetCoreId());
 }
 
 static inline always_inline no_return Void Epilogue(const SourceLocation &Location) {

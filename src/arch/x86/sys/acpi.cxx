@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 16 of 2021, at 16:06 BRT
- * Last edited on July 17 of 2021, at 23:15 BRT */
+ * Last edited on July 19 of 2021, at 09:35 BRT */
 
 #include <arch/acpi.hxx>
 #include <sys/panic.hxx>
@@ -14,7 +14,8 @@ extern Gdt BspGdt;
 extern "C" UInt32 SmpTrampolineCr3;
 extern "C" CoreInfo *SmpTrampolineCoreInfo;
 
-UIntPtr Hpet::Address = 0, Smp::LApicAddress = 0, Smp::IoApicAddress = 0;
+UIntPtr Hpet::Address = 0, Smp::LApicAddress = 0, Smp::IoApicAddress = 0, Smp::TlbShootdownAddress = 0,
+        Smp::TlbShootdownSize = 0;
 Boolean Hpet::Initialized = False, Smp::Initialized = False;
 List<CoreInfo> Smp::CoreList {};
 UInt64 Hpet::Frequency = 0;
@@ -98,16 +99,19 @@ Void Smp::Initialize(const BootInfo &Info, const Madt *Header) {
     for (auto &info : CoreList) info.Self = &info;
 
 #ifdef __i386__
-    BspGdt.LoadSpecialSegment(True, reinterpret_cast<UIntPtr>(&CoreList[0]));
+    BspGdt.LoadSpecialSegment(False, reinterpret_cast<UIntPtr>(&CoreList[0]));
 #else
-    WriteMsr(0xC0000100, reinterpret_cast<UIntPtr>(&CoreList[0]));
+    WriteMsr(0xC0000101, reinterpret_cast<UIntPtr>(&CoreList[0]));
+    WriteMsr(0xC0000102, reinterpret_cast<UIntPtr>(&CoreList[0]));
 #endif
 
     /* Local APIC is necessary for initializing SMP, and it doesn't require any timer function (which we might not have
      * yet), so let's set it up: Interrupts are already disabled/masked, so we just need to setup the LAPIC itself and
      * sti. */
 
+    IdtSetHandler(0xDD, TlbShootdownHandler);
     SetupLApic();
+
     Initialized = True;
 
     Debug.Write("{}detected {} core(s){}\n", SetForeground { 0xFF00FF00 }, CoreList.GetLength(), RestoreForeground{});
@@ -175,7 +179,29 @@ Void Smp::SetupLApic(Void) {
 }
 
 Void Smp::SendIpi(UInt8 Type, UInt8 Dest, UInt16 Vector) {
+    if (!Initialized) return;
     GetLApicRegister(0x310) = Dest << 24;
     GetLApicRegister(0x300) = (Vector & ~0xFFFF3000) | (!Type ? 0 : (Type == 1 ? 0x80000 : 0xC0000));
     do { asm volatile("pause" ::: "memory"); } while (GetLApicRegister(0x300) & 0x1000);
+}
+
+Void Smp::SendTlbShootdown(UIntPtr Address, UIntPtr Size) {
+    /* When unmapping something we need to warn the other cores that they need to update their TLB, for this, we use a
+     * TLB shootdown IPI (vector 0xFD here in CHicago). The lock is so that if multiple cores are trying to update
+     * each other, they sync correctly. */
+
+    if (!Initialized) return;
+    static SpinLock lock;
+    lock.Acquire();
+
+    TlbShootdownAddress = Address;
+    TlbShootdownSize = Size;
+    SendIpi(2, 0, 0xFD);
+
+    lock.Release();
+}
+
+Void Smp::TlbShootdownHandler(Registers&) {
+    for (UIntPtr i = 0; i < TlbShootdownSize; i += PAGE_SIZE)
+        asm volatile("invlpg (%0)" :: "r"(TlbShootdownAddress + i) : "memory");
 }

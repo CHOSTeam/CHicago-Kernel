@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 14 of 2021, at 23:45 BRT
- * Last edited on July 17 of 2021, at 18:27 BRT */
+ * Last edited on July 18 of 2021, at 22:15 BRT */
 
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
@@ -17,11 +17,11 @@ Void Heap::ReturnMemory(Void) {
 
     Boolean adv = True;
 
-    for (Block *cur = Head; cur != Null; cur = adv ? cur->Free.Next : cur, adv = True) {
+    for (Block *cur = Head; cur != Null; cur = adv ? cur->Next : cur, adv = True) {
         UIntPtr addr = reinterpret_cast<UIntPtr>(cur), size = cur->Size;
 
         if (!(addr & PAGE_MASK) && !(size & PAGE_MASK)) {
-            Block *next = cur->Free.Next;
+            Block *next = cur->Next;
             RemoveFree(cur);
 
             for (UIntPtr i = 0; i < size; i += PAGE_SIZE) {
@@ -58,16 +58,16 @@ Void *Heap::Allocate(UIntPtr Size, UIntPtr Align) {
     Lock.Acquire();
 
     Block *cur = Head, *best = Null;
-    for (; cur != Null; cur = cur->Free.Next) {
-        UIntPtr size = Align - (reinterpret_cast<UIntPtr>(cur->Data) & (Align - 1))
-                       - sizeof(Block) + sizeof(Block::Free);
+    for (; cur != Null; cur = cur->Next) {
+        UIntPtr size = Align - (reinterpret_cast<UIntPtr>(cur->Data) & (Align - 1)) - sizeof(Block) +
+                                                                                      sizeof(Block::Free);
         if (size < 16) size += Align;
         if (!(reinterpret_cast<UIntPtr>(cur->Data) & (Align - 1)) && cur->Size >= Size) break;
         else if ((best == Null || cur->Size < best->Size) && cur->Size >= size + Size) best = cur;
     }
 
     UIntPtr size = Align - ((best == Null ? sizeof(Block::Free) : reinterpret_cast<UIntPtr>(best->Data)) & (Align - 1))
-                   - sizeof(Block) + sizeof(Block::Free);
+                         - sizeof(Block) + sizeof(Block::Free);
     if (cur == Null && size < 16) size += Align;
 
     if (cur != Null) RemoveFree(cur);
@@ -96,21 +96,22 @@ Void Heap::Free(Void *Data) {
     while (True) {
         Boolean fuse = False;
 
-        if (blk->Free.Prev != Null &&
-            reinterpret_cast<UIntPtr>(blk->Free.Prev->Data) + blk->Free.Prev->Size == reinterpret_cast<UIntPtr>(blk)) {
-            if (blk == Tail) Tail = blk->Free.Prev;
-            blk->Free.Prev->Size += blk->Size + sizeof(Block) - sizeof(Block::Free);
-            blk->Free.Prev->Free.Next = blk->Free.Next;
-            blk = blk->Free.Prev;
+        if (blk->Prev != Null &&
+            reinterpret_cast<UIntPtr>(blk->Prev->Data) + blk->Prev->Size == reinterpret_cast<UIntPtr>(blk)) {
+            if (blk == Tail) Tail = blk->Prev;
+            else blk->Next->Prev = blk->Prev;
+            blk->Prev->Size += blk->Size + sizeof(Block) - sizeof(Block::Free);
+            blk->Prev->Next = blk->Next;
+            blk = blk->Prev;
             fuse = True;
         }
 
-        if (blk->Free.Next != Null &&
-            reinterpret_cast<UIntPtr>(blk->Free.Next) == reinterpret_cast<UIntPtr>(blk->Data) + blk->Size) {
-            if (blk->Free.Next == Tail) Tail = blk;
-            else blk->Free.Next->Free.Next->Free.Prev = blk;
-            blk->Size += blk->Free.Next->Size + sizeof(Block) - sizeof(Block::Free);
-            blk->Free.Next = blk->Free.Next->Free.Next;
+        if (blk->Next != Null &&
+            reinterpret_cast<UIntPtr>(blk->Next) == reinterpret_cast<UIntPtr>(blk->Data) + blk->Size) {
+            if (blk->Next == Tail) Tail = blk;
+            else blk->Next->Next->Prev = blk;
+            blk->Size += blk->Next->Size + sizeof(Block) - sizeof(Block::Free);
+            blk->Next = blk->Next->Next;
             fuse = True;
         }
 
@@ -166,7 +167,7 @@ Heap::Block *Heap::CreateBlock(UIntPtr Size) {
 }
 
 Heap::Block *Heap::FindFree(UIntPtr Size) {
-    for (Block *cur = Head; cur != Null; cur = cur->Free.Next) if (cur->Size >= Size) return cur;
+    for (Block *cur = Head; cur != Null; cur = cur->Next) if (cur->Size >= Size) return cur;
     return Null;
 }
 
@@ -176,10 +177,10 @@ Void Heap::RemoveFree(Block *Block) {
 
     if (Block == Null) return;
 
-    if (Block == Head) Head = Block->Free.Next;
-    else Block->Free.Prev->Free.Next = Block->Free.Next;
-    if (Block == Tail) Tail = Block->Free.Prev;
-    else Block->Free.Next->Free.Prev = Block->Free.Prev;
+    if (Block == Head) Head = Block->Next;
+    else Block->Prev->Next = Block->Next;
+    if (Block == Tail) Tail = Block->Prev;
+    else Block->Next->Prev = Block->Prev;
 }
 
 Boolean Heap::AddFree(Block *Block) {
@@ -189,28 +190,28 @@ Boolean Heap::AddFree(Block *Block) {
     if (Block == Null || Block == Head || Block == Tail) return False;
 
     if (Head == Null || reinterpret_cast<UIntPtr>(Block) < reinterpret_cast<UIntPtr>(Head)) {
-        if (Head != Null) Head->Free.Prev = Block;
+        if (Head != Null) Head->Prev = Block;
         else Tail = Block;
-        Block->Free.Next = Head;
-        Block->Free.Prev = Null;
+        Block->Next = Head;
+        Block->Prev = Null;
         Head = Block;
         return True;
     } else if (reinterpret_cast<UIntPtr>(Block) > reinterpret_cast<UIntPtr>(Tail)) {
-        Tail->Free.Next = Block;
-        Block->Free.Next = Null;
-        Block->Free.Prev = Tail;
+        Tail->Next = Block;
+        Block->Next = Null;
+        Block->Prev = Tail;
         Tail = Block;
         return True;
     }
 
     Heap::Block *cur = Head;
-    while (reinterpret_cast<UIntPtr>(Block) > reinterpret_cast<UIntPtr>(cur)) cur = cur->Free.Next;
+    while (reinterpret_cast<UIntPtr>(Block) > reinterpret_cast<UIntPtr>(cur)) cur = cur->Next;
     if (Block == cur) return False;
 
-    Block->Free.Next = cur;
-    Block->Free.Prev = cur->Free.Prev;
-    cur->Free.Prev->Free.Next = Block;
-    cur->Free.Prev = Block;
+    Block->Next = cur;
+    Block->Prev = cur->Prev;
+    cur->Prev->Next = Block;
+    cur->Prev = Block;
 
     return True;
 }

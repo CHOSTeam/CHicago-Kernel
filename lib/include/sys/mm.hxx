@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 04 of 2021, at 17:19 BRT
- * Last edited on July 18 of 2021, at 12:19 BRT */
+ * Last edited on July 18 of 2021, at 22:03 BRT */
 
 #pragma once
 
@@ -144,16 +144,6 @@ private:
 #endif
 };
 
-struct AllocBlock {
-    UIntPtr Magic;
-    UIntPtr Start, Size;
-    UInt64 Pad;
-#ifndef _LP64
-    UInt32 Pad2;
-#endif
-    AllocBlock *Next, *Prev;
-};
-
 class Heap {
 public:
 #ifdef KERNEL
@@ -164,6 +154,7 @@ public:
 #endif
         union {
             struct { Block *Next, *Prev; } Free;
+            struct { Block *Next, *Prev; };
             UInt8 Data[0];
         };
     };

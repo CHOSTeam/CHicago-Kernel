@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 16 of 2021, at 13:22 BRT
- * Last edited on July 17 of 2021, at 22:18 BRT */
+ * Last edited on July 18 of 2021, at 23:13 BRT */
 
 #include <sys/arch.hxx>
 #include <sys/panic.hxx>
@@ -13,7 +13,7 @@ extern "C" no_return Void __stack_chk_fail() {
      * everything if someone tried smashing/overflowing the stack. */
 
     Arch::EnterPanicState();
-    Debug.Write("{}panic: stack smashing detected\n", SetForeground { 0xFFFF0000 });
+    Debug.Write("{}panic in core {}: stack smashing detected\n", SetForeground { 0xFFFF0000 }, Arch::GetCoreId());
     StackTrace::Dump();
     Arch::Halt(True);
 }
@@ -23,7 +23,7 @@ extern "C" no_return Void __cxa_pure_virtual() {
      * to be called). */
 
     Arch::EnterPanicState();
-    Debug.Write("{}panic: pure virtual function called\n", SetForeground { 0xFFFF0000 });
+    Debug.Write("{}panic in core {}: pure virtual function called\n", SetForeground { 0xFFFF0000 }, Arch::GetCoreId());
     StackTrace::Dump();
     Arch::Halt(True);
 }

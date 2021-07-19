@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 30 of 2020, at 08:27 BRT
- * Last edited on July 08 of 2021, at 09:10 BRT */
+ * Last edited on July 19 of 2021, at 09:09 BRT */
 
 .altmacro
 
@@ -18,7 +18,6 @@ IdtCommonStubSp: .quad 0
 
 .macro IDT_NO_ERRCODE num
 IdtHandler\num:
-    cli
     push $0
     push $\num
     jmp IdtCommonStub
@@ -26,7 +25,6 @@ IdtHandler\num:
 
 .macro IDT_ERRCODE num
 IdtHandler\num:
-    cli
     push $\num
     jmp IdtCommonStub
 .endm
@@ -69,7 +67,7 @@ IDT_ERRCODE 30
 /* From 31-255 we can use a .rept loop and the IDT_NO_ERRCODE macro. */
 
 .set i, 31
-.rept 256
+.rept 225
     IDT_NO_ERRCODE %i
     .set i, i+1
 .endr
@@ -104,7 +102,10 @@ IdtCommonStub:
     mov $0x10, %ax
     mov %ax, %ds
     mov %ax, %es
+    mov %ax, %ss
+    mov $0x30, %ax
     mov %ax, %fs
+    mov $0x38, %ax
     mov %ax, %gs
 
     push %esp
@@ -138,7 +139,11 @@ IdtCommonStub:
      * single general register, and we also don't have to push GS and FS, as they aren't really controlled by the GDT
      * (like on x86-32), but by MSRs. */
 
-    push %rax
+    cmpq $0x08, 24(%rsp)
+    je 1f
+    swapgs
+
+1:  push %rax
     movabs $IdtCommonStubSp, %rax
     mov %rsp, (%rax)
     addq $8, (%rax)
@@ -173,8 +178,6 @@ IdtCommonStub:
     mov $0x10, %ax
     mov %ax, %ds
     mov %ax, %es
-    mov %ax, %fs
-    mov %ax, %gs
     mov %ax, %ss
 
     /* Also, the first argument is on RDI, instead of the stack. */
@@ -185,10 +188,7 @@ IdtCommonStub:
 
     pop %rax
     mov %ax, %ss
-    pop %rax
-    mov %ax, %gs
-    pop %rax
-    mov %ax, %fs
+    add $16, %rsp
     pop %rax
     mov %ax, %es
     pop %rax
@@ -210,9 +210,13 @@ IdtCommonStub:
     pop %rdx
     pop %rcx
     pop %rax
-
     add $16, %rsp
-    iretq
+
+    cmpq $0x08, 8(%rsp)
+    je 1f
+    swapgs
+
+1:  iretq
 #endif
 .size IdtCommonStub, .-IdtCommonStub
 

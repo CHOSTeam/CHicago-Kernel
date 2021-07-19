@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 16 of 2021 at 09:52 BRT
- * Last edited on July 17 of 2021 at 22:54 BRT */
+ * Last edited on July 19 of 2021 at 09:28 BRT */
 
 #pragma once
 
@@ -84,6 +84,7 @@ public:
     static Void SetupLApic(Void);
 
     static Void SendIpi(UInt8, UInt8, UInt16);
+    static Void SendTlbShootdown(UIntPtr, UIntPtr);
 
     static auto &GetLApicRegister(UIntPtr Off) { return *reinterpret_cast<volatile UInt32*>(LApicAddress + Off); }
 
@@ -95,9 +96,9 @@ public:
 
     [[nodiscard]] static CoreInfo &GetCurrentCore(Void) {
 #ifdef __i386__
-        UInt32 res; asm volatile("mov %%gs:0, %0" : "=r"(res));
+        UInt32 res; asm volatile("mov %%fs:0, %0" : "=r"(res));
 #else
-        UInt64 res; asm volatile("mov %%fs:0, %0" : "=r"(res));
+        UInt64 res; asm volatile("mov %%gs:0, %0" : "=r"(res));
 #endif
         return *reinterpret_cast<CoreInfo*>(res);
     }
@@ -106,10 +107,14 @@ public:
     [[nodiscard]] static Boolean IsInitialized(Void) { return Initialized; }
     [[nodiscard]] static UIntPtr GetLApicAddress(Void) { return LApicAddress; }
     [[nodiscard]] static UIntPtr GetIoApicAddress(Void) { return IoApicAddress; };
+    [[nodiscard]] static UIntPtr GetTlbShootdownSize(Void) { return TlbShootdownSize; }
+    [[nodiscard]] static UIntPtr GetTlbShootdownAddress(Void) { return TlbShootdownAddress; }
 private:
+    static Void TlbShootdownHandler(Registers&);
+
     static Boolean Initialized;
     static List<CoreInfo> CoreList;
-    static UIntPtr LApicAddress, IoApicAddress;
+    static UIntPtr LApicAddress, IoApicAddress, TlbShootdownAddress, TlbShootdownSize;
 };
 
 }

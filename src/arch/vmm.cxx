@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 15 of 2021, at 23:28 BRT
- * Last edited on July 18 of 2021, at 18:33 BRT */
+ * Last edited on July 18 of 2021, at 23:58 BRT */
 
 static Status MoveInto(UIntPtr Virtual, UIntPtr &CurLevel, UIntPtr DestLevel, Boolean Allocate = False) {
     /* This works in a similar way to MoveInto from the bootloader, but as we expect to use recursive paging, we just
@@ -90,13 +90,15 @@ Status VirtMem::Unmap(UIntPtr Virtual, UIntPtr Size, Boolean Huge) {
 
     UIntPtr ent = MMU_INDEX(Virtual, lvl), old = ent;
 
-    for (; Size; Size -= size, Virtual += size, old = ent, ent += sizeof(MMU_TYPE)) {
+    for (UIntPtr i = 0; i < Size; i += size, old = ent, ent += sizeof(MMU_TYPE)) {
         if ((ent & ~PAGE_MASK) != (old & ~PAGE_MASK) &&
-            (lvl = 0, status = MoveInto(Virtual, lvl, dlvl)) != Status::Success) return status;
+            (lvl = 0, status = MoveInto(Virtual + i, lvl, dlvl)) != Status::Success) return status;
         else if (!MMU_IS_PRESENT(*reinterpret_cast<MMU_TYPE*>(ent))) return Status::NotMapped;
         MMU_UNSET_PRESENT(*reinterpret_cast<MMU_TYPE*>(ent));
-        MMU_UPDATE(Virtual);
+        MMU_UPDATE(Virtual + i);
     }
+
+    MMU_SHOOTDOWN(Virtual, Size);
 
     return Status::Success;
 }

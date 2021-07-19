@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:47 BRT
- * Last edited on July 17 of 2021, at 23:12 BRT */
+ * Last edited on July 19 of 2021, at 09:31 BRT */
 
 #include <arch/acpi.hxx>
 #include <arch/desctables.hxx>
@@ -14,6 +14,8 @@ extern "C" Void SmpTrampoline(Void);
 extern "C" CoreInfo *SmpTrampolineCoreInfo;
 
 Gdt BspGdt {};
+
+static Void PanicHandler(Registers&) { Arch::Halt(True); }
 
 Void Arch::InitializeCore(Void) {
     /* Information about the current core is stored (at the moment) in the address 0x8000 + the offset into the saved
@@ -45,9 +47,10 @@ Void Arch::InitializeCore(Void) {
     info.Gdt->Initialize();
 
 #ifdef __i386__
-    info.Gdt->LoadSpecialSegment(True, reinterpret_cast<UIntPtr>(&info));
+    info.Gdt->LoadSpecialSegment(False, reinterpret_cast<UIntPtr>(&info));
 #else
-    WriteMsr(0xC0000100, reinterpret_cast<UIntPtr>(&info));
+    WriteMsr(0xC0000101, reinterpret_cast<UIntPtr>(&info));
+    WriteMsr(0xC0000102, reinterpret_cast<UIntPtr>(&info));
 #endif
 
     IdtReload();
@@ -63,6 +66,7 @@ Void Arch::Initialize(const BootInfo&) {
     Debug.Write("{}initialized the global descriptor table{}\n", SetForeground { 0xFF00FF00 }, RestoreForeground{});
 
     IdtInit();
+    IdtSetHandler(0xDE, PanicHandler);
     Debug.Write("{}initialized the interrupt descriptor table{}\n", SetForeground { 0xFF00FF00 }, RestoreForeground{});
 }
 
@@ -72,6 +76,10 @@ UIntPtr Arch::GetCoreId(Void) {
 
 Void Arch::EnterPanicState(Void) {
     /* Halt all the other processors but ourselves (as we got a kernel panic/fatal error). */
+
+    static SpinLock lock;
+    lock.Acquire();
+    Smp::SendIpi(2, 0, 0xFE);
 }
 
 no_return Void Arch::Halt(Boolean Full) {

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on July 17 of 2021, at 22:41 BRT */
+ * Last edited on July 19 of 2021, at 09:36 BRT */
 
 #include <sys/arch.hxx>
 #include <sys/mm.hxx>
@@ -16,7 +16,7 @@ extern "C" Void SmpEntry(Void) {
     Arch::InitializeCore();
     Debug.Write("{}core {} is alive{}\n", SetForeground { 0xFF00FF00 }, Arch::GetCoreId(), RestoreForeground{});
 
-    Arch::Halt(True);
+    Arch::Halt(False);
 }
 
 extern "C" Void KernelEntry(const BootInfo &Info) {
@@ -52,5 +52,5 @@ extern "C" Void KernelEntry(const BootInfo &Info) {
     /* Initialize/map all the ACPI tables that we need for now. */
 
     Acpi::Initialize(Info);
-    Arch::Halt(True);
+    Arch::Halt(False);
 }

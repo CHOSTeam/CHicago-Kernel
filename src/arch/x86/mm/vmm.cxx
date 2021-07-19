@@ -1,10 +1,10 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 12 of 2021, at 14:54 BRT
- * Last edited on July 18 of 2021, at 18:35 BRT */
+ * Last edited on July 19 of 2021, at 09:25 BRT */
 
+#include <arch/acpi.hxx>
 #include <arch/mm.hxx>
-#include <sys/mm.hxx>
 #include <sys/panic.hxx>
 
 using namespace CHicago;
@@ -12,6 +12,7 @@ using namespace CHicago;
 /* All the job is done by the generic vmm.cxx implementation, we just need our special arch macros. */
 
 #define MMU_TYPE UInt64
+#define MMU_SHOOTDOWN(Address, Size) Smp::SendTlbShootdown(Address, Size)
 #define MMU_UPDATE(Address) asm volatile("invlpg (%0)" :: "r"(Address) : "memory")
 
 #define MMU_IS_HUGE(Entry) ((Entry) & PAGE_HUGE)
