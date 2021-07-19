@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on July 18 of 2021, at 15:31 BRT */
+ * Last edited on July 19 of 2021, at 10:47 BRT */
 
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
@@ -87,7 +87,9 @@ Void PhysMem::Initialize(const BootInfo &Info) {
 }
 
 Void PhysMem::FreeWaitingPages(Void) {
+    Lock.Acquire();
     UsedBytes -= ::FreeWaitingPages(FreeList, WaitingList, Reverse) << PAGE_SHIFT;
+    Lock.Release();
 }
 
 Status PhysMem::Allocate(UIntPtr Count, UInt64 &Out, UInt64 Align) {
@@ -110,9 +112,9 @@ Status PhysMem::Allocate(UIntPtr Count, UInt64 &Out, UInt64 Align) {
 
     Lock.Acquire();
     Status status = AllocatePages(FreeList, Reverse, Count, Out, Align);
+    if (status == Status::Success) UsedBytes += Count << PAGE_SHIFT;
     Lock.Release();
 
-    if (status == Status::Success) UsedBytes += Count << PAGE_SHIFT;
     return status;
 }
 

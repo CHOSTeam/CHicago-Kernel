@@ -1,21 +1,23 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 14 of 2021, at 23:45 BRT
- * Last edited on July 18 of 2021, at 22:15 BRT */
+ * Last edited on July 19 of 2021, at 10:40 BRT */
 
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
 
 using namespace CHicago;
 
+SpinLock Heap::Lock {}, Heap::FreeLock {};
 Heap::Block *Heap::Head = Null, *Heap::Tail = Null;
-SpinLock Heap::Lock {};
 
 Void Heap::ReturnMemory(Void) {
     /* Just find any blocks that are free and have the size as a multiple of the page size (and the block header address
      * itself is aligned to the page size). */
 
     Boolean adv = True;
+
+    FreeLock.Acquire();
 
     for (Block *cur = Head; cur != Null; cur = adv ? cur->Next : cur, adv = True) {
         UIntPtr addr = reinterpret_cast<UIntPtr>(cur), size = cur->Size;
@@ -40,10 +42,14 @@ Void Heap::ReturnMemory(Void) {
 
 Void *Heap::Allocate(UIntPtr Size) {
     Lock.Acquire();
+    FreeLock.Acquire();
     Block *block = FindFree(Size += -Size & 0x0F);
+
     if (block != Null) RemoveFree(block);
-    else if ((block = CreateBlock(Size)) == Null) return Lock.Release(), Null;
-    return Split(block, Size), Lock.Release(), SetMemory(block->Data, 0, block->Size), block->Data;
+    else if ((FreeLock.Release(), block = CreateBlock(Size)) == Null) return Lock.Release(), Null;
+    else FreeLock.Acquire();
+
+    return Split(block, Size), FreeLock.Release(), Lock.Release(), SetMemory(block->Data, 0, block->Size), block->Data;
 }
 
 Void *Heap::Allocate(UIntPtr Size, UIntPtr Align) {
@@ -56,6 +62,7 @@ Void *Heap::Allocate(UIntPtr Size, UIntPtr Align) {
      * to split it in a block with at least size 16 and an aligned block with the requested (16-byte aligned) size. */
 
     Lock.Acquire();
+    FreeLock.Acquire();
 
     Block *cur = Head, *best = Null;
     for (; cur != Null; cur = cur->Next) {
@@ -72,13 +79,14 @@ Void *Heap::Allocate(UIntPtr Size, UIntPtr Align) {
 
     if (cur != Null) RemoveFree(cur);
     else if (best != Null) cur = Split(best, size, False);
-    else if ((cur = CreateBlock(size + Size)) == Null) return Lock.Release(), Null;
-    else cur = Split(cur, size, False);
+    else if ((FreeLock.Release(), cur = CreateBlock(size + Size)) == Null) return Lock.Release(), Null;
+    else FreeLock.Acquire(), cur = Split(cur, size, False);
 
-    return Split(cur, size), Lock.Release(), SetMemory(cur->Data, 0, cur->Size), cur->Data;
+    return Split(cur, size), FreeLock.Release(), Lock.Release(), SetMemory(cur->Data, 0, cur->Size), cur->Data;
 }
 
 Void Heap::Free(Void *Data) {
+    FreeLock.Acquire();
     Lock.Acquire();
 
     auto addr = reinterpret_cast<UIntPtr>(Data);
@@ -119,6 +127,7 @@ Void Heap::Free(Void *Data) {
     }
 
     Lock.Release();
+    FreeLock.Release();
 }
 
 Heap::Block *Heap::Split(Block *Block, UIntPtr Size, Boolean Free) {

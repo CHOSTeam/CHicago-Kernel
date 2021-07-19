@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 09 of 2021, at 16:14 BRT
- * Last edited on July 17 of 2021, at 22:08 BRT */
+ * Last edited on July 19 of 2021, at 10:45 BRT */
 
 #include <vid/console.hxx>
 
@@ -12,7 +12,9 @@ VirtMem::Page *VirtMem::FreeList = Null, *VirtMem::WaitingList = Null;
 SpinLock VirtMem::Lock {};
 
 Void VirtMem::FreeWaitingPages(Void) {
+    Lock.Acquire();
     FreeCount += ::FreeWaitingPages(FreeList, WaitingList, Reverse);
+    Lock.Release();
 }
 
 Status VirtMem::Allocate(UIntPtr Count, UIntPtr &Out, UIntPtr Align) {
@@ -27,8 +29,10 @@ Status VirtMem::Allocate(UIntPtr Count, UIntPtr &Out, UIntPtr Align) {
                     Count, RestoreForeground{});
         return Status::OutOfMemory;
     } else if (FreeCount < Count) {
-        if ((WaitingList == Null || (Heap::ReturnMemory(), FreeWaitingPages(), FreeCount < Count)) &&
-            (status = ExpandPool()) != Status::Success) return status;
+        if (WaitingList == Null || (Heap::ReturnMemory(), FreeWaitingPages(), FreeCount < Count)) {
+            if ((Lock.Acquire(), status = ExpandPool()) != Status::Success) return status;
+            Lock.Release();
+        }
     }
 
     Lock.Acquire();

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 04 of 2021, at 17:19 BRT
- * Last edited on July 18 of 2021, at 22:03 BRT */
+ * Last edited on July 19 of 2021, at 10:42 BRT */
 
 #pragma once
 
@@ -87,12 +87,6 @@ public:
 #ifdef KERNEL
     static Void FreeWaitingPages(Void);
 
-    static inline UInt64 GetFreeBase(Void) {
-        UInt64 fl = FreeList != Null ? Reverse(FreeList) : 0xFFFFFFFFFFFFFFFF,
-               wl = WaitingList != Null ? Reverse(WaitingList) : 0xFFFFFFFFFFFFFFFF;
-        return fl < wl ? fl : wl;
-    }
-
     static inline UIntPtr GetKernelStart(Void) { return KernelStart; }
     static inline UIntPtr GetKernelEnd(Void) { return KernelEnd; }
     static inline UInt64 GetMinAddress(Void) { return MinAddress; }
@@ -174,8 +168,8 @@ private:
     static Boolean AddFree(Block*);
     static Void RemoveFree(Block*);
 
+    static SpinLock Lock, FreeLock;
     static Block *Head, *Tail;
-    static SpinLock Lock;
 #endif
 };
 
