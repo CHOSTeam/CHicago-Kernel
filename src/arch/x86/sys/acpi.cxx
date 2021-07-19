@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 16 of 2021, at 16:06 BRT
- * Last edited on July 19 of 2021, at 09:35 BRT */
+ * Last edited on July 19 of 2021, at 09:50 BRT */
 
 #include <arch/acpi.hxx>
 #include <sys/panic.hxx>
@@ -15,7 +15,7 @@ extern "C" UInt32 SmpTrampolineCr3;
 extern "C" CoreInfo *SmpTrampolineCoreInfo;
 
 UIntPtr Hpet::Address = 0, Smp::LApicAddress = 0, Smp::IoApicAddress = 0, Smp::TlbShootdownAddress = 0,
-        Smp::TlbShootdownSize = 0;
+        Smp::TlbShootdownSize = 0, Smp::TlbShootdownLeft = 0;
 Boolean Hpet::Initialized = False, Smp::Initialized = False;
 List<CoreInfo> Smp::CoreList {};
 UInt64 Hpet::Frequency = 0;
@@ -196,7 +196,18 @@ Void Smp::SendTlbShootdown(UIntPtr Address, UIntPtr Size) {
 
     TlbShootdownAddress = Address;
     TlbShootdownSize = Size;
-    SendIpi(2, 0, 0xFD);
+    TlbShootdownLeft = 0;
+
+    /* Instead of sending it to all cores without checking anything, only send to initialized cores (so that we can
+     * properly wait until all of them answered for it). */
+
+    for (auto &info : CoreList) {
+        if (!info.Status) continue;
+        SendIpi(0, info.LApicId, 0xFD);
+        AtomicAddFetch(TlbShootdownLeft, 1);
+    }
+
+    while (AtomicLoad(TlbShootdownLeft)) asm volatile("pause" ::: "memory");
 
     lock.Release();
 }
@@ -204,4 +215,5 @@ Void Smp::SendTlbShootdown(UIntPtr Address, UIntPtr Size) {
 Void Smp::TlbShootdownHandler(Registers&) {
     for (UIntPtr i = 0; i < TlbShootdownSize; i += PAGE_SIZE)
         asm volatile("invlpg (%0)" :: "r"(TlbShootdownAddress + i) : "memory");
+    AtomicSubFetch(TlbShootdownLeft, 1);
 }

@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 16 of 2021 at 09:52 BRT
- * Last edited on July 19 of 2021 at 09:28 BRT */
+ * Last edited on July 19 of 2021 at 09:47 BRT */
 
 #pragma once
 
@@ -114,7 +114,7 @@ private:
 
     static Boolean Initialized;
     static List<CoreInfo> CoreList;
-    static UIntPtr LApicAddress, IoApicAddress, TlbShootdownAddress, TlbShootdownSize;
+    static UIntPtr LApicAddress, IoApicAddress, TlbShootdownAddress, TlbShootdownSize, TlbShootdownLeft;
 };
 
 }
