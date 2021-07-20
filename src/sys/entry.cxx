@@ -1,13 +1,23 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on July 20 of 2021, at 16:06 BRT */
+ * Last edited on July 20 of 2021, at 16:49 BRT */
 
 #include <sys/arch.hxx>
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
 
 using namespace CHicago;
+
+static Void ClearSection(Image &Front, UIntPtr X, UIntPtr Y, UIntPtr Width, UIntPtr Height) {
+    UInt32 *pos = &Front.GetBuffer()[Y * Front.GetWidth() + X];
+    for (; Height--; pos += Front.GetWidth()) SetMemory(pos, 0, Width * 4);
+}
+
+static Void CopySection(Image &Back, Image &Front, UIntPtr X, UIntPtr Y, UIntPtr Width, UIntPtr Height) {
+    UInt32 *bpos = &Back.GetBuffer()[Y * Back.GetWidth() + X], *fpos = &Front.GetBuffer()[Y * Back.GetWidth() + X];
+    for (; Height--; bpos += Back.GetWidth(), fpos += Back.GetWidth()) CopyMemory(bpos, fpos, Width * 4);
+}
 
 extern "C" Void SmpEntry(Void) {
     /* The "caller" is probably expecting us to set some kind of arch-specific signal to say that we initialized and
@@ -39,7 +49,7 @@ extern "C" Void KernelEntry(const BootInfo &Info) {
     Image back(reinterpret_cast<UInt32*>(Info.FrameBuffer.BackBuffer), Info.FrameBuffer.Width, Info.FrameBuffer.Height),
           front(reinterpret_cast<UInt32*>(Info.FrameBuffer.FrontBuffer), Info.FrameBuffer.Width,
                                           Info.FrameBuffer.Height);
-    UIntPtr w, h;
+    UIntPtr w1, w2, h, x, y;
 
     Debug = DebugConsole(Info, 0, 0xFFFFFF00);
     Debug.Write("{}initializing the kernel, arch = {}, version = {}\ncore 0 is alive{}\n",
@@ -63,10 +73,18 @@ extern "C" Void KernelEntry(const BootInfo &Info) {
      * start displaying other things to the screen. */
 
     Debug.DisableGraphics();
-    Image::GetStringSize(w, h, "Starting CHicago...");
-    front.DrawString((front.GetWidth() - w) / 2, front.GetHeight() - h, 0xFFFFFFFF, "Starting CHicago...");
-    CopyMemory(back.GetBuffer(), front.GetBuffer(), back.GetWidth() * back.GetHeight() * 4);
+    Image::GetStringSize(w2, h, "Starting CHicago");
+    Image::GetStringSize(w1, h, "Starting CHicago...");
+    front.DrawString(x = (front.GetWidth() - w1) / 2, y = front.GetHeight() - h, 0xFFFFFFFF, "Starting CHicago");
+    CopySection(back, front, x, y, w1, h);
     Debug.Write("disabled graphical debug output and displayed the boot screen\n");
+
+    for (UIntPtr i = 0;; i = (i + 1) % 4) {
+        Arch::Sleep(TimeUnit::Milliseconds, 500);
+        ClearSection(front, x + w2, y, w1 - w2, h);
+        front.DrawString(x + w2, y, 0xFFFFFFFF, !i ? "." : (i == 1 ? ".." : (i == 2 ? "..." : "")));
+        CopySection(back, front, x + w2, y, w1 - w2, h);
+    }
 
     Arch::Halt(False);
 }
