@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 29 of 2020, at 09:47 BRT
- * Last edited on July 18 of 2021, at 23:05 BRT */
+ * Last edited on July 20 of 2021, at 12:14 BRT */
 
 #pragma once
 
@@ -56,15 +56,23 @@ typedef Void (*InterruptHandlerFunc)(Registers&);
 
 extern "C" UIntPtr IdtDefaultHandlers[256];
 
-/* Probably not really the best place to put it, but we do use MSRs (mostly on amd64), and we need some
- * macros/functions to easily read/write them. */
+/* Probably not really the best place to put it, but we do use MSRs and other system registers, and we need some
+ * functions to easily read/write them. */
 
 static inline UInt64 ReadMsr(UInt32 Num) {
+#ifdef __i386__
+    UInt64 val; asm volatile("rdmsr" : "=A"(val) : "c"(Num)); return val;
+#else
     UInt32 eax, edx; asm volatile("rdmsr" : "=a"(eax), "=d"(edx) : "c"(Num)); return eax | ((UInt64)edx << 32);
+#endif
 }
 
 static inline Void WriteMsr(UInt32 Num, UInt64 Value) {
+#ifdef __i386__
+    asm volatile("wrmsr" :: "A"(Value), "c"(Num));
+#else
     asm volatile("wrmsr" :: "a"(Value & 0xFFFFFFFF), "c"(Num), "d"(Value >> 32));
+#endif
 }
 
 Void IdtSetHandler(UInt8, InterruptHandlerFunc);

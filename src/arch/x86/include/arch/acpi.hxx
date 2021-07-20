@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 16 of 2021 at 09:52 BRT
- * Last edited on July 19 of 2021 at 09:47 BRT */
+ * Last edited on July 20 of 2021 at 12:17 BRT */
 
 #pragma once
 
@@ -83,15 +83,20 @@ public:
     static Void StartupCores(Void);
     static Void SetupLApic(Void);
 
-    static Void SendIpi(UInt8, UInt8, UInt16);
+    static Void SendIpi(UInt8, UInt32, UInt16);
     static Void SendTlbShootdown(UIntPtr, UIntPtr);
 
-    static auto &GetLApicRegister(UIntPtr Off) { return *reinterpret_cast<volatile UInt32*>(LApicAddress + Off); }
+    static UInt64 ReadLApicRegister(UIntPtr Off) {
+        return !LApicAddress ? ReadMsr(0x800 + (Off >> 4)) : *reinterpret_cast<volatile UInt32*>(LApicAddress + Off);
+    }
+
+    static Void WriteLApicRegister(UIntPtr Off, UInt64 Value) {
+        if (!LApicAddress) WriteMsr(0x800 + (Off >> 4), Value);
+        else *reinterpret_cast<volatile UInt32*>(LApicAddress + Off) = Value;
+    }
 
     static UInt8 GetLApicId(Void) {
-        if (LApicAddress) return GetLApicRegister(0x20) >> 24;
-        UInt32 bx; asm volatile("cpuid" : "=b"(bx) : "a"(1) : "%ecx", "%edx");
-        return bx >> 24;
+        return !LApicAddress ? ReadLApicRegister(0x20) : ReadLApicRegister(0x20) >> 24;
     };
 
     [[nodiscard]] static CoreInfo &GetCurrentCore(Void) {

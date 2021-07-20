@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 29 of 2020, at 11:24 BRT
- * Last edited on July 19 of 2021, at 09:16 BRT */
+ * Last edited on July 20 of 2021, at 12:06 BRT */
 
 #include <arch/acpi.hxx>
 #include <arch/port.hxx>
@@ -80,7 +80,7 @@ extern "C" force_align_arg_pointer Void IdtDefaultHandler(Registers &Regs) {
          * slave PIC as well) and, if the LAPIC is already initialized, also send to it (else we're going to stop
          * receiving interrupts). */
 
-        if (Smp::IsInitialized()) Smp::GetLApicRegister(0xB0) = 0;
+        if (Smp::IsInitialized()) Smp::WriteLApicRegister(0xB0, 0);
         if (Regs.IntNum >= 40) Port::OutByte(0xA0, 0x20);
         Port::OutByte(0x20, 0x20);
     }

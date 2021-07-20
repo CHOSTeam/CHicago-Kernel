@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 14:01 BRT
- * Last edited on July 17 of 2021 at 21:42 BRT */
+ * Last edited on July 20 of 2021 at 15:04 BRT */
 
 #pragma once
 
@@ -70,7 +70,7 @@ public:
     /* The Append(String, ...) also needs to be inline, for the same reason as Format (because it is template<>). */
 
     template<typename... T> inline UIntPtr Append(const StringView &Format, T... Args) {
-        return VariadicFormat([](UInt8 Type, UInt32 Data, Void *Context) -> Boolean {
+        return VariadicFormat([](UInt8 Type, UInt32 Data, Void *Context) {
             return !Type ? static_cast<String*>(Context)->Append(static_cast<Char>(Data)) == Status::Success : True;
         }, static_cast<Void*>(this), Format, Args...);
     }

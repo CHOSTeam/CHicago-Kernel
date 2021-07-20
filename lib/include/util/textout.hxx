@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 26 of 2020, at 13:16 BRT
- * Last edited on July 17 of 2021 at 21:46 BRT */
+ * Last edited on July 20 of 2021 at 15:47 BRT */
 
 #pragma once
 
@@ -29,7 +29,7 @@ public:
 
         Lock.Acquire();
 
-        UIntPtr ret = VariadicFormat([](UInt8 Type, UInt32 Data, Void *Context) -> Boolean {
+        UIntPtr ret = VariadicFormat([](UInt8 Type, UInt32 Data, Void *Context) {
             TextOutput *out = static_cast<TextOutput*>(Context);
             return !Type ? out->WriteInt(Data) : ((Type == 1 ? out->SetBackgroundInt(Data) :
                                                   (Type == 2 ? out->SetForegroundInt(Data) :
@@ -42,14 +42,14 @@ public:
 
         return ret;
     }
-private:
+protected:
     virtual Void AfterWrite() { }
     virtual Boolean WriteInt(Char) = 0;
     virtual Void SetBackgroundInt(UInt32) { };
     virtual Void SetForegroundInt(UInt32) { };
     virtual Void RestoreBackgroundInt(Void) { };
     virtual Void RestoreForegroundInt(Void) { };
-protected:
+
     SpinLock Lock {};
 };
 

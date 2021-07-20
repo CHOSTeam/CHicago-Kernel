@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 21:14 BRT
- * Last edited on July 06 of 2021 at 19:53 BRT */
+ * Last edited on July 20 of 2021, at 13:16 BRT */
 
 #include <vid/img.hxx>
 
@@ -158,7 +158,7 @@ Boolean Image::DrawCharacter(UInt16 X, UInt16 Y, Char Data, UInt32 Color) {
 	 * transform it into a 0-1 value, that we can treat as the alpha value of the pixel. With that, we can just call
 	 * Blend, and let it do the job of changing the brightness for us. */
 
-    const FontGlyph &info = DefaultFont.GlyphInfo[(UInt8)Data];
+    const FontGlyph &info = DefaultFont.GlyphInfo[static_cast<UInt8>(Data)];
     const UInt8 *data = &DefaultFont.GlyphData[info.Offset];
     UInt16 gx = info.Left, gy = DefaultFont.Ascender - info.Top;
     UInt32 *start = &Buffer[(Y + gy) * Width + X + gx];

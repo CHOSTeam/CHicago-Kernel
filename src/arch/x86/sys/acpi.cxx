@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 16 of 2021, at 16:06 BRT
- * Last edited on July 19 of 2021, at 09:50 BRT */
+ * Last edited on July 20 of 2021, at 15:46 BRT */
 
 #include <arch/acpi.hxx>
 #include <sys/panic.hxx>
@@ -59,12 +59,25 @@ Void Smp::Initialize(const BootInfo &Info, const Madt *Header) {
      * we're not going to unmap it while the kernel is running). */
 
     ASSERT(!Initialized);
-    ASSERT(CoreList.Add({ Null, &BspGdt, 0, GetLApicId(), True, Info.KernelStack }) == Status::Success);
+    ASSERT(CoreList.Add({ Null, &BspGdt, 0, 0, True, Info.KernelStack }) == Status::Success);
 
+    /* If possible we want to enable x2APIC, and in that case we can directly call GetLapicId(), but if we can only use
+     * normal/xAPIC, we want to use CPUID to determine the BSP's LAPIC id. */
+
+    Boolean x2apic = False;
     UInt64 lapic = Header->LApicAddress, ioapic = 0;
-    UIntPtr id = CoreList[0].LApicId, size = PAGE_SIZE, size2 = PAGE_SIZE;
+    UInt32 cx; asm volatile("cpuid" : "=c"(cx) : "a"(1) : "%ebx", "%edx");
 
-    /* As we're not calling Arch::InitializeCore for the BSP, we need to manually init the FS/GS segment register. */
+    if (cx & 0x200000) {
+        WriteMsr(0x1B, ReadMsr(0x1B) | 0xC00);
+        CoreList[0].LApicId = GetLApicId();
+        x2apic = True;
+    } else {
+        UInt32 bx; asm volatile("cpuid" : "=b"(bx) : "a"(1) : "%ecx", "%edx");
+        CoreList[0].LApicId = bx >> 24;
+    }
+
+    UIntPtr id = CoreList[0].LApicId, size = PAGE_SIZE, size2 = PAGE_SIZE;
 
     for (auto cur = Header->Records;
          reinterpret_cast<UIntPtr>(cur) < reinterpret_cast<UIntPtr>(Header) + Header->Header.Length; cur += cur[1]) {
@@ -85,18 +98,20 @@ Void Smp::Initialize(const BootInfo &Info, const Madt *Header) {
                 break;
             }
             case 1: ioapic = reinterpret_cast<const MadtIoApic*>(&cur[2])->Address; break;
-            case 5: lapic = reinterpret_cast<const MadtLApicOverride*>(&cur[2])->Address; break;
+            case 5: if (!x2apic) lapic = reinterpret_cast<const MadtLApicOverride*>(&cur[2])->Address; break;
         }
     }
 
     ASSERT(ioapic);
-    ASSERT(VirtMem::MapIo(lapic, size, LApicAddress) == Status::Success &&
-           VirtMem::MapIo(ioapic, size2, IoApicAddress) == Status::Success);
+    ASSERT(VirtMem::MapIo(ioapic, size2, IoApicAddress) == Status::Success);
+    if (!x2apic) ASSERT(VirtMem::MapIo(lapic, size, LApicAddress) == Status::Success);
 
     /* Now that the CPU/core list is initialized (and will not change anymore), we can initialize the .Self field of
      * all the info structs. */
 
     for (auto &info : CoreList) info.Self = &info;
+
+    /* As we're not calling Arch::InitializeCore for the BSP, we need to manually init the FS/GS segment register. */
 
 #ifdef __i386__
     BspGdt.LoadSpecialSegment(False, reinterpret_cast<UIntPtr>(&CoreList[0]));
@@ -114,7 +129,7 @@ Void Smp::Initialize(const BootInfo &Info, const Madt *Header) {
 
     Initialized = True;
 
-    Debug.Write("{}detected {} core(s){}\n", SetForeground { 0xFF00FF00 }, CoreList.GetLength(), RestoreForeground{});
+    Debug.Write("detected {} core(s)\n", CoreList.GetLength());
 }
 
 Void Smp::StartupCores(Void) {
@@ -151,38 +166,41 @@ Void Smp::StartupCores(Void) {
         Arch::Sleep(TimeUnit::Milliseconds, 10);
         SendIpi(0, info.LApicId, 0x4608);
 
-        for (UInt16 wait = 1000; !info.Status && wait--;) Arch::Sleep(TimeUnit::Milliseconds, 1);
-
-        if (!info.Status)
-            Debug.Write("{}couldn't startup core {}{}\n", SetForeground { 0xFFFF0000 }, info.Id, RestoreForeground{});
+        while (!AtomicLoad(info.Status)) ARCH_PAUSE();
     }
 
     VirtMem::Unmap(0x8000, size);
 }
 
 Void Smp::SetupLApic(Void) {
+    /* Hardware enable the APIC if required (if x2APIC on the non-BSP cores, and for everyone on non-x2APIC). */
+
+    if (LApicAddress) WriteMsr(0x1B, ReadMsr(0x1B) | 0x800);
+    else if (Arch::GetCoreId()) WriteMsr(0x1B, ReadMsr(0x1B) | 0xC00);
+
     /* 0x1FF = LAPIC enabled and spurious vector equal to 0xFF. */
 
-    GetLApicRegister(0xF0) = 0x1FF;
+    WriteLApicRegister(0xF0, 0x1FF);
 
-    /* The BSP is going to be on the LDR group 1 and the APs on the group 3 (and everything on the flat model). */
+    /* Unmask/setup external interrupts and NMIs (and enable interrupts). */
 
-    GetLApicRegister(0xD0) = Arch::GetCoreId() ? 0x2000000 : 0x1000000;
-    GetLApicRegister(0xE0) = 0xF0000000;
-
-    /* Finally, unmask/setup external interrupts and NMIs (and enable interrupts). */
-
-    GetLApicRegister(0x350) = 0x700;
-    GetLApicRegister(0x360) = 0x400;
+    WriteLApicRegister(0x350, 0x700);
+    WriteLApicRegister(0x360, 0x400);
+    WriteLApicRegister(0x80, 0);
 
     asm volatile("sti");
 }
 
-Void Smp::SendIpi(UInt8 Type, UInt8 Dest, UInt16 Vector) {
+Void Smp::SendIpi(UInt8 Type, UInt32 Dest, UInt16 Vector) {
+    UInt64 val = (Vector & ~0xFFFF3000) | (!Type ? 0 : (Type == 1 ? 0x80000 : 0xC0000));
+
     if (!Initialized) return;
-    GetLApicRegister(0x310) = Dest << 24;
-    GetLApicRegister(0x300) = (Vector & ~0xFFFF3000) | (!Type ? 0 : (Type == 1 ? 0x80000 : 0xC0000));
-    do { asm volatile("pause" ::: "memory"); } while (GetLApicRegister(0x300) & 0x1000);
+    else if (!LApicAddress) WriteLApicRegister(0x300, ((UInt64)Dest << 32) | val);
+    else {
+        WriteLApicRegister(0x310, Dest << 24);
+        WriteLApicRegister(0x300, val);
+        do { ARCH_PAUSE(); } while (ReadLApicRegister(0x300) & 0x1000);
+    }
 }
 
 Void Smp::SendTlbShootdown(UIntPtr Address, UIntPtr Size) {
@@ -198,16 +216,13 @@ Void Smp::SendTlbShootdown(UIntPtr Address, UIntPtr Size) {
     TlbShootdownSize = Size;
     TlbShootdownLeft = 0;
 
-    /* Instead of sending it to all cores without checking anything, only send to initialized cores (so that we can
-     * properly wait until all of them answered for it). */
-
     for (auto &info : CoreList) {
-        if (!info.Status) continue;
+        if (!info.Status || info.LApicId == GetLApicId()) continue;
         SendIpi(0, info.LApicId, 0xFD);
         AtomicAddFetch(TlbShootdownLeft, 1);
-    }
+    };
 
-    while (AtomicLoad(TlbShootdownLeft)) asm volatile("pause" ::: "memory");
+    while (AtomicLoad(TlbShootdownLeft)) ARCH_PAUSE();
 
     lock.Release();
 }

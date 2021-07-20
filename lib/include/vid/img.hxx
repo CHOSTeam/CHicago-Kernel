@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 07 of 2021, at 17:37 BRT
- * Last edited on July 17 of 2021 at 21:43 BRT */
+ * Last edited on July 20 of 2021 at 15:26 BRT */
 
 #pragma once
 
@@ -98,7 +98,8 @@ public:
     Void DrawRectangle(UInt16, UInt16, UInt16, UInt16, UInt32, Boolean = False);
     Boolean DrawCharacter(UInt16, UInt16, Char, UInt32);
 
-    template<typename... T> inline UIntPtr DrawString(UInt16 X, UInt16 Y, UInt32 Color, const StringView &Format, T... Args) {
+    template<class... T> inline UIntPtr DrawString(UInt16 X, UInt16 Y, UInt32 Color, const StringView &Format,
+                                                   T... Args) {
         if (Buffer == Null || X >= Width || Y >= Height) return 0;
 
         /* As we can't use a lambda that captures local variables as a function pointer, we need to save and pass the
@@ -106,7 +107,7 @@ public:
 
         UIntPtr ctx[4] { reinterpret_cast<UIntPtr>(this), X, Y, Color };
 
-        return VariadicFormat([](UInt8 Type, UInt32 Data, Void *Context) -> Boolean {
+        return VariadicFormat([](UInt8 Type, UInt32 Data, Void *Context) {
             /* We don't handle here reaching the end of the screen and going into the next line, nor scrolling when we
              * reach the end of the screen. And also we don't handle TAB anywhere (for now). */
 
@@ -119,10 +120,29 @@ public:
                 case '\r': ctx[1] = 0; return True;
                 default:
                     if (!reinterpret_cast<Image*>(ctx[0])->DrawCharacter(ctx[1], ctx[2], Data, ctx[3])) return False;
-                    ctx[1] += DefaultFont.GlyphInfo[(UInt8)Data].Advance;
+                    ctx[1] += DefaultFont.GlyphInfo[Data].Advance;
                     return True;
             }
-        }, static_cast<Void*>(ctx), Format, Args...);
+        }, ctx, Format, Args...);
+    }
+
+    template<class... T> static inline Void GetStringSize(UIntPtr &Width, UIntPtr &Height, const StringView &Format,
+                                                          T... Args) {
+        UIntPtr ctx[4] { 0, 0, 0 }; VariadicFormat([](UInt8 Type, UInt32 Data, Void *Context) {
+            auto ctx = static_cast<UIntPtr*>(Context);
+            if (Type) return True;
+            else if (!ctx[1]) ctx[1] += DefaultFont.Height;
+
+            switch (Data) {
+            case '\n': ctx[1] += DefaultFont.Height;
+            case '\r': ctx[2] = 0; break;
+            default:
+                ctx[2] += DefaultFont.GlyphInfo[Data].Advance; if (ctx[2] > ctx[0]) ctx[0] = ctx[2];
+                break;
+            }
+
+            return True;
+        }, ctx, Format, Args...); Width = ctx[0]; Height = ctx[1];
     }
 
     /* Some extra functions that allow us to access all the internal info about the image that we may need to

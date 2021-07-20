@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 18 of 2021, at 10:33 BRT
- * Last edited on March 15 of 2021 at 18:04 BRT */
+ * Last edited on July 20 of 2021 at 15:21 BRT */
 
 #pragma once
 
@@ -55,53 +55,53 @@ public:
     T Shuffle(T Vector1, T Vector2, M Mask) { return __builtin_shuffle(Vector1, Vector2, Mask); }
 
     disable_ubsan static inline always_inline
-    Int64x2 LoadAlignedI16(const Void *Source) { return *reinterpret_cast<const Int64x2*>(Source); }
+    Int64x2 LoadAlignedI16(const Void *Source) { return *static_cast<const Int64x2*>(Source); }
 
     disable_ubsan static inline always_inline
-    Floatx2 LoadAlignedF16(const Void *Source) { return *reinterpret_cast<const Floatx2*>(Source); }
+    Floatx2 LoadAlignedF16(const Void *Source) { return *static_cast<const Floatx2*>(Source); }
 
     disable_ubsan static inline always_inline
-    Int64x2 LoadUnalignedI16(const Void *Source) { return *reinterpret_cast<const Int64x2U*>(Source); }
+    Int64x2 LoadUnalignedI16(const Void *Source) { return *static_cast<const Int64x2U*>(Source); }
 
     disable_ubsan static inline always_inline
-    Floatx2 LoadUnalignedF16(const Void *Source) { return *reinterpret_cast<const Floatx2U*>(Source); }
+    Floatx2 LoadUnalignedF16(const Void *Source) { return *static_cast<const Floatx2U*>(Source); }
 #ifndef NO_256_SIMD
     disable_ubsan static inline always_inline
-    Int64x4 LoadAlignedI32(const Void *Source) { return *reinterpret_cast<const Int64x4*>(Source); }
+    Int64x4 LoadAlignedI32(const Void *Source) { return *static_cast<const Int64x4*>(Source); }
 
     disable_ubsan static inline always_inline
-    Floatx4 LoadAlignedF32(const Void *Source) { return *reinterpret_cast<const Floatx4*>(Source); }
+    Floatx4 LoadAlignedF32(const Void *Source) { return *static_cast<const Floatx4*>(Source); }
 
     disable_ubsan static inline always_inline
-    Int64x4 LoadUnalignedI32(const Void *Source) { return *reinterpret_cast<const Int64x4U*>(Source); }
+    Int64x4 LoadUnalignedI32(const Void *Source) { return *static_cast<const Int64x4U*>(Source); }
 
     disable_ubsan static inline always_inline
-    Floatx4 LoadUnalignedF32(const Void *Source) { return *reinterpret_cast<const Floatx4U*>(Source); }
+    Floatx4 LoadUnalignedF32(const Void *Source) { return *static_cast<const Floatx4U*>(Source); }
 #endif
 
     disable_ubsan static inline always_inline
-    Void StoreAligned(Void *Buffer, Int64x2 Value) { *reinterpret_cast<Int64x2*>(Buffer) = Value; }
+    Void StoreAligned(Void *Buffer, Int64x2 Value) { *static_cast<Int64x2*>(Buffer) = Value; }
 
     disable_ubsan static inline always_inline
-    Void StoreAligned(Void *Buffer, Floatx2 Value) { *reinterpret_cast<Floatx2*>(Buffer) = Value; }
+    Void StoreAligned(Void *Buffer, Floatx2 Value) { *static_cast<Floatx2*>(Buffer) = Value; }
 
     disable_ubsan static inline always_inline
-    Void StoreUnaligned(Void *Buffer, Int64x2 Value) { *reinterpret_cast<Int64x2U*>(Buffer) = Value; }
+    Void StoreUnaligned(Void *Buffer, Int64x2 Value) { *static_cast<Int64x2U*>(Buffer) = Value; }
 
     disable_ubsan static inline always_inline
-    Void StoreUnaligned(Void *Buffer, Floatx2 Value) { *reinterpret_cast<Floatx2U*>(Buffer) = Value; }
+    Void StoreUnaligned(Void *Buffer, Floatx2 Value) { *static_cast<Floatx2U*>(Buffer) = Value; }
 #ifndef NO_256_SIMD
     disable_ubsan static inline always_inline
-    Void StoreAligned(Void *Buffer, Int64x4 Value) { *reinterpret_cast<Int64x4*>(Buffer) = Value; }
+    Void StoreAligned(Void *Buffer, Int64x4 Value) { *static_cast<Int64x4*>(Buffer) = Value; }
 
     disable_ubsan static inline always_inline
-    Void StoreAligned(Void *Buffer, Floatx4 Value) { *reinterpret_cast<Floatx4*>(Buffer) = Value; }
+    Void StoreAligned(Void *Buffer, Floatx4 Value) { *static_cast<Floatx4*>(Buffer) = Value; }
 
     disable_ubsan static inline always_inline
-    Void StoreUnaligned(Void *Buffer, Int64x4 Value) { *reinterpret_cast<Int64x4U*>(Buffer) = Value; }
+    Void StoreUnaligned(Void *Buffer, Int64x4 Value) { *static_cast<Int64x4U*>(Buffer) = Value; }
 
     disable_ubsan static inline always_inline
-    Void StoreUnaligned(Void *Buffer, Floatx4 Value) { *reinterpret_cast<Floatx4U*>(Buffer) = Value; }
+    Void StoreUnaligned(Void *Buffer, Floatx4 Value) { *static_cast<Floatx4U*>(Buffer) = Value; }
 #endif
 
     /* Now everything else is arch-dependent (and as such let's include a special arch-specific header). */

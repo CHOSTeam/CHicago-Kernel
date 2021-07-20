@@ -1,21 +1,14 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 16 of 2020, at 18:03 BRT
- * Last edited on July 18 of 2021, at 18:53 BRT */
+ * Last edited on July 20 of 2021, at 11:30 BRT */
 
-#ifdef __i386__
-#define IDT_ADDRESS 0x806D
-#define GDT_ADDRESS 0x8073
-#define CR3_ADDRESS 0x80A0
-#else
-#define IDT_ADDRESS 0x8079
-#define GDT_ADDRESS 0x8083
-#define CR3_ADDRESS 0x80B0
-#endif
+#define ORG_ADDRESS 0x8000
+#define GET_ADDRESS(Virtual) (ORG_ADDRESS + (Virtual) - SmpTrampoline)
 
-.code16
-.org 0x8000
+.org ORG_ADDRESS
 .section .text
+.code16
 
 /* This trampoline/entry point only sets up everything to jump into the C++ 32/64-bits code (as when we reach here we
  * will be in 16-bits real mode). */
@@ -32,16 +25,16 @@ SmpTrampoline:
 
     cli
     cld
-    ljmp $0, $0x8007
-    lidtl IDT_ADDRESS
+    ljmp $0, $GET_ADDRESS(1f)
+1:  lidtl GET_ADDRESS(SmpTrampolineIdt)
 
-    mov (CR3_ADDRESS), %eax
+    mov (GET_ADDRESS(SmpTrampolineCr3)), %eax
     mov %eax, %cr3
     mov $0x40778, %eax
     mov %eax, %cr4
 
 #ifdef __i386__
-    lgdtl 0x808B
+    lgdtl GET_ADDRESS(SmpTrampolineGdtPointer)
     mov $0xC0000080, %ecx
     rdmsr
     or $0x800, %eax
@@ -57,10 +50,10 @@ SmpTrampoline:
     mov %eax, %cr0
 
 #ifndef __i386__
-    lgdtl 0x809B
+    lgdtl GET_ADDRESS(SmpTrampolineGdtPointer)
 #endif
 
-    ljmp $0x08, $0x8041
+    ljmp $0x08, $GET_ADDRESS(1f)
 
 #ifdef __i386__
 .code32
@@ -68,7 +61,7 @@ SmpTrampoline:
 .code64
 #endif
 
-    mov $0x10, %ax
+1:  mov $0x10, %ax
     mov %ax, %ds
     mov %ax, %es
     mov %ax, %fs
@@ -76,7 +69,7 @@ SmpTrampoline:
     mov %ax, %ss
 
 #ifdef __i386__
-    mov (0x80B0), %eax
+    mov (GET_ADDRESS(SmpTrampolineCoreInfo)), %eax
     mov 0x11(%eax), %esp
     add $0x2000, %esp
     and $-16, %esp
@@ -84,7 +77,7 @@ SmpTrampoline:
     mov $SmpEntry, %eax
     call *%eax
 #else
-    mov (0x80C0), %rax
+    mov (GET_ADDRESS(SmpTrampolineCoreInfo)), %rax
     mov 0x21(%rax), %rsp
     add $0x2000, %rsp
     and $-16, %rsp
@@ -113,7 +106,7 @@ SmpTrampolineGdt: .quad 0, 0x209A0000000000, 0x920000000000
 #endif
 SmpTrampolineGdtPointer:
     .word SmpTrampolineGdtPointer - SmpTrampolineGdt - 1
-    .long GDT_ADDRESS
+    .long GET_ADDRESS(SmpTrampolineGdt)
 
 .align 16
 SmpTrampolineCr3: .long 0
