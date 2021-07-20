@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on July 01 of 2020, at 19:47 BRT
- * Last edited on July 19 of 2021, at 10:47 BRT */
+ * Last edited on July 19 of 2021, at 20:04 BRT */
 
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
@@ -13,7 +13,7 @@ using namespace CHicago;
 
 UInt64 PhysMem::MinAddress = 0, PhysMem::MaxAddress = 0, PhysMem::MaxBytes = 0, PhysMem::UsedBytes = 0;
 UIntPtr PhysMem::PageCount = 0, PhysMem::KernelStart = 0, PhysMem::KernelEnd = 0;
-PhysMem::Page *PhysMem::Pages = Null, *PhysMem::FreeList = Null, *PhysMem::WaitingList = Null;
+PhysMem::Page *PhysMem::Pages = Null, *PhysMem::FreeList = Null;
 Boolean PhysMem::Initialized = False;
 SpinLock PhysMem::Lock {};
 
@@ -86,12 +86,6 @@ Void PhysMem::Initialize(const BootInfo &Info) {
                 MaxBytes - UsedBytes);
 }
 
-Void PhysMem::FreeWaitingPages(Void) {
-    Lock.Acquire();
-    UsedBytes -= ::FreeWaitingPages(FreeList, WaitingList, Reverse) << PAGE_SHIFT;
-    Lock.Release();
-}
-
 Status PhysMem::Allocate(UIntPtr Count, UInt64 &Out, UInt64 Align) {
     /* We need to check if all of the arguments are valid, and if the physical memory manager have already been
      * initialized. */
@@ -104,8 +98,7 @@ Status PhysMem::Allocate(UIntPtr Count, UInt64 &Out, UInt64 Align) {
         Debug.Write("{}not enough free memory for PhysMem::Allocate (count = {}){}\n",
                     SetForeground { 0xFFFF0000 }, Count, RestoreForeground{});
 
-        if (Pages != Null && (Heap::ReturnMemory(), FreeWaitingPages(),
-            UsedBytes + (Count << PAGE_SHIFT) <= MaxBytes)) {
+        if (Pages != Null && (Heap::ReturnMemory(), UsedBytes + (Count << PAGE_SHIFT) <= MaxBytes)) {
             Debug.Write("enough memory seems to have been freed, continuing allocation\n");
         } else return Status::OutOfMemory;
     }
@@ -153,28 +146,8 @@ Status PhysMem::Free(UInt64 Start, UIntPtr Count) {
     }
 
     Lock.Acquire();
-
-    for (UInt64 cur = Start; cur < Start + (Count << PAGE_SHIFT); cur += PAGE_SIZE) {
-        UInt64 idx = (cur - MinAddress) >> PAGE_SHIFT;
-
-        if (Pages[idx].Count) {
-            Lock.Release();
-            Debug.Write("invalid PhysMem::Free arguments (start = 0x{:016:16}, count = {}){}\n",
-                        SetForeground { 0xFFFF0000 }, Start, Count, RestoreForeground{});
-            return Status::InvalidArg;
-        }
-
-        /* Freeing the page is simple: Just add it to the WaitingList (we're not going to handle actually searching the
-         * right place in the FreeList and properly adding it there, instead, the AllocSingle/(Non)Contig caller (when
-         * out of memory) or the special kernel thread should manually do that by calling FreeWaitingPages). */
-
-        Pages[idx].Count = 1;
-
-        if (WaitingList == Null) Pages[idx].LastSingle = Null, WaitingList = &Pages[idx];
-        else if (WaitingList->LastSingle == Null) WaitingList->LastSingle = WaitingList->NextSingle = &Pages[idx];
-        else WaitingList->LastSingle->NextSingle = &Pages[idx], WaitingList->LastSingle = &Pages[idx];
-    }
-
+    FreePages(FreeList, Reverse, [](UInt64 Address) { return &Pages[(Address - MinAddress) >> PAGE_SHIFT]; },
+              Start, Count);
     return Lock.Release(), Status::Success;
 }
 

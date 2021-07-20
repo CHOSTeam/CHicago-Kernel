@@ -1,14 +1,14 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 14 of 2021, at 23:45 BRT
- * Last edited on July 19 of 2021, at 10:40 BRT */
+ * Last edited on July 19 of 2021, at 20:46 BRT */
 
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
 
 using namespace CHicago;
 
-SpinLock Heap::Lock {}, Heap::FreeLock {};
+SpinLock Heap::Lock {};
 Heap::Block *Heap::Head = Null, *Heap::Tail = Null;
 
 Void Heap::ReturnMemory(Void) {
@@ -17,7 +17,7 @@ Void Heap::ReturnMemory(Void) {
 
     Boolean adv = True;
 
-    FreeLock.Acquire();
+    Lock.Acquire();
 
     for (Block *cur = Head; cur != Null; cur = adv ? cur->Next : cur, adv = True) {
         UIntPtr addr = reinterpret_cast<UIntPtr>(cur), size = cur->Size;
@@ -38,18 +38,25 @@ Void Heap::ReturnMemory(Void) {
             adv = False;
         }
     }
+
+    Lock.Release();
 }
 
 Void *Heap::Allocate(UIntPtr Size) {
     Lock.Acquire();
-    FreeLock.Acquire();
     Block *block = FindFree(Size += -Size & 0x0F);
 
     if (block != Null) RemoveFree(block);
-    else if ((FreeLock.Release(), block = CreateBlock(Size)) == Null) return Lock.Release(), Null;
-    else FreeLock.Acquire();
+    else {
+        /* It should be safe to temporary release the lock, as we're not modifying the free list (and we need to
+         * release it, as VirtMem/PhysMem::Allocate might call ReturnMemory). */
 
-    return Split(block, Size), FreeLock.Release(), Lock.Release(), SetMemory(block->Data, 0, block->Size), block->Data;
+        Lock.Release();
+        if ((block = CreateBlock(Size)) == Null) return Null;
+        Lock.Acquire();
+    }
+
+    return Split(block, Size), Lock.Release(), SetMemory(block->Data, 0, block->Size), block->Data;
 }
 
 Void *Heap::Allocate(UIntPtr Size, UIntPtr Align) {
@@ -58,11 +65,12 @@ Void *Heap::Allocate(UIntPtr Size, UIntPtr Align) {
     if (!Align || Align & (Align - 1)) return Null;
     if (Align <= 16) return Allocate(Size);
 
+    Size += -Size & 0x0F;
+
     /* There are two different blocks that we can use: With the ->Data field perfectly aligned, and with enough size
      * to split it in a block with at least size 16 and an aligned block with the requested (16-byte aligned) size. */
 
     Lock.Acquire();
-    FreeLock.Acquire();
 
     Block *cur = Head, *best = Null;
     for (; cur != Null; cur = cur->Next) {
@@ -79,14 +87,17 @@ Void *Heap::Allocate(UIntPtr Size, UIntPtr Align) {
 
     if (cur != Null) RemoveFree(cur);
     else if (best != Null) cur = Split(best, size, False);
-    else if ((FreeLock.Release(), cur = CreateBlock(size + Size)) == Null) return Lock.Release(), Null;
-    else FreeLock.Acquire(), cur = Split(cur, size, False);
+    else {
+        Lock.Release();
+        if ((cur = CreateBlock(size + Size)) == Null) return Null;
+        Lock.Acquire();
+        cur = Split(cur, size, False);
+    }
 
-    return Split(cur, size), FreeLock.Release(), Lock.Release(), SetMemory(cur->Data, 0, cur->Size), cur->Data;
+    return Split(cur, Size), Lock.Release(), SetMemory(cur->Data, 0, cur->Size), cur->Data;
 }
 
 Void Heap::Free(Void *Data) {
-    FreeLock.Acquire();
     Lock.Acquire();
 
     auto addr = reinterpret_cast<UIntPtr>(Data);
@@ -127,11 +138,10 @@ Void Heap::Free(Void *Data) {
     }
 
     Lock.Release();
-    FreeLock.Release();
 }
 
 Heap::Block *Heap::Split(Block *Block, UIntPtr Size, Boolean Free) {
-    if (Block->Size < sizeof(Heap::Block) - sizeof(Block::Free) + 16) return Null;
+    if (Block->Size - Size < sizeof(Heap::Block) - sizeof(Block::Free) + 16) return Null;
 
     /* We can calculate the new start while ignoring the Next and Prev fields of the old block, as they are part of
      * the block data (unlike the magic number and size). */
@@ -176,8 +186,8 @@ Heap::Block *Heap::CreateBlock(UIntPtr Size) {
 }
 
 Heap::Block *Heap::FindFree(UIntPtr Size) {
-    for (Block *cur = Head; cur != Null; cur = cur->Next) if (cur->Size >= Size) return cur;
-    return Null;
+    Block *cur = Head; for (; cur != Null && cur->Size < Size; cur = cur->Next) ;
+    return cur;
 }
 
 Void Heap::RemoveFree(Block *Block) {

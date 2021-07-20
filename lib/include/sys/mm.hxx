@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 04 of 2021, at 17:19 BRT
- * Last edited on July 19 of 2021, at 10:42 BRT */
+ * Last edited on July 19 of 2021, at 21:11 BRT */
 
 #pragma once
 
@@ -85,8 +85,6 @@ public:
 
     static UIntPtr GetReferences(UInt64);
 #ifdef KERNEL
-    static Void FreeWaitingPages(Void);
-
     static inline UIntPtr GetKernelStart(Void) { return KernelStart; }
     static inline UIntPtr GetKernelEnd(Void) { return KernelEnd; }
     static inline UInt64 GetMinAddress(Void) { return MinAddress; }
@@ -97,7 +95,7 @@ public:
 private:
     static UInt64 MinAddress, MaxAddress, MaxBytes, UsedBytes;
     static UIntPtr PageCount, KernelStart, KernelEnd;
-    static Page *Pages, *FreeList, *WaitingList;
+    static Page *Pages, *FreeList;
     static Boolean Initialized;
     static SpinLock Lock;
 #else
@@ -116,7 +114,6 @@ public:
     };
 
     static Void Initialize(const BootInfo&);
-    static Void FreeWaitingPages(Void);
 
 #endif
     static Status Query(UIntPtr, UInt64&, UInt32&);
@@ -133,7 +130,7 @@ private:
     static UIntPtr Reverse(Page*);
 
     static UIntPtr Start, End, Current, FreeCount;
-    static Page *FreeList, *WaitingList;
+    static Page *FreeList;
     static SpinLock Lock;
 #endif
 };
@@ -168,91 +165,31 @@ private:
     static Boolean AddFree(Block*);
     static Void RemoveFree(Block*);
 
-    static SpinLock Lock, FreeLock;
     static Block *Head, *Tail;
+    static SpinLock Lock;
 #endif
 };
 
 #ifdef KERNEL
-template<class T, class U> static inline UIntPtr FreeWaitingPages(T *&FreeList, T *&WaitingList, U &Reverse) {
-    UIntPtr count = 0;
-
-    while (WaitingList != Null) {
-        /* Easiest case to handle is when this is a whole new entry (doesn't continue any other), as we just need
-         * to add it to the right place. Other than that, we might need to increase the size of one region, and
-         * merge multiple regions after increasing the size. */
-
-        T *cur = FreeList, *prev = Null, *next = WaitingList->NextSingle;
-
-        for (; cur != Null && Reverse(cur) < Reverse(WaitingList) &&
-               Reverse(WaitingList) != Reverse(cur) + (cur->Count << PAGE_SHIFT) &&
-               Reverse(WaitingList) + PAGE_SIZE != Reverse(cur); prev = cur, cur = cur->NextGroup) ;
-
-        count++;
-        WaitingList->LastSingle = WaitingList;
-
-        if (cur == Null && prev == Null) {
-            WaitingList->NextSingle = Null;
-            FreeList = WaitingList;
-        } else if (cur == Null) {
-            WaitingList->NextSingle = Null;
-            prev->NextGroup = WaitingList;
-        } else if (Reverse(WaitingList) == Reverse(cur) + (cur->Count << PAGE_SHIFT)) {
-            WaitingList->NextSingle = cur->LastSingle->NextSingle;
-            WaitingList->LastSingle = Null;
-            cur->LastSingle->NextSingle = WaitingList;
-            cur->LastSingle = WaitingList;
-            cur->Count++;
-
-            while (cur->NextGroup != Null && Reverse(cur) + (cur->Count << PAGE_SHIFT) == Reverse(cur->NextGroup)) {
-                T *next = cur->NextGroup;
-                cur->Count += next->Count;
-                cur->LastSingle->NextSingle = next;
-                cur->LastSingle = next->LastSingle;
-                cur->NextGroup = next->NextGroup;
-                next->Count = 1;
-                next->NextGroup = next->LastSingle = Null;
-            }
-        } else if (Reverse(WaitingList) + (WaitingList->Count << PAGE_SHIFT) == Reverse(cur)) {
-            (prev != Null ? prev->NextGroup : FreeList) = WaitingList;
-            WaitingList->Count += cur->Count;
-            WaitingList->NextSingle = cur;
-            WaitingList->NextGroup = cur->NextGroup;
-            WaitingList->LastSingle = cur->LastSingle;
-            cur->Count = 1;
-            cur->NextGroup = cur->LastSingle = Null;
-        } else {
-            (prev != Null ? prev->NextGroup : FreeList) = WaitingList;
-            WaitingList->NextSingle = WaitingList->NextGroup = cur;
-        }
-
-        WaitingList = next;
-    }
-
-    return count;
-}
-
 template<class T, class U, class V> static inline
-Status AllocatePages(T *&FreeList, U &Reverse, UIntPtr Count, V &Out, V Align) {
+Status AllocatePages(T *&FreeList, U &Reverse, V Count, V &Out, V Align) {
     T *prev = Null;
 
     for (T *cur = FreeList; cur != Null; prev = cur, cur = cur->NextGroup) {
-        if (cur->Count < Count) continue;
-        else if (Reverse(cur) & (Align - 1)) {
-            UIntPtr size = cur->Count - 1;
-            T *prev2 = cur, *cur2 = cur->NextSingle;
-            UInt64 end = Reverse(cur) + (cur->Count << PAGE_SHIFT);
+        V addr = Reverse(cur), skip = (Align - (addr & (Align - 1))) >> PAGE_SHIFT;
 
-            for (; cur2 != Null && Reverse(cur2) < end && size >= Count; prev2 = cur2, cur2 = cur2->NextSingle, size--)
-                if (!(Reverse(cur2) & (Align - 1))) break;
-            if (cur2 == Null || Reverse(cur2) >= end || size < Count) continue;
+        if (cur->Count < Count || ((addr & (Align - 1)) && cur->Count < Count + skip)) continue;
+        else if (addr & (Align - 1)) {
+            T *prev2 = cur, *cur2 = cur->NextSingle;
+
+            for (V i = 1; i < skip; i++) prev2 = cur2, cur2 = cur2->NextSingle;
 
             /* Two things we might have to do here: Or we need to just decrease the cur->Count, or we need to split the
-             * block in two (which later might be rejoined in the FreeWaitingList func). */
+             * block in two (which later might be rejoined in the FreePages func). */
 
             Out = Reverse(cur2);
 
-            for (UIntPtr i = 0; i < Count; i++) {
+            for (V i = 0; i < Count; i++) {
                 T *next = cur2->NextSingle;
                 cur2->Count = 0;
                 if constexpr (IsSameV<T, PhysMem::Page>) cur2->References = 1;
@@ -260,11 +197,11 @@ Status AllocatePages(T *&FreeList, U &Reverse, UIntPtr Count, V &Out, V Align) {
                 cur2 = next;
             }
 
-            if (Reverse(cur2) >= end) cur->Count -= Count;
+            if (Reverse(cur2) >= addr + (cur->Count << PAGE_SHIFT)) cur->Count -= Count;
             else {
-                cur2->Count = size - Count;
+                cur2->Count = cur->Count - Count - skip;
                 cur2->NextGroup = cur->NextGroup;
-                cur->Count -= size;
+                cur->Count = skip;
                 cur->NextGroup = cur2;
             }
 
@@ -274,9 +211,9 @@ Status AllocatePages(T *&FreeList, U &Reverse, UIntPtr Count, V &Out, V Align) {
         /* Taking the pages from the start is already enough (alignment is OK), we just need to move the group start
          * (or remove the group). */
 
-        Out = Reverse(cur);
+        Out = addr;
 
-        UIntPtr nsize = cur->Count - Count;
+        V nsize = cur->Count - Count;
         T *group = cur->NextGroup, *last = cur->LastSingle;
 
         while (Count--) {
@@ -288,7 +225,7 @@ Status AllocatePages(T *&FreeList, U &Reverse, UIntPtr Count, V &Out, V Align) {
         }
 
         if (prev == Null) FreeList = cur;
-        else prev->NextSingle = prev->NextGroup = cur;
+        else prev->LastSingle->NextSingle = prev->NextGroup = cur;
 
         if (nsize) cur->NextGroup = group, cur->LastSingle = last, cur->Count = nsize;
         else if (prev != Null) prev->NextGroup = group;
@@ -297,6 +234,75 @@ Status AllocatePages(T *&FreeList, U &Reverse, UIntPtr Count, V &Out, V Align) {
     }
 
     return Status::OutOfMemory;
+}
+
+template<class T, class U, class V, class W>
+static Void FreePages(T *&FreeList, U Reverse, V GetEntry, W Start, W Count) {
+    if (!Count) return;
+
+    W i = 1;
+    T *group = Null, *ent = GetEntry(Start), *cur = FreeList, *prev = Null;
+
+    /* For the first entry (when group is Null) we need to find its right position (so that we can easily add the
+     * others by using the ->LastSingle field). */
+
+    for (; cur != Null && Reverse(ent) > Reverse(cur) && Reverse(ent) != Reverse(cur) + (cur->Count << PAGE_SHIFT);
+           cur = cur->NextGroup) ;
+
+    if (cur == Null || Reverse(ent) < Reverse(cur)) {
+        if (prev == Null) FreeList = ent;
+        else prev->LastSingle->NextSingle = prev->NextGroup = ent;
+
+        ent->NextSingle = ent->NextGroup = cur;
+        ent->LastSingle = ent;
+        ent->Count = 1;
+
+        group = ent;
+    } else {
+        ent->NextSingle = cur->LastSingle->NextSingle;
+        ent->NextGroup = ent->LastSingle = Null;
+        ent->Count = 1;
+
+        cur->LastSingle->NextSingle = ent;
+        cur->LastSingle = cur;
+        cur->Count += 1;
+
+        group = cur;
+    }
+
+    /* And now we can go through the remaining entries and just append them to the end of the group (no need to search
+     * for the right place or anything, as all pages from GetEntry should be contiguous). */
+
+    while (ent = GetEntry(Start + (i << PAGE_SHIFT)), i++ < Count) {
+        ent->NextSingle = group->LastSingle->NextSingle;
+        ent->NextGroup = ent->LastSingle = Null;
+        ent->Count = 1;
+
+        group->LastSingle->NextSingle = ent;
+        group->LastSingle = ent;
+        group->Count += 1;
+    }
+
+    /* Finally, everything that remains is merging the group with its neighbours (if possible). */
+
+    while (True) {
+        Boolean fuse = False;
+
+        if (group->NextGroup != Null && Reverse(group->NextGroup) == Reverse(group) + (group->Count << PAGE_SHIFT)) {
+            T *next = group->NextGroup;
+
+            group->Count += next->Count;
+            group->NextGroup = next->NextGroup;
+            group->LastSingle = next->LastSingle;
+
+            next->Count = 1;
+            next->NextGroup = next->LastSingle = Null;
+
+            fuse = True;
+        }
+
+        if (!fuse) break;
+    }
 }
 #endif
 
