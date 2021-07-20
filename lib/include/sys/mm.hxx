@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 04 of 2021, at 17:19 BRT
- * Last edited on July 19 of 2021, at 21:11 BRT */
+ * Last edited on July 19 of 2021, at 23:21 BRT */
 
 #pragma once
 
@@ -172,7 +172,7 @@ private:
 
 #ifdef KERNEL
 template<class T, class U, class V> static inline
-Status AllocatePages(T *&FreeList, U &Reverse, V Count, V &Out, V Align) {
+Status AllocatePages(T *&FreeList, U &Reverse, UIntPtr Count, V &Out, V Align) {
     T *prev = Null;
 
     for (T *cur = FreeList; cur != Null; prev = cur, cur = cur->NextGroup) {
@@ -182,14 +182,14 @@ Status AllocatePages(T *&FreeList, U &Reverse, V Count, V &Out, V Align) {
         else if (addr & (Align - 1)) {
             T *prev2 = cur, *cur2 = cur->NextSingle;
 
-            for (V i = 1; i < skip; i++) prev2 = cur2, cur2 = cur2->NextSingle;
+            for (UIntPtr i = 1; i < skip; i++) prev2 = cur2, cur2 = cur2->NextSingle;
 
             /* Two things we might have to do here: Or we need to just decrease the cur->Count, or we need to split the
              * block in two (which later might be rejoined in the FreePages func). */
 
             Out = Reverse(cur2);
 
-            for (V i = 0; i < Count; i++) {
+            for (UIntPtr i = 0; i < Count; i++) {
                 T *next = cur2->NextSingle;
                 cur2->Count = 0;
                 if constexpr (IsSameV<T, PhysMem::Page>) cur2->References = 1;
@@ -213,7 +213,7 @@ Status AllocatePages(T *&FreeList, U &Reverse, V Count, V &Out, V Align) {
 
         Out = addr;
 
-        V nsize = cur->Count - Count;
+        UIntPtr nsize = cur->Count - Count;
         T *group = cur->NextGroup, *last = cur->LastSingle;
 
         while (Count--) {
@@ -237,10 +237,10 @@ Status AllocatePages(T *&FreeList, U &Reverse, V Count, V &Out, V Align) {
 }
 
 template<class T, class U, class V, class W>
-static Void FreePages(T *&FreeList, U Reverse, V GetEntry, W Start, W Count) {
+static Void FreePages(T *&FreeList, U Reverse, V GetEntry, W Start, UIntPtr Count) {
     if (!Count) return;
 
-    W i = 1;
+    UIntPtr i = 1;
     T *group = Null, *ent = GetEntry(Start), *cur = FreeList, *prev = Null;
 
     /* For the first entry (when group is Null) we need to find its right position (so that we can easily add the
