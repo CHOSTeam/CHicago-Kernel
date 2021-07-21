@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 29 of 2020, at 11:24 BRT
- * Last edited on July 20 of 2021, at 12:06 BRT */
+ * Last edited on July 21 of 2021, at 17:58 BRT */
 
 #include <arch/acpi.hxx>
 #include <arch/port.hxx>
@@ -10,7 +10,7 @@
 
 namespace CHicago {
 
-static InterruptHandlerFunc InterruptHandlers[224] = { Null };
+struct { volatile Boolean Used; InterruptHandlerFunc Handler; } InterruptHandlers[224] {};
 static UInt8 IdtEntries[256][2 * sizeof(UIntPtr)];
 static DescTablePointer IdtPointer;
 
@@ -27,11 +27,10 @@ static const Char *ExceptionStrings[32] = {
 extern "C" force_align_arg_pointer Void IdtDefaultHandler(Registers &Regs) {
 	/* 'regs' contains information about the interrupt that we received, we can determine whatever this is an exception
 	 * or some device interrupt using the interrupt number: 0-31 is ALWAYS exceptions (at least on the way that we
-	 * configured the PIC; 32-255 are device interrupts/OS interrupts (like system calls).
-	 * For interrupts 32-47 need to send the EOI to the PIC, and NOT crash if the handler isn't installed. For 48-255
-	 * we need to crash if the handler isn't installed. */
+	 * configured the PIC); 32-255 are device interrupts/OS interrupts (like system calls). */
 
-	if (Regs.IntNum >= 32 && InterruptHandlers[Regs.IntNum - 32] != Null) InterruptHandlers[Regs.IntNum - 32](Regs);
+	if (Regs.IntNum >= 32 && InterruptHandlers[Regs.IntNum - 32].Handler != Null)
+	    InterruptHandlers[Regs.IntNum - 32].Handler(Regs);
 	else if (Regs.IntNum < 32) {
 	    StringView name;
 	    UIntPtr cr0, cr2, cr3, cr4, off;
@@ -76,18 +75,20 @@ extern "C" force_align_arg_pointer Void IdtDefaultHandler(Registers &Regs) {
 	}
 
     if (Regs.IntNum >= 32) {
-        /* Send the EOI signal to the master PIC (if the interrupt number is between 40-47, we need to send it to the
-         * slave PIC as well) and, if the LAPIC is already initialized, also send to it (else we're going to stop
-         * receiving interrupts). */
+        /* When APIC is enabled, we just need to send the EOI to it, when it isn't, we need to send it to the PIC
+         * (master channel if it is IRQs 0-7 and slave channel for anything else). */
 
-        if (Smp::IsInitialized()) Smp::WriteLApicRegister(0xB0, 0);
-        if (Regs.IntNum >= 40) Port::OutByte(0xA0, 0x20);
-        Port::OutByte(0x20, 0x20);
+        if (Apic::IsInitialized()) Apic::WriteLApicRegister(0xB0, 0);
+        else if (Regs.IntNum >= 40) Port::OutByte(0xA0, 0x20);
+        else Port::OutByte(0x20, 0x20);
     }
 }
 
 Void IdtSetHandler(UInt8 Num, InterruptHandlerFunc Func) {
-	if (Num < 224) InterruptHandlers[Num] = Func;
+	if (Num < 224) {
+	    AtomicStore(InterruptHandlers[Num].Used, True);
+	    InterruptHandlers[Num].Handler = Func;
+	}
 }
 
 no_inline static Void IdtSetGate(UInt8 Num, UIntPtr Base, UInt16 Selector, UInt8 Type) {
@@ -122,6 +123,11 @@ no_inline static Void IdtSetGate(UInt8 Num, UIntPtr Base, UInt16 Selector, UInt8
 #endif
 }
 
+UInt8 IdtAllocIrq(Void) {
+    for (UInt8 i = 0; i < 224; i++) if (!AtomicExchange(InterruptHandlers[i].Used, True)) return i;
+    return 0xFF;
+}
+
 Void IdtReload(Void) {
     asm volatile("lidt %0" :: "m"(IdtPointer));
 }
@@ -143,8 +149,8 @@ Void IdtInit(Void) {
 	Port::OutByte(0x21, 0x01);
 	Port::OutByte(0xA1, 0x01);
 	
-	Port::OutByte(0x21, 0xFF);
-	Port::OutByte(0xA1, 0xFF);
+	Port::OutByte(0x21, 0x00);
+	Port::OutByte(0xA1, 0x00);
 	
 	/* Now, register all of the default interrupt handlers (now using a loop! The code is way more readable now!). */
 	
@@ -156,6 +162,7 @@ Void IdtInit(Void) {
 	IdtPointer.Base = reinterpret_cast<UIntPtr>(IdtEntries);
 	
 	IdtReload();
+    asm volatile("sti");
 }
 
 }

@@ -1,45 +1,60 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 11 of 2021, at 18:08 BRT
- * Last edited on July 17 of 2021, at 15:21 BRT */
+ * Last edited on July 20 of 2021, at 09:37 BRT */
 
 #include <sys/mm.hxx>
 #include <sys/panic.hxx>
 
 namespace CHicago {
 
-Void Acpi::Initialize(const BootInfo &Info) {
-    /* For now, everything that we might use the ACPI tables for is arch-specific, so we just need to map the RSDT/XSDT
-     * and travel through it (redirecting each table to the arch-specific ACPI init function). */
+List<Acpi::CacheEntry> Acpi::Cache {};
 
-    UIntPtr size = Info.Acpi.Size + (-Info.Acpi.Size & PAGE_MASK), out;
-    ASSERT(VirtMem::MapIo(Info.Acpi.Sdt, size, out) == Status::Success);
+Void Acpi::Initialize(const BootInfo &Info) {
+    /* This function should really only be called one time, but we can have an idea if it was called before using the
+     * cache (if it isn't 0, we have been called before, that's for sure). Here we map the main SDT table, grab all
+     * the subtables, and cache them so that we can search without having to map every single entry every tine. */
+
+    UIntPtr size = Info.Acpi.Size + (-Info.Acpi.Size & PAGE_MASK), addr;
+
+    ASSERT(!Cache.GetLength());
+    ASSERT(VirtMem::MapIo(Info.Acpi.Sdt, size, addr) == Status::Success);
 
     for (UIntPtr i = 0; i < (Info.Acpi.Size - sizeof(SdtHeader)) >> (Info.Acpi.Extended ? 3 : 2); i++) {
-        UInt64 phys = Info.Acpi.Extended ? reinterpret_cast<const Xsdt*>(out)->Pointers[i] :
-                                           reinterpret_cast<const Rsdt*>(out)->Pointers[i];
-        UIntPtr size2 = PAGE_SIZE, out2;
+        UInt64 phys = Info.Acpi.Extended ? reinterpret_cast<const Xsdt*>(addr)->Pointers[i] :
+                                           reinterpret_cast<const Rsdt*>(addr)->Pointers[i];
+        UIntPtr size2 = sizeof(SdtHeader) + (-sizeof(SdtHeader) & PAGE_MASK), addr2;
 
-        if (VirtMem::MapIo(phys, size2, out2) != Status::Success) continue;
+        if (VirtMem::MapIo(phys, size2, addr2) != Status::Success) continue;
 
-        /* If we "guessed" a size that is too small for the table, unmap it, free the virtual address and remap it
-         * using the right size. */
+        auto hdr = reinterpret_cast<const SdtHeader*>(addr2);
 
-        UIntPtr nsize = reinterpret_cast<const SdtHeader*>(out2)->Length;
+        if (Cache.Add({ hdr->Length + (-hdr->Length & PAGE_MASK), phys, {} }) == Status::Success)
+            CopyMemory(Cache[Cache.GetLength() - 1].Signature, hdr->Signature, 4);
 
-        if (size2 - (out2 & PAGE_MASK) < nsize) {
-            VirtMem::Unmap(out2 & ~PAGE_MASK, size2);
-            VirtMem::Free(out2& ~PAGE_MASK, size2 >> PAGE_SHIFT);
-            size2 = nsize;
-            if (VirtMem::MapIo(phys, size2, out2) != Status::Success) continue;
-        }
-
-        InitializeArch(Info, reinterpret_cast<const SdtHeader*>(out2));
-        VirtMem::Unmap(out2 & ~PAGE_MASK, size2);
-        VirtMem::Free(out2 & ~PAGE_MASK, size2 >> PAGE_SHIFT);
+        VirtMem::Unmap(addr2 & ~PAGE_MASK, size2);
+        VirtMem::Free(addr2 & ~PAGE_MASK, size2 >> PAGE_SHIFT);
     }
 
-    InitializeArch(Info, Null);
+    /* We probably want to make sure we have at least one ACPI table? */
+
+    VirtMem::Unmap(addr & ~PAGE_MASK, size);
+    VirtMem::Free(addr & ~PAGE_MASK, size >> PAGE_SHIFT);
+}
+
+Acpi::SdtHeader *Acpi::GetHeader(const Char Sig[4], UIntPtr &Out) {
+    /* With the cache is just a matter of finding the right signature and mapping the address (we already know the size,
+     * so there is no need to "guess" it. */
+
+    UIntPtr addr;
+
+    for (auto &ent : Cache) {
+        if (!CompareMemory(ent.Signature, Sig, 4)) continue;
+        return VirtMem::MapIo(ent.Address, (Out = ent.Size, Out), addr) == Status::Success ?
+               reinterpret_cast<SdtHeader*>(addr) : Null;
+    }
+
+    return Null;
 }
 
 }

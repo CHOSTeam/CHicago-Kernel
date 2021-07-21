@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on February 06 of 2021, at 12:22 BRT
- * Last edited on July 20 of 2021, at 16:49 BRT */
+ * Last edited on July 21 of 2021, at 20:07 BRT */
 
 #include <sys/arch.hxx>
 #include <sys/mm.hxx>
@@ -18,6 +18,7 @@ static Void CopySection(Image &Back, Image &Front, UIntPtr X, UIntPtr Y, UIntPtr
     UInt32 *bpos = &Back.GetBuffer()[Y * Back.GetWidth() + X], *fpos = &Front.GetBuffer()[Y * Back.GetWidth() + X];
     for (; Height--; bpos += Back.GetWidth(), fpos += Back.GetWidth()) CopyMemory(bpos, fpos, Width * 4);
 }
+
 
 extern "C" Void SmpEntry(Void) {
     /* The "caller" is probably expecting us to set some kind of arch-specific signal to say that we initialized and
@@ -46,6 +47,8 @@ extern "C" Void KernelEntry(const BootInfo &Info) {
 
     /* Initialize the debug interface (change this later to also possibly not use the screen). */
 
+    Arch::InitializeDebug();
+
     Image back(reinterpret_cast<UInt32*>(Info.FrameBuffer.BackBuffer), Info.FrameBuffer.Width, Info.FrameBuffer.Height),
           front(reinterpret_cast<UInt32*>(Info.FrameBuffer.FrontBuffer), Info.FrameBuffer.Width,
                                           Info.FrameBuffer.Height);
@@ -68,6 +71,7 @@ extern "C" Void KernelEntry(const BootInfo &Info) {
     /* Initialize/map all the ACPI tables that we need for now. */
 
     Acpi::Initialize(Info);
+    Acpi::InitializeArch(Info);
 
     /* By now we should have the timer setup, so we can take over the debug console (on the graphics frontend), and
      * start displaying other things to the screen. */
@@ -80,7 +84,7 @@ extern "C" Void KernelEntry(const BootInfo &Info) {
     Debug.Write("disabled graphical debug output and displayed the boot screen\n");
 
     for (UIntPtr i = 0;; i = (i + 1) % 4) {
-        Arch::Sleep(TimeUnit::Milliseconds, 500);
+        Timer::Sleep(TimeUnit::Milliseconds, 500);
         ClearSection(front, x + w2, y, w1 - w2, h);
         front.DrawString(x + w2, y, 0xFFFFFFFF, !i ? "." : (i == 1 ? ".." : (i == 2 ? "..." : "")));
         CopySection(back, front, x + w2, y, w1 - w2, h);

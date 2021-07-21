@@ -1,0 +1,1 @@
+../../x86/acpi/smp.cxx

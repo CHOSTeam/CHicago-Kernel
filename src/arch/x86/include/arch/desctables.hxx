@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on June 29 of 2020, at 09:47 BRT
- * Last edited on July 20 of 2021, at 12:14 BRT */
+ * Last edited on July 21 of 2021, at 16:29 BRT */
 
 #pragma once
 
@@ -76,7 +76,8 @@ static inline Void WriteMsr(UInt32 Num, UInt64 Value) {
 }
 
 Void IdtSetHandler(UInt8, InterruptHandlerFunc);
-Void IdtReload();
-Void IdtInit();
+UInt8 IdtAllocIrq(Void);
+Void IdtReload(Void);
+Void IdtInit(Void);
 
 }

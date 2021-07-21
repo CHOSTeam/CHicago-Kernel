@@ -1,7 +1,7 @@
 /* File author is Ítalo Lima Marconato Matias
  *
  * Created on March 11 of 2021, at 17:50 BRT
- * Last edited on July 17 of 2021 at 15:21 BRT */
+ * Last edited on July 21 of 2021 at 12:23 BRT */
 
 #pragma once
 
@@ -10,6 +10,7 @@
 namespace CHicago {
 
 struct packed BootInfo;
+template<class T> class List;
 
 class Acpi {
 public:
@@ -59,7 +60,11 @@ public:
     };
 
     static Void Initialize(const BootInfo&);
-    static Void InitializeArch(const BootInfo&, const SdtHeader*);
+    static Void InitializeArch(const BootInfo&);
+    static SdtHeader *GetHeader(const Char[4], UIntPtr&);
+private:
+    struct CacheEntry { UIntPtr Size; UInt64 Address; Char Signature[4]; };
+    static List<CacheEntry> Cache;
 };
 
 }
